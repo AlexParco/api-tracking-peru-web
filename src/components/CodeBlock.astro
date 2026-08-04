@@ -14,6 +14,11 @@ const { titulo, codigo, tono = 'zinc' } = Astro.props
   {
     titulo && (
       <div class="flex items-center gap-2 border-b border-line px-4 py-2.5">
+        {/* Este punto NO late, aunque sea del color de marca. Es cromo de
+            ventana —dice "acá empieza un bloque de código"—, no una señal de que
+            algo esté vivo. Con un pulso acá habría once latiendo en la página y
+            el pulso dejaría de significar lo que significa en la tabla de
+            cobertura, que es donde el movimiento sí informa algo. */}
         <span
           class:list={[
             'size-2 shrink-0 rounded-full',

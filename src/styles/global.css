@@ -62,3 +62,178 @@ body {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MOVIMIENTO
+
+   Tres reglas, y la primera ordena a las otras dos.
+
+   1. EL PULSO ES SEMÁNTICO, NO DECORATIVO. Late lo que está vivo de verdad: el
+      punto de «servicio operativo» y los carriers cuyo rastreo funciona HOY. Si
+      latiera todo, el pulso no diría nada — y esta página ya usa el color para
+      decir la verdad sobre el estado, así que el movimiento tiene que decir lo
+      mismo. Un courier en ámbar no late: está esperando evidencia, no
+      trabajando.
+
+   2. NADA APARECE POR JAVASCRIPT. El HTML se sirve visible y completo; el JS
+      sólo AGREGA el estado inicial de la animación, y sólo después de decidir
+      que corresponde. Es la única forma de animar entradas sin apostar el
+      contenido a que un observer llegue a correr: si el script falla, si el
+      navegador es viejo o si alguien lo bloquea, la landing se ve entera.
+
+   3. Se anima sólo `opacity` y `transform`, que el compositor resuelve sin
+      recalcular layout. Nada de animar `height`, `top` ni `box-shadow` en
+      bucle.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Todo cuelga de .motion, que un script inline del <head> agrega ANTES de
+   pintar y sólo si el visitante no pidió menos movimiento. Sin esa clase, las
+   reglas de abajo no aplican a nada. */
+
+.motion [data-revelar] {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+/* Las filas de tabla se revelan sin desplazarse: `transform` sobre un
+   `table-row` es terreno irregular entre navegadores y acá no aporta nada. */
+.motion [data-revelar='fade'] {
+  transform: none;
+}
+
+.motion [data-revelar].visible {
+  opacity: 1;
+  transform: none;
+  /* Salida rápida y frenada larga: se lee como algo que se acomoda, no como
+     algo que arranca. */
+  transition:
+    opacity 620ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: calc(var(--paso, 0) * 70ms);
+}
+
+/* ── El pulso ──
+   Dos capas: el punto sólido NO se mueve —tiene que seguir leyéndose como
+   viñeta— y el halo es un ::after que se expande y se apaga detrás. */
+.pulso {
+  position: relative;
+}
+
+.pulso::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: halo 2.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes halo {
+  0% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(2.9);
+  }
+}
+
+/* Variante para un glifo de texto (el ● de la tabla), donde un halo absoluto
+   quedaría descentrado respecto del trazo. Acá late el glifo mismo. */
+.late {
+  animation: late 2.8s ease-in-out infinite;
+}
+
+@keyframes late {
+  0%,
+  100% {
+    opacity: 1;
+    text-shadow: 0 0 0 transparent;
+  }
+  50% {
+    opacity: 0.68;
+    text-shadow: 0 0 9px currentColor;
+  }
+}
+
+/* ── Tarjetas ──
+   El hover levanta apenas y tiñe el borde con el acento. 2px alcanza: más se
+   siente como un botón y estas cajas no son clickeables. */
+.tarjeta {
+  transition:
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 260ms ease,
+    box-shadow 260ms ease;
+}
+
+.tarjeta:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in oklab, var(--color-brand) 26%, var(--color-line));
+  box-shadow: 0 14px 34px -20px color-mix(in oklab, var(--color-brand) 45%, transparent);
+}
+
+/* Filas de la tabla de cobertura: sin desplazamiento (movería la tabla
+   entera), sólo un realce del fondo para seguir la fila con la vista. */
+.fila {
+  transition: background-color 200ms ease;
+}
+
+.fila:hover {
+  background-color: color-mix(in oklab, var(--color-brand) 4%, transparent);
+}
+
+/* ── El aura del hero ──
+   Un resplandor del color de marca que respira muy lento por detrás de la
+   grilla. Es lo único puramente decorativo de la página, y por eso está tan
+   abajo en opacidad: tiene que percibirse sin poder señalarse. */
+.aura {
+  background: radial-gradient(
+    ellipse 68% 46% at 50% -8%,
+    color-mix(in oklab, var(--color-brand) 13%, transparent),
+    transparent 70%
+  );
+  animation: respirar 12s ease-in-out infinite;
+}
+
+@keyframes respirar {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ── Nav ──
+   La barra gana borde y sombra recién cuando hay contenido debajo. Arriba de
+   todo no hay nada que separar, y el borde permanente se lee como suciedad. */
+header[data-scrolled] {
+  border-color: color-mix(in oklab, var(--color-line) 100%, transparent);
+  box-shadow: 0 10px 30px -24px rgb(0 0 0 / 0.9);
+}
+
+header:not([data-scrolled]) {
+  border-color: transparent;
+}
+
+/* ── Botones ──
+   Un desplazamiento de 1px: suficiente para que el clic se sienta físico. */
+.boton {
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 200ms ease,
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.boton:hover {
+  transform: translateY(-1px);
+}
+
+.boton:active {
+  transform: translateY(0);
+}

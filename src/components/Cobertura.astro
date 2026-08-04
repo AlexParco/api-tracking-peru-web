@@ -1,10 +1,10 @@
 ---
 import { CARRIERS, NIVELES, type Estado } from '../data/api.ts'
 
-const icono: Record<Estado, { simbolo: string; clase: string; texto: string }> = {
-  ok: { simbolo: '●', clase: 'text-[var(--color-live)]', texto: 'Operativo' },
-  pendiente: { simbolo: '◐', clase: 'text-[var(--color-partial)]', texto: 'En curso' },
-  no: { simbolo: '○', clase: 'text-[var(--color-none)]', texto: 'No disponible' },
+const icono: Record<Estado, { simbolo: string; clase: string; texto: string; late: boolean }> = {
+  ok: { simbolo: '●', clase: 'text-[var(--color-live)]', texto: 'Operativo', late: true },
+  pendiente: { simbolo: '◐', clase: 'text-[var(--color-partial)]', texto: 'En curso', late: false },
+  no: { simbolo: '○', clase: 'text-[var(--color-none)]', texto: 'No disponible', late: false },
 }
 
 const nivelClase: Record<string, string> = {
@@ -17,10 +17,13 @@ const nivelClase: Record<string, string> = {
 
 <section id="cobertura" class="border-t border-line py-24">
   <div class="mx-auto max-w-6xl px-6">
-    <h2 class="max-w-2xl text-balance font-display text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
+    <h2
+      class="max-w-2xl text-balance font-display text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl"
+      data-revelar
+    >
       Qué funciona hoy, sin maquillaje
     </h2>
-    <p class="mt-4 max-w-2xl text-pretty leading-relaxed text-zinc-400">
+    <p class="mt-4 max-w-2xl text-pretty leading-relaxed text-zinc-400" data-revelar style="--paso: 1">
       Esta tabla es el estado real, no una hoja de ruta. Un courier en ámbar no está
       «casi listo»: está implementado y esperando algo concreto, y acá dice qué. Lo mismo
       responde <code class="font-mono text-sm text-zinc-300">GET /v1/carriers</code>, así
@@ -39,8 +42,12 @@ const nivelClase: Record<string, string> = {
         </thead>
         <tbody>
           {
-            CARRIERS.map((c) => (
-              <tr class="border-b border-line/60 align-top">
+            CARRIERS.map((c, i) => (
+              <tr
+                class="fila group/fila border-b border-line/60 align-top"
+                data-revelar="fade"
+                style={`--paso: ${i}`}
+              >
                 <td class="py-4 pr-4">
                   <div class="font-medium text-zinc-100">{c.nombre}</div>
                   <div class="mt-0.5 font-mono text-xs text-zinc-600">{c.id}</div>
@@ -48,7 +55,10 @@ const nivelClase: Record<string, string> = {
 
                 <td class="py-4 pr-4">
                   <div class="flex items-center gap-2">
-                    <span class={icono[c.rastreo.estado].clase} aria-hidden="true">
+                    <span
+                      class:list={[icono[c.rastreo.estado].clase, icono[c.rastreo.estado].late && 'late']}
+                      aria-hidden="true"
+                    >
                       {icono[c.rastreo.estado].simbolo}
                     </span>
                     <span class="sr-only">{icono[c.rastreo.estado].texto}: </span>
@@ -58,7 +68,10 @@ const nivelClase: Record<string, string> = {
 
                 <td class="py-4 pr-4">
                   <div class="flex items-center gap-2">
-                    <span class={icono[c.agencias.estado].clase} aria-hidden="true">
+                    <span
+                      class:list={[icono[c.agencias.estado].clase, icono[c.agencias.estado].late && 'late']}
+                      aria-hidden="true"
+                    >
                       {icono[c.agencias.estado].simbolo}
                     </span>
                     <span class="sr-only">{icono[c.agencias.estado].texto}: </span>
@@ -75,7 +88,7 @@ const nivelClase: Record<string, string> = {
                 <td class="py-4">
                   <span
                     class:list={[
-                      'inline-block whitespace-nowrap rounded-md border px-2 py-0.5 font-mono text-xs',
+                      'inline-block whitespace-nowrap rounded-md border px-2 py-0.5 font-mono text-xs transition-transform duration-200 group-hover/fila:scale-105',
                       nivelClase[c.nivel],
                     ]}
                     title={NIVELES[c.nivel].detalle}

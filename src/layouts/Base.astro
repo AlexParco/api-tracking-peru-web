@@ -33,6 +33,17 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://rastreo.dev
       href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>"
     />
     <meta name="theme-color" content="#08090b" />
+
+    {/* Se decide ANTES de pintar, y por eso va en el <head> y no al final: si
+        el estado inicial de las animaciones se aplicara después del primer
+        pintado, el contenido se vería y recién ahí se escondería para entrar.
+        Si el visitante pidió menos movimiento, la clase no se agrega y ninguna
+        regla de animación llega a existir. */}
+    <script is:inline>
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.documentElement.classList.add('motion')
+      }
+    </script>
   </head>
 
   <body class="bg-ink text-zinc-200 antialiased">
@@ -43,5 +54,56 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://rastreo.dev
       Saltar al contenido
     </a>
     <slot />
+
+    <script is:inline>
+      ;(() => {
+        // La barra no es movimiento: separa la nav del contenido cuando hay
+        // contenido debajo. Corre siempre, incluso con reduced-motion.
+        const cabecera = document.querySelector('header')
+        if (cabecera) {
+          const marcar = () => cabecera.toggleAttribute('data-scrolled', scrollY > 8)
+          marcar()
+          addEventListener('scroll', marcar, { passive: true })
+        }
+
+        if (!document.documentElement.classList.contains('motion')) return
+
+        // Los contadores arrancan desde cero SÓLO acá: el valor real ya está en
+        // el HTML, así que sin JS —o con reduced-motion— se lee el número
+        // correcto y no un cero animándose que nunca llega.
+        const contar = (el) => {
+          const destino = Number(el.dataset.contador)
+          if (!Number.isFinite(destino)) return
+          const arranque = performance.now()
+          const paso = (t) => {
+            const avance = Math.min(1, (t - arranque) / 950)
+            const suave = 1 - (1 - avance) ** 3
+            // El valor exacto se escribe al final y no se deriva del easing:
+            // redondear 817,6 daría 818 por casualidad, no por corrección.
+            el.textContent = avance < 1 ? String(Math.round(destino * suave)) : String(destino)
+            if (avance < 1) requestAnimationFrame(paso)
+          }
+          requestAnimationFrame(paso)
+        }
+
+        const observador = new IntersectionObserver(
+          (entradas) => {
+            for (const e of entradas) {
+              if (!e.isIntersecting) continue
+              e.target.classList.add('visible')
+              if (e.target.dataset.contador) contar(e.target)
+              // Una sola vez: que las cosas se desvanezcan al volver a
+              // scrollear marea y no aporta nada.
+              observador.unobserve(e.target)
+            }
+          },
+          { rootMargin: '0px 0px -10% 0px', threshold: 0.01 },
+        )
+
+        for (const el of document.querySelectorAll('[data-revelar], [data-contador]')) {
+          observador.observe(el)
+        }
+      })()
+    </script>
   </body>
 </html>

@@ -8,7 +8,7 @@ const niveles = Object.entries(NIVELES) as [Nivel, (typeof NIVELES)[Nivel]][]
 <section id="cobertura-geografica" class="border-t border-line py-24">
   <div class="mx-auto max-w-6xl px-6">
     <div class="grid gap-10 lg:grid-cols-2 lg:items-center">
-      <div>
+      <div data-revelar>
         <p class="mb-4 font-mono text-xs text-brand">GET /v1/coverage</p>
         <h2 class="text-balance font-display text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
           «¿Qué couriers llegan a este distrito?»
@@ -30,11 +30,16 @@ const niveles = Object.entries(NIVELES) as [Nivel, (typeof NIVELES)[Nivel]][]
         </p>
       </div>
 
-      <CodeBlock titulo="200 OK · ubigeo=150101" codigo={EJEMPLO_COVERAGE} />
+      <div data-revelar style="--paso: 1">
+        <CodeBlock titulo="200 OK · ubigeo=150101" codigo={EJEMPLO_COVERAGE} />
+      </div>
     </div>
 
     <div id="honestidad" class="mt-24 scroll-mt-20 border-t border-line pt-16">
-      <h2 class="max-w-2xl text-balance font-display text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
+      <h2
+        class="max-w-2xl text-balance font-display text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl"
+        data-revelar
+      >
         Publicamos cuánto sabemos, no sólo qué hacemos
       </h2>
       <p class="mt-4 max-w-2xl text-pretty leading-relaxed text-zinc-400">
@@ -45,10 +50,18 @@ const niveles = Object.entries(NIVELES) as [Nivel, (typeof NIVELES)[Nivel]][]
         distingas «implementado» de «probado contra el sistema real».
       </p>
 
+      {/* Sin `.tarjeta` en estas cajas, a propósito: la grilla dibuja sus
+          separadores con `gap-px` sobre el fondo del contenedor, así que
+          levantar una caja 2px destaparía esa línea y se leería como un
+          defecto. Acá el realce es plano. */}
       <dl class="mt-10 grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
         {
-          niveles.map(([clave, n]) => (
-            <div class="bg-ink-soft p-5">
+          niveles.map(([clave, n], i) => (
+            <div
+              class="bg-ink-soft p-5 transition-colors duration-200 hover:bg-[color-mix(in_oklab,var(--color-brand)_5%,var(--color-ink-soft))]"
+              data-revelar
+              style={`--paso: ${i}`}
+            >
               <dt class="font-mono text-xs text-zinc-500">{clave}</dt>
               <dd>
                 <p class="mt-2 font-medium text-zinc-100">{n.label}</p>

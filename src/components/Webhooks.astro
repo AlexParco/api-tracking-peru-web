@@ -20,10 +20,11 @@ const soloUno = suscribibles.length === 1
   <div class="mx-auto max-w-6xl px-6">
     <h2
       class="max-w-2xl text-balance font-display text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl"
+      data-revelar
     >
       Y si preferís no preguntar, te avisamos
     </h2>
-    <p class="mt-4 max-w-2xl text-pretty leading-relaxed text-zinc-400">
+    <p class="mt-4 max-w-2xl text-pretty leading-relaxed text-zinc-400" data-revelar style="--paso: 1">
       Registrás un endpoint HTTPS, suscribís un envío, y recibís un POST firmado cada vez
       que ese envío <strong class="font-medium text-zinc-300">cambia de estado</strong>. Un
       poller de fondo hace el trabajo aburrido con una cadencia que se acelera cerca de la
@@ -48,11 +49,11 @@ const soloUno = suscribibles.length === 1
 
     <div class="mt-12 grid gap-10 lg:grid-cols-2 lg:items-start">
       <div>
-        <h3 class="text-sm font-medium text-zinc-300">Lo que conviene saber antes de escribir el receptor</h3>
+        <h3 class="text-sm font-medium text-zinc-300" data-revelar>Lo que conviene saber antes de escribir el receptor</h3>
         <dl class="mt-4 divide-y divide-line/60 border-y border-line/60">
           {
-            WEBHOOKS_DECISIONES.map((d) => (
-              <div class="py-3.5">
+            WEBHOOKS_DECISIONES.map((d, i) => (
+              <div class="py-3.5" data-revelar style={`--paso: ${i}`}>
                 <dt class="text-sm font-medium text-zinc-200">{d.titulo}</dt>
                 <dd class="mt-1 text-sm leading-relaxed text-zinc-500">{d.detalle}</dd>
               </div>
@@ -63,8 +64,8 @@ const soloUno = suscribibles.length === 1
         <h3 class="mt-8 text-sm font-medium text-zinc-300">Tipos de evento</h3>
         <dl class="mt-3 space-y-2.5">
           {
-            EVENTOS.map((e) => (
-              <div>
+            EVENTOS.map((e, i) => (
+              <div data-revelar style={`--paso: ${i}`}>
                 <dt>
                   <code class="font-mono text-sm text-[var(--color-live)]">{e.nombre}</code>
                 </dt>
@@ -75,7 +76,7 @@ const soloUno = suscribibles.length === 1
         </dl>
       </div>
 
-      <div class="space-y-4">
+      <div class="space-y-4" data-revelar style="--paso: 2">
         <CodeBlock titulo="una entrega, recortada" codigo={EJEMPLO_WEBHOOK} tono="brand" />
         <CodeBlock titulo="verificar la firma" codigo={FIRMA_WEBHOOK} />
         <p class="text-xs leading-relaxed text-zinc-600">
@@ -89,7 +90,8 @@ const soloUno = suscribibles.length === 1
     {/* La misma regla que la tabla de cobertura: si el producto no lo hace
         todavía, la landing lo dice acá y no en la letra chica. */}
     <p
-      class="mt-12 max-w-2xl text-pretty rounded-xl border border-line bg-ink-soft p-5 text-sm leading-relaxed text-zinc-400"
+      class="tarjeta mt-12 max-w-2xl text-pretty rounded-xl border border-line bg-ink-soft p-5 text-sm leading-relaxed text-zinc-400"
+      data-revelar
     >
       <strong class="font-medium text-[var(--color-partial)]">Alcance real, hoy:</strong>
       {' '}

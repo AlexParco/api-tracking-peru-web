@@ -115,30 +115,6 @@ export const METRICAS = {
   carriersConCatalogo: CARRIERS.filter((c) => c.agencias.estado === 'ok').length,
 }
 
-export interface Endpoint {
-  metodo: 'GET' | 'POST' | 'DELETE'
-  ruta: string
-  resumen: string
-  destacado?: boolean
-}
-
-export const ENDPOINTS: Endpoint[] = [
-  { metodo: 'GET', ruta: '/v1/carriers', resumen: 'Qué carriers hay, qué puede cada uno y cuánta evidencia lo respalda.' },
-  { metodo: 'GET', ruta: '/v1/tracking', resumen: 'Rastreo unificado por número de guía.' },
-  { metodo: 'GET', ruta: '/v1/tracking/{carrier}/{number}', resumen: 'La misma consulta con el carrier en la ruta.' },
-  { metodo: 'POST', ruta: '/v1/tracking/batch', resumen: 'Hasta 50 envíos por request, con error por ítem.' },
-  { metodo: 'GET', ruta: '/v1/agencies', resumen: 'Catálogo de agencias con filtros y paginación.' },
-  {
-    metodo: 'GET',
-    ruta: '/v1/coverage',
-    resumen: 'Qué carriers tienen agencia en un distrito. Distingue "no cubre" de "no sabemos".',
-    destacado: true,
-  },
-  { metodo: 'GET', ruta: '/v1/agencies/{carrier}/{id}', resumen: 'Detalle de una agencia.' },
-  { metodo: 'POST', ruta: '/v1/webhooks', resumen: 'Registra tu endpoint. Devuelve el signing secret una sola vez.' },
-  { metodo: 'POST', ruta: '/v1/tracking/subscriptions', resumen: 'Suscribe un envío: te avisamos cuando cambie de estado.' },
-]
-
 /** Respuesta real del servicio, recortada. No es un ejemplo inventado. */
 export const EJEMPLO_TRACKING = `{
   "carrier": "marvisur",
@@ -177,6 +153,251 @@ export const EJEMPLO_COVERAGE = `{
     }
   ]
 }`
+
+export interface Endpoint {
+  /** Ancla estable del panel. No se deriva de la ruta: cambiar una ruta no debe romper un link. */
+  id: string
+  metodo: 'GET' | 'POST' | 'DELETE'
+  ruta: string
+  resumen: string
+  destacado?: boolean
+  /** Cuerpo que manda el cliente. Sólo en los POST. */
+  peticion?: { titulo: string; codigo: string }
+  /** Lo que contesta el servicio, recortado pero con la forma real. */
+  respuesta: { titulo: string; codigo: string }
+  /** Una línea que explica la decisión de diseño del endpoint, si tiene una. */
+  nota?: string
+}
+
+/**
+ * Los ejemplos salen de `docs/API.md` del repo del API y de sus tests, no de la
+ * imaginación. Están RECORTADOS —se sacan campos para que entren en pantalla—
+ * pero nunca INVENTADOS: ningún campo de acá deja de existir en la respuesta
+ * real, y ninguno cambia de tipo. Un cliente que copie esto y haga el curl tiene
+ * que reconocer lo que recibe.
+ */
+export const ENDPOINTS: Endpoint[] = [
+  {
+    id: 'carriers',
+    metodo: 'GET',
+    ruta: '/v1/carriers',
+    resumen: 'Qué carriers hay, qué puede cada uno y cuánta evidencia lo respalda.',
+    nota: 'Es el endpoint de descubrimiento: tu código puede leer el estado en vez de confiar en esta página.',
+    respuesta: {
+      titulo: '200 OK · application/json',
+      codigo: `{
+  "carriers": [
+    {
+      "id": "marvisur",
+      "name": "Expreso Marvisur",
+      "enabled": true,
+      "verified": {
+        "level": "live",
+        "last_probe": "2026-08-03T22:10:23Z",
+        "notes": "hit y miss reproducidos byte a byte contra el upstream"
+      },
+      "id_format": "V###-####### (serie V + 3 dígitos, distinto de V000)",
+      "examples": ["V999-9999999"],
+      "detection": "strong",
+      "requires_code": false,
+      "requires_end_user_auth": false,
+      "anonymous_timeline": true,
+      "provides": {
+        "parties": true, "event_location": true,
+        "packages": true, "payment_status": true
+      }
+    }
+  ]
+}`,
+    },
+  },
+  {
+    id: 'tracking',
+    metodo: 'GET',
+    ruta: '/v1/tracking',
+    resumen: 'Rastreo unificado por número de guía.',
+    nota: 'El literal del courier viaja siempre en status_raw: normalizar no debería significar perder el dato original.',
+    respuesta: { titulo: '200 OK · application/json', codigo: EJEMPLO_TRACKING },
+  },
+  {
+    id: 'tracking-ruta',
+    metodo: 'GET',
+    ruta: '/v1/tracking/{carrier}/{number}',
+    resumen: 'La misma consulta con el carrier en la ruta.',
+    nota: 'Idéntica respuesta. Existe porque un carrier explícito en la ruta se cachea y se loguea mejor que un query param.',
+    respuesta: { titulo: '200 OK · /v1/tracking/marvisur/V001-0000001', codigo: EJEMPLO_TRACKING },
+  },
+  {
+    id: 'batch',
+    metodo: 'POST',
+    ruta: '/v1/tracking/batch',
+    resumen: 'Hasta 50 envíos por request, con error por ítem.',
+    nota: 'Responde 200 aunque haya ítems fallidos: el error va por ítem. Acá no hay detección automática.',
+    peticion: {
+      titulo: 'request',
+      codigo: `{
+  "items": [
+    { "custom_id": "a", "carrier": "marvisur", "number": "V001-0000001" },
+    { "custom_id": "b", "carrier": "marvisur", "number": "V999-9999999" }
+  ]
+}`,
+    },
+    respuesta: {
+      titulo: '200 OK · application/json',
+      codigo: `{
+  "results": [
+    { "custom_id": "a", "carrier": "marvisur",
+      "number": "V001-0000001",
+      "ok": true, "shipment": { "…": "el Shipment completo" } },
+    { "custom_id": "b", "carrier": "marvisur",
+      "number": "V999-9999999",
+      "ok": false,
+      "error": {
+        "code": "not_found",
+        "message": "no se encontró el envío"
+      } }
+  ],
+  "summary": { "total": 2, "ok": 1, "failed": 1 }
+}`,
+    },
+  },
+  {
+    id: 'agencies',
+    metodo: 'GET',
+    ruta: '/v1/agencies',
+    resumen: 'Catálogo de agencias con filtros y paginación.',
+    nota: 'ubigeo_source es lo que hace auditable el join: "carrier" lo dio el courier, "matched" lo resolvimos por texto y puede fallar.',
+    respuesta: {
+      titulo: '200 OK · ?carrier=olva&ubigeo=150122',
+      codigo: `{
+  "agencies": [
+    {
+      "carrier": "olva",
+      "id": "948",
+      "name": "AGENTE OLVA MIRAFLORES - BENAVIDES C18",
+      "location": {
+        "address": "AV ALFREDO BENAVIDES NRO 1851",
+        "department": "LIMA", "province": "LIMA",
+        "district": "MIRAFLORES",
+        "ubigeo": "150122", "structured": true
+      },
+      "ubigeo_level": "district",
+      "ubigeo_source": "carrier",
+      "geo": { "lat": -12.1265813, "lng": -77.0132440 },
+      "hours": {
+        "weekly": [
+          { "weekday": 1,
+            "spans": [ { "open": "08:00", "close": "20:00" } ] }
+        ],
+        "structured": true,
+        "time_zone": "America/Lima"
+      },
+      "kind": "agent",
+      "services": { "dropoff": true, "pickup": true },
+      "synced_at": "2026-08-03T22:10:19Z"
+    }
+  ],
+  "pagination": {
+    "page": 1, "per_page": 20, "total": 417, "total_pages": 21
+  },
+  "meta": { "sources": [ "…frescura por carrier" ] }
+}`,
+    },
+  },
+  {
+    id: 'coverage',
+    metodo: 'GET',
+    ruta: '/v1/coverage',
+    resumen: 'Qué carriers tienen agencia en un distrito. Distingue "no cubre" de "no sabemos".',
+    destacado: true,
+    nota: 'Sólo un courier que publica distrito puede recibir un "no cubre". El que da su ubicación como texto libre cae en "unknown", con el motivo escrito.',
+    respuesta: { titulo: '200 OK · ?ubigeo=150101', codigo: EJEMPLO_COVERAGE },
+  },
+  {
+    id: 'agencia-detalle',
+    metodo: 'GET',
+    ruta: '/v1/agencies/{carrier}/{id}',
+    resumen: 'Detalle de una agencia.',
+    nota: 'Devuelve la Agency pelada, sin envoltorio. La PK natural es el par (carrier, id).',
+    respuesta: {
+      titulo: '200 OK · /v1/agencies/olva/579',
+      codigo: `{
+  "carrier": "olva",
+  "id": "579",
+  "name": "TIENDA CHACHAPOYAS",
+  "location": {
+    "address": "JR. AMAZONAS 1120",
+    "department": "AMAZONAS", "province": "CHACHAPOYAS",
+    "district": "CHACHAPOYAS",
+    "ubigeo": "010101", "structured": true
+  },
+  "ubigeo_level": "district",
+  "ubigeo_source": "carrier",
+  "kind": "office",
+  "services": { "dropoff": true, "pickup": true },
+  "synced_at": "2026-08-03T22:10:19Z"
+}`,
+    },
+  },
+  {
+    id: 'webhooks',
+    metodo: 'POST',
+    ruta: '/v1/webhooks',
+    resumen: 'Registra tu endpoint. Devuelve el signing secret una sola vez.',
+    nota: 'Se guarda deshabilitado y recibe un ping firmado: sólo se habilita si devolvés el challenge como cuerpo.',
+    peticion: {
+      titulo: 'request',
+      codigo: `{ "url": "https://tuservicio.com/hooks/tracking" }`,
+    },
+    respuesta: {
+      titulo: '201 Created · application/json',
+      codigo: `{
+  "webhook": {
+    "id": 11,
+    "url": "https://tuservicio.com/hooks/tracking",
+    "enabled": true,
+    "created_at": "2026-08-04T10:00:00Z"
+  },
+  "signing_secret": "9f2b…64 hex…c1",
+  "verified": true,
+  "usage": { "active_subscriptions": 0, "max_subscriptions": 50 }
+}`,
+    },
+  },
+  {
+    id: 'subscriptions',
+    metodo: 'POST',
+    ruta: '/v1/tracking/subscriptions',
+    resumen: 'Suscribe un envío: te avisamos cuando cambie de estado.',
+    nota: 'carrier es OBLIGATORIO: no hay detección automática. Un rastreo mal detectado se ve en la respuesta; una suscripción mal detectada no la mira nadie durante semanas.',
+    peticion: {
+      titulo: 'request',
+      codigo: `{
+  "carrier": "marvisur",
+  "number": "V001-0000001",
+  "code": "opcional-2do-factor"
+}`,
+    },
+    respuesta: {
+      titulo: '201 Created · application/json',
+      codigo: `{
+  "subscription": {
+    "id": 4821,
+    "carrier": "marvisur",
+    "tracking_number": "V001-0000001",
+    "status": "active",
+    "next_poll_at": "2026-08-04T10:16:00Z",
+    "created_at": "2026-08-04T10:00:00Z",
+    "expires_at": "2026-08-25T10:00:00Z"
+  },
+  "outcome": "created",
+  "usage": { "active_subscriptions": 8, "max_subscriptions": 50 }
+}`,
+    },
+  },
+]
+
+
 
 // ── Webhooks ────────────────────────────────────────────────────────────────
 //

@@ -1,6 +1,6 @@
 ---
 import CodeBlock from './CodeBlock.astro'
-import { ENDPOINTS, EJEMPLO_TRACKING, ESTADOS_CANONICOS } from '../data/api.ts'
+import { ENDPOINTS, ESTADOS_CANONICOS } from '../data/api.ts'
 
 const metodoClase: Record<string, string> = {
   GET: 'text-[var(--color-live)]',
@@ -11,57 +11,167 @@ const metodoClase: Record<string, string> = {
 
 <section id="api" class="border-t border-line py-24">
   <div class="mx-auto max-w-6xl px-6">
-    <h2 class="max-w-2xl text-balance font-display text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
+    <h2
+      class="max-w-2xl text-balance font-display text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl"
+      data-revelar
+    >
       Una respuesta, sin importar el courier
     </h2>
-    <p class="mt-4 max-w-2xl text-pretty leading-relaxed text-zinc-400">
+    <p
+      class="mt-4 max-w-2xl text-pretty leading-relaxed text-zinc-400"
+      data-revelar
+      style="--paso: 1"
+    >
       El mismo <code class="font-mono text-sm text-zinc-300">Shipment</code> para todos:
       estado canónico, timeline ordenado con zona horaria explícita, partes, bultos y
       pago. Y el literal del courier siempre adjunto en
       <code class="font-mono text-sm text-zinc-300">status_raw</code>, porque normalizar
       no debería significar perder el dato original.
     </p>
+    <p class="mt-3 font-mono text-xs text-zinc-600" data-revelar style="--paso: 2">
+      Tocá un endpoint para ver qué contesta.
+    </p>
 
-    <div class="mt-12 grid gap-10 lg:grid-cols-2 lg:items-start">
-      <div>
-        <ul class="divide-y divide-line/60 border-y border-line/60">
-          {
-            ENDPOINTS.map((e) => (
-              <li class:list={['py-3.5', e.destacado && 'bg-brand/[0.04]']}>
-                <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <span class:list={['font-mono text-xs font-semibold', metodoClase[e.metodo]]}>
-                    {e.metodo}
-                  </span>
-                  <code class="font-mono text-sm text-zinc-200">{e.ruta}</code>
-                </div>
-                <p class="mt-1 text-sm leading-relaxed text-zinc-500">{e.resumen}</p>
-              </li>
-            ))
-          }
-        </ul>
-
-        <div class="mt-8">
-          <h3 class="text-sm font-medium text-zinc-300">Los 11 estados canónicos</h3>
-          <ul class="mt-3 flex flex-wrap gap-1.5">
-            {
-              ESTADOS_CANONICOS.map((s) => (
-                <li class="rounded border border-line bg-ink-soft px-2 py-1 font-mono text-xs text-zinc-400">
-                  {s}
-                </li>
-              ))
-            }
-          </ul>
-          <p class="mt-3 max-w-md text-xs leading-relaxed text-zinc-600">
-            <code class="text-zinc-400">available_for_pickup</code> existe porque en Perú
-            el retiro en agencia es la norma, no la excepción, y decir «en reparto» cuando
-            nadie está repartiendo es falso.
-            <code class="text-zinc-400">returning</code> no es terminal: un envío que vuelve
-            todavía puede entregarse.
-          </p>
-        </div>
+    <div class="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
+      {/* La lista es un tablist vertical de verdad, no divs con onclick: las
+          flechas ↑↓ navegan, Home/End saltan a los extremos y el lector de
+          pantalla anuncia "pestaña 3 de 9". Un endpoint es exactamente eso —una
+          opción entre varias que cambia un panel—, así que el patrón ARIA que
+          corresponde ya existe y no hay por qué inventar otro. */}
+      <div
+        role="tablist"
+        aria-orientation="vertical"
+        aria-label="Endpoints del API"
+        class="divide-y divide-line/60 border-y border-line/60"
+        data-revelar
+        style="--paso: 3"
+      >
+        {
+          ENDPOINTS.map((e, i) => (
+            <button
+              type="button"
+              role="tab"
+              id={`tab-${e.id}`}
+              aria-controls={`panel-${e.id}`}
+              aria-selected={i === 0 ? 'true' : 'false'}
+              tabindex={i === 0 ? 0 : -1}
+              data-tab
+              class:list={[
+                'group relative w-full cursor-pointer py-3.5 pl-4 pr-3 text-left transition-colors duration-200',
+                'hover:bg-brand/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60',
+                'aria-selected:bg-brand/[0.06]',
+                e.destacado && 'bg-brand/[0.03]',
+              ]}
+            >
+              {/* La barra del acento crece desde el centro en vez de aparecer:
+                  scaleY se compone, un width animado obliga a recalcular. */}
+              <span
+                aria-hidden="true"
+                class="absolute inset-y-0 left-0 w-0.5 origin-center scale-y-0 bg-brand transition-transform duration-300 ease-out group-aria-selected:scale-y-100"
+              />
+              <span class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span class:list={['font-mono text-xs font-semibold', metodoClase[e.metodo]]}>
+                  {e.metodo}
+                </span>
+                <code class="font-mono text-sm text-zinc-300 transition-colors group-hover:text-zinc-100 group-aria-selected:text-zinc-50">
+                  {e.ruta}
+                </code>
+              </span>
+              <span class="mt-1 block text-sm leading-relaxed text-zinc-500">{e.resumen}</span>
+            </button>
+          ))
+        }
       </div>
 
-      <CodeBlock titulo="200 OK · application/json" codigo={EJEMPLO_TRACKING} tono="brand" />
+      {/* Los nueve paneles se renderizan en el HTML y se ocultan con `hidden`.
+          Sin JS queda visible el primero y el resto no estorba: la página sigue
+          sirviendo contenido real en vez de una caja vacía esperando un script.
+          El costo son unos KB de HTML que comprimen a casi nada. */}
+      {/* El tope de altura no es cosmético: el panel de /v1/agencies mide unos
+          700px y en un portátil de 768px de alto quedaría cortado por abajo sin
+          forma de llegar al final. Con el cap, el caso largo scrollea dentro de
+          su caja y los cortos ni se enteran. */}
+      <div
+        class="lg:sticky lg:top-20 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto"
+        data-revelar
+        style="--paso: 4"
+      >
+        {
+          ENDPOINTS.map((e, i) => (
+            <div
+              role="tabpanel"
+              id={`panel-${e.id}`}
+              aria-labelledby={`tab-${e.id}`}
+              tabindex="0"
+              hidden={i !== 0}
+              data-panel
+              class="space-y-4 focus-visible:outline-none"
+            >
+              {e.peticion && <CodeBlock titulo={e.peticion.titulo} codigo={e.peticion.codigo} />}
+              <CodeBlock titulo={e.respuesta.titulo} codigo={e.respuesta.codigo} tono="brand" />
+              {e.nota && <p class="text-xs leading-relaxed text-zinc-600">{e.nota}</p>}
+            </div>
+          ))
+        }
+      </div>
+    </div>
+
+    <div class="mt-14" data-revelar style="--paso: 5">
+      <h3 class="text-sm font-medium text-zinc-300">Los 11 estados canónicos</h3>
+      <ul class="mt-3 flex flex-wrap gap-1.5">
+        {
+          ESTADOS_CANONICOS.map((s) => (
+            <li class="rounded border border-line bg-ink-soft px-2 py-1 font-mono text-xs text-zinc-400 transition-colors duration-200 hover:border-zinc-700 hover:text-zinc-200">
+              {s}
+            </li>
+          ))
+        }
+      </ul>
+      <p class="mt-3 max-w-md text-xs leading-relaxed text-zinc-600">
+        <code class="text-zinc-400">available_for_pickup</code> existe porque en Perú el
+        retiro en agencia es la norma, no la excepción, y decir «en reparto» cuando nadie
+        está repartiendo es falso.
+        <code class="text-zinc-400">returning</code> no es terminal: un envío que vuelve
+        todavía puede entregarse.
+      </p>
     </div>
   </div>
 </section>
+
+<script is:inline>
+  ;(() => {
+    const lista = document.querySelector('[role="tablist"][aria-label="Endpoints del API"]')
+    if (!lista) return
+
+    const tabs = [...lista.querySelectorAll('[data-tab]')]
+    const paneles = [...document.querySelectorAll('[data-panel]')]
+    if (!tabs.length || tabs.length !== paneles.length) return
+
+    const seleccionar = (i, moverFoco) => {
+      tabs.forEach((t, j) => {
+        t.setAttribute('aria-selected', String(j === i))
+        // Roving tabindex: un solo tab en el orden de tabulación, así que Tab
+        // atraviesa la lista en vez de recorrer sus nueve elementos uno por uno.
+        t.tabIndex = j === i ? 0 : -1
+      })
+      paneles.forEach((p, j) => p.toggleAttribute('hidden', j !== i))
+      // El foco se mueve SÓLO si el usuario navegó con el teclado. Con el mouse
+      // ya está donde tiene que estar, y forzarlo haría saltar el scroll.
+      if (moverFoco) tabs[i].focus()
+    }
+
+    tabs.forEach((tab, i) => {
+      tab.addEventListener('click', () => seleccionar(i, false))
+      tab.addEventListener('keydown', (ev) => {
+        const salto = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[ev.key]
+        let destino = null
+        if (salto) destino = (i + salto + tabs.length) % tabs.length
+        else if (ev.key === 'Home') destino = 0
+        else if (ev.key === 'End') destino = tabs.length - 1
+        if (destino === null) return
+        ev.preventDefault()
+        seleccionar(destino, true)
+      })
+    })
+  })()
+</script>
