@@ -1,0 +1,12 @@
+# Este archivo existe SÓLO para decidir qué dependencias pueden correr scripts
+# de instalación. pnpm 11 los bloquea por default —bien: son ejecución
+# arbitraria de código al instalar— y aborta con ERR_PNPM_IGNORED_BUILDS hasta
+# que alguien decide explícitamente, lo que rompe `pnpm build` porque Astro
+# dispara un chequeo de dependencias.
+#
+# esbuild: permitido. Trae un binario por plataforma y lo baja en su
+# post-install. Es una dependencia de Vite, no nuestra, y el build la necesita.
+packages:
+  - .
+allowBuilds:
+  esbuild: true

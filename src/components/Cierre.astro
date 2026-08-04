@@ -1,0 +1,57 @@
+---
+const anio = new Date().getFullYear()
+---
+
+<section id="empezar" class="scroll-mt-20 border-t border-line py-24">
+  <div class="mx-auto max-w-6xl px-6">
+    <div class="rounded-2xl border border-line bg-ink-soft p-8 md:p-12">
+      <h2 class="max-w-xl text-balance font-display text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
+        Acceso por API key, emitida a pedido
+      </h2>
+      <p class="mt-4 max-w-xl text-pretty leading-relaxed text-zinc-400">
+        No hay registro automático todavía. Contanos qué couriers necesitás y qué volumen
+        manejás, y te emitimos una key con su cupo. Si el courier que te importa está en
+        ámbar, decilo: prioriza el orden en que se completan.
+      </p>
+
+      <div class="mt-8 flex flex-wrap items-center gap-3">
+        <a
+          href="mailto:hola@rastreo.dev?subject=Acceso%20al%20API"
+          class="rounded-lg bg-brand px-5 py-2.5 font-medium text-ink transition-colors hover:bg-white"
+        >
+          Escribinos
+        </a>
+        <span class="font-mono text-sm text-zinc-500">hola@rastreo.dev</span>
+      </div>
+
+      <dl class="mt-10 grid gap-6 border-t border-line pt-8 sm:grid-cols-3">
+        <div>
+          <dt class="text-sm text-zinc-500">Autenticación</dt>
+          <dd class="mt-1 font-mono text-sm text-zinc-300">X-API-Key</dd>
+        </div>
+        <div>
+          <dt class="text-sm text-zinc-500">Formato</dt>
+          <dd class="mt-1 font-mono text-sm text-zinc-300">JSON · REST</dd>
+        </div>
+        <div>
+          <dt class="text-sm text-zinc-500">Webhooks</dt>
+          <dd class="mt-1 font-mono text-sm text-[var(--color-live)]">
+            <a href="#webhooks" class="transition-colors hover:text-zinc-100">firmados · HMAC</a>
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<footer class="border-t border-line py-10">
+  <div
+    class="mx-auto flex max-w-6xl flex-col gap-4 px-6 text-sm text-zinc-600 sm:flex-row sm:items-center sm:justify-between"
+  >
+    <p>© {anio} rastreo.dev</p>
+    <p class="max-w-md text-pretty leading-relaxed">
+      Servicio independiente. No afiliado a ninguno de los couriers mencionados; sus
+      nombres se usan sólo para identificar la cobertura.
+    </p>
+  </div>
+</footer>

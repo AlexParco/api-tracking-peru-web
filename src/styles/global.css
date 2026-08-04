@@ -1,0 +1,64 @@
+@import 'tailwindcss';
+
+@import '@fontsource-variable/space-grotesk';
+@import '@fontsource-variable/jetbrains-mono';
+
+/* Los tokens del tema. Las tres familias de color de estado NO son decorativas:
+   espejan el campo `verified` que el propio API publica en GET /v1/carriers
+   (live / code_derived / contract_only / none). Que la landing y la API usen el
+   mismo vocabulario es el punto: si un carrier cambia de nivel, cambia en los
+   dos lados y nadie tiene que traducir. */
+@theme {
+  --font-display: 'Space Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', monospace;
+
+  --color-ink: #08090b;
+  --color-ink-soft: #0e1014;
+  --color-line: #1c1f26;
+
+  /* Acento: verde-lima. Se eligió porque en un producto de tracking el verde ya
+     significa "entregado / operativo", así que el acento de marca y el estado
+     "funciona" son el mismo color y no compiten. */
+  --color-brand: #a3e635;
+  --color-brand-dim: #65a30d;
+
+  --color-live: #a3e635; /* verificado contra el upstream real */
+  --color-partial: #fbbf24; /* implementado, sin un 200 con datos */
+  --color-none: #52525b; /* sin adaptador */
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--color-ink);
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* La grilla de fondo. Muy tenue a propósito: tiene que leerse como textura, no
+   como contenido — a 8 % ya compite con el texto. */
+.grid-bg {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--color-line) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--color-line) 55%, transparent) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 35%, transparent 78%);
+}
+
+/* Respeta a quien pidió menos movimiento. La landing no depende de animación
+   para comunicar nada, así que apagarla no pierde información. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -1,0 +1,25 @@
+---
+import Base from '../layouts/Base.astro'
+import Nav from '../components/Nav.astro'
+import Hero from '../components/Hero.astro'
+import Cobertura from '../components/Cobertura.astro'
+import Api from '../components/Api.astro'
+import Webhooks from '../components/Webhooks.astro'
+import Diferencial from '../components/Diferencial.astro'
+import Cierre from '../components/Cierre.astro'
+---
+
+<Base
+  titulo="rastreo.dev — API de rastreo y agencias de couriers peruanos"
+  descripcion="Rastreo de envíos y catálogo de agencias de couriers de Perú detrás de un solo contrato REST. Estado canónico, ubigeo INEI y nivel de verificación publicado por carrier."
+>
+  <Nav />
+  <main id="contenido">
+    <Hero />
+    <Cobertura />
+    <Api />
+    <Webhooks />
+    <Diferencial />
+    <Cierre />
+  </main>
+</Base>

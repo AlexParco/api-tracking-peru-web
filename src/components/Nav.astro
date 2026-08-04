@@ -1,0 +1,35 @@
+---
+const enlaces = [
+  { href: '#cobertura', texto: 'Cobertura' },
+  { href: '#api', texto: 'API' },
+  { href: '#webhooks', texto: 'Webhooks' },
+  { href: '#cobertura-geografica', texto: 'Coverage' },
+  { href: '#honestidad', texto: 'Verificación' },
+]
+---
+
+<header class="sticky top-0 z-40 border-b border-line/70 bg-ink/80 backdrop-blur">
+  <nav class="mx-auto flex h-14 max-w-6xl items-center justify-between px-6" aria-label="Principal">
+    <a href="/" class="flex items-center gap-2.5 font-semibold tracking-tight text-zinc-100">
+      <span class="grid size-6 place-items-center rounded-md bg-brand text-[13px] text-ink">◆</span>
+      rastreo<span class="text-zinc-500">.dev</span>
+    </a>
+
+    <div class="hidden items-center gap-7 text-sm text-zinc-400 md:flex">
+      {
+        enlaces.map((e) => (
+          <a href={e.href} class="transition-colors hover:text-zinc-100">
+            {e.texto}
+          </a>
+        ))
+      }
+    </div>
+
+    <a
+      href="#empezar"
+      class="rounded-lg bg-zinc-100 px-3.5 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-white"
+    >
+      Pedir acceso
+    </a>
+  </nav>
+</header>

@@ -1,0 +1,32 @@
+---
+interface Props {
+  /** Etiqueta de la barra de título. Suele ser el comando o la ruta. */
+  titulo?: string
+  codigo: string
+  /** Clase de acento del punto de la barra. */
+  tono?: 'brand' | 'zinc'
+}
+
+const { titulo, codigo, tono = 'zinc' } = Astro.props
+---
+
+<div class="overflow-hidden rounded-xl border border-line bg-ink-soft">
+  {
+    titulo && (
+      <div class="flex items-center gap-2 border-b border-line px-4 py-2.5">
+        <span
+          class:list={[
+            'size-2 shrink-0 rounded-full',
+            tono === 'brand' ? 'bg-brand' : 'bg-zinc-600',
+          ]}
+        />
+        <span class="font-mono text-xs text-zinc-500">{titulo}</span>
+      </div>
+    )
+  }
+  {/* overflow-x-auto en el contenedor del código y no en la página: una línea
+      larga tiene que scrollear dentro de su caja, nunca mover el body. */}
+  <div class="overflow-x-auto">
+    <pre class="p-4 font-mono text-[13px] leading-relaxed text-zinc-300"><code set:text={codigo} /></pre>
+  </div>
+</div>
