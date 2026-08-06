@@ -2,24 +2,78 @@
 import Base from '../layouts/Base.astro'
 import Nav from '../components/Nav.astro'
 import Hero from '../components/Hero.astro'
-import Cobertura from '../components/Cobertura.astro'
-import Api from '../components/Api.astro'
-import Webhooks from '../components/Webhooks.astro'
-import Diferencial from '../components/Diferencial.astro'
-import Cierre from '../components/Cierre.astro'
+import Coverage from '../components/Coverage.astro'
+import Agencies from '../components/Agencies.astro'
+import Integration from '../components/Integration.astro'
+import Journey from '../components/Journey.astro'
+import Pricing from '../components/Pricing.astro'
+import CallToAction from '../components/CallToAction.astro'
+import Footer from '../components/Footer.astro'
+import { PUBLISHED_CARRIERS, METRICS } from '../data/api.ts'
+import { PLANS } from '../data/plans.ts'
+
+/* Datos estructurados de la portada: la organización, el sitio y el servicio con
+   su lista de precios. Es lo que habilita un resultado enriquecido y lo que le
+   dice al buscador que esto es un producto con planes, no un artículo.
+
+   Todo sale de las mismas constantes que el texto visible: si un precio cambia,
+   cambian los dos a la vez. Datos estructurados que no coinciden con la página
+   se consideran spam. */
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': 'https://tracking-peru.com/#organizacion',
+      name: 'API Tracking Perú',
+      url: 'https://tracking-peru.com',
+      logo: 'https://tracking-peru.com/apple-touch-icon.png',
+      email: 'hola@tracking-peru.com',
+      areaServed: { '@type': 'Country', name: 'Perú' },
+    },
+    {
+      '@type': 'WebSite',
+      '@id': 'https://tracking-peru.com/#sitio',
+      url: 'https://tracking-peru.com',
+      name: 'API Tracking Perú',
+      inLanguage: 'es-PE',
+      publisher: { '@id': 'https://tracking-peru.com/#organizacion' },
+    },
+    {
+      '@type': 'Service',
+      name: 'API de rastreo y agencias de couriers peruanos',
+      serviceType: 'API REST de rastreo de envíos',
+      provider: { '@id': 'https://tracking-peru.com/#organizacion' },
+      areaServed: { '@type': 'Country', name: 'Perú' },
+      description: `Rastreo de envíos y catálogo de agencias de ${PUBLISHED_CARRIERS.length} couriers de Perú detrás de un solo contrato REST, con ${METRICS.agenciesSynced} agencias sincronizadas.`,
+      offers: PLANS.filter((p) => p.monthly !== null).map((p) => ({
+        '@type': 'Offer',
+        name: `Plan ${p.name}`,
+        price: p.monthly,
+        priceCurrency: 'PEN',
+        category: p.monthly === 0 ? 'free' : 'subscription',
+        url: 'https://tracking-peru.com/#precios',
+      })),
+    },
+  ],
+}
 ---
 
 <Base
-  titulo="rastreo.dev — API de rastreo y agencias de couriers peruanos"
-  descripcion="Rastreo de envíos y catálogo de agencias de couriers de Perú detrás de un solo contrato REST. Estado canónico, ubigeo INEI y nivel de verificación publicado por carrier."
+  title="API Tracking Perú — Rastreo y agencias de couriers peruanos"
+  description="Rastrea envíos de Olva, Shalom, Marvisur, Urbano y Cruz del Sur desde un solo API REST. Estado canónico, webhooks firmados y 818 agencias con ubigeo."
+
+  jsonLd={jsonLd}
 >
   <Nav />
   <main id="contenido">
     <Hero />
-    <Cobertura />
-    <Api />
-    <Webhooks />
-    <Diferencial />
-    <Cierre />
+    <Coverage />
+    <Agencies />
+    <Integration />
+    <Journey />
+    <Pricing />
+    <CallToAction />
   </main>
+  <Footer />
 </Base>

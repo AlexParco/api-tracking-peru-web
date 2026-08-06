@@ -1,9 +1,9 @@
 ---
 import CodeBlock from './CodeBlock.astro'
-import { METRICAS } from '../data/api.ts'
+import { METRICS } from '../data/api.ts'
 
 const curl = `$ curl -H "X-API-Key: ..." \\
-    "https://api.rastreo.dev/v1/tracking?carrier=marvisur&number=V001-0000001"
+    "https://api.tracking-peru.com/v1/tracking?carrier=marvisur&number=V001-0000001"
 
 {
   "carrier": "marvisur",
@@ -17,26 +17,25 @@ const curl = `$ curl -H "X-API-Key: ..." \\
 
 <section class="relative isolate overflow-hidden">
   <div class="aura absolute inset-0 -z-20" aria-hidden="true"></div>
-  <div class="grid-bg absolute inset-0 -z-10" aria-hidden="true"></div>
 
   <div class="mx-auto max-w-6xl px-6 pb-20 pt-20 md:pt-28">
-    <p class="mb-5 flex items-center gap-2 font-mono text-xs text-zinc-500" data-revelar>
-      <span class="pulso size-1.5 rounded-full bg-brand text-brand"></span>
-      Couriers de Perú · una sola API
+    <p class="mb-5 flex items-center gap-2 font-mono text-xs text-zinc-500" data-reveal>
+      <span class="pulse size-1.5 rounded-full bg-brand text-brand"></span>
+      Couriers de Perú · un solo API
     </p>
 
     <h1
       class="max-w-3xl text-balance font-display text-4xl font-semibold leading-[1.08] tracking-tight text-zinc-50 sm:text-5xl md:text-6xl"
-      data-revelar
-      style="--paso: 1"
+      data-reveal
+      style="--step: 1"
     >
       Rastreo y agencias de couriers peruanos, detrás de un solo contrato.
     </h1>
 
     <p
       class="mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-zinc-400"
-      data-revelar
-      style="--paso: 2"
+      data-reveal
+      style="--step: 2"
     >
       Cada courier tiene su propio formato de guía, su propio vocabulario de estados y su
       propia idea de qué significa «no encontrado». Nosotros normalizamos eso a un modelo
@@ -44,16 +43,16 @@ const curl = `$ curl -H "X-API-Key: ..." \\
       integración.
     </p>
 
-    <div class="mt-9 flex flex-wrap items-center gap-3" data-revelar style="--paso: 3">
+    <div class="mt-9 flex flex-wrap items-center gap-3" data-reveal style="--step: 3">
       <a
         href="#empezar"
-        class="boton rounded-lg bg-brand px-5 py-2.5 font-medium text-ink hover:bg-white"
+        class="btn rounded-lg bg-brand px-5 py-2.5 font-medium text-ink hover:bg-white"
       >
         Pedir acceso
       </a>
       <a
         href="#api"
-        class="boton rounded-lg border border-line px-5 py-2.5 font-medium text-zinc-300 hover:border-zinc-600 hover:text-zinc-100"
+        class="btn rounded-lg border border-line px-5 py-2.5 font-medium text-zinc-300 hover:border-zinc-600 hover:text-zinc-100"
       >
         Ver la API
       </a>
@@ -61,19 +60,19 @@ const curl = `$ curl -H "X-API-Key: ..." \\
 
     <div
       class="mt-14 grid gap-8 lg:grid-cols-[1.05fr_1fr] lg:items-center"
-      data-revelar
-      style="--paso: 4"
+      data-reveal
+      style="--step: 4"
     >
-      <CodeBlock titulo="GET /v1/tracking" codigo={curl} tono="brand" />
+      <CodeBlock title="GET /v1/tracking" code={curl} tone="brand" />
 
       <dl class="grid grid-cols-2 gap-x-6 gap-y-8">
         <div>
           <dt class="text-sm text-zinc-500">Couriers relevados</dt>
           <dd
             class="mt-1 font-display text-3xl font-semibold tabular-nums text-zinc-100"
-            data-contador={METRICAS.carriersRelevados}
+            data-counter={METRICS.carriersSurveyed}
           >
-            {METRICAS.carriersRelevados}
+            {METRICS.carriersSurveyed}
           </dd>
           <p class="mt-1 text-xs leading-relaxed text-zinc-600">
             Con su backend documentado y su evidencia archivada.
@@ -83,24 +82,24 @@ const curl = `$ curl -H "X-API-Key: ..." \\
           <dt class="text-sm text-zinc-500">Agencias sincronizadas</dt>
           <dd
             class="mt-1 font-display text-3xl font-semibold tabular-nums text-zinc-100"
-            data-contador={METRICAS.agenciasSincronizadas}
+            data-counter={METRICS.agenciesSynced}
           >
-            {METRICAS.agenciasSincronizadas}
+            {METRICS.agenciesSynced}
           </dd>
           <p class="mt-1 text-xs leading-relaxed text-zinc-600">
-            De {METRICAS.carriersConCatalogo} catálogos, con ubigeo y geolocalización.
+            De {METRICS.carriersWithCatalog} catálogos, con ubigeo y geolocalización.
           </p>
         </div>
         <div>
           <dt class="text-sm text-zinc-500">Estados canónicos</dt>
           <dd
             class="mt-1 font-display text-3xl font-semibold tabular-nums text-zinc-100"
-            data-contador="11"
+            data-counter="11"
           >
             11
           </dd>
           <p class="mt-1 text-xs leading-relaxed text-zinc-600">
-            Un vocabulario, no siete. Con el literal del courier siempre adjunto.
+            Un vocabulario, no cinco. Con el literal del courier siempre adjunto.
           </p>
         </div>
         <div>

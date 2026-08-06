@@ -1,0 +1,283 @@
+---
+import { PUBLISHED_CARRIERS, LEVELS, type Status } from '../data/api.ts'
+
+const icon: Record<Status, { symbol: string; className: string; label: string; pulses: boolean }> = {
+  ok: { symbol: '●', className: 'text-[var(--color-live)]', label: 'Operativo', pulses: true },
+  pendiente: { symbol: '◐', className: 'text-[var(--color-partial)]', label: 'En curso', pulses: false },
+  no: { symbol: '○', className: 'text-[var(--color-none)]', label: 'No disponible', pulses: false },
+}
+
+/*
+ * El avance de la integración, en números.
+ *
+ * Cada courier aporta DOS capacidades —rastreo y catálogo de agencias—, así que
+ * cada barra cuenta cuántos couriers tienen esa capacidad operativa.
+ *
+ * No hay un porcentaje global: estaba en el título y era un número sin sentido
+ * fuera de contexto («¿80 % de qué?»). Las dos barras dicen lo mismo y además
+ * dicen de qué, sin que haga falta un párrafo abajo explicándolo.
+ *
+ * Todo derivado. Un porcentaje escrito a mano es un porcentaje que el día que
+ * entre un courier nuevo pasa a ser mentira sin que nadie lo note.
+ */
+const tracking = PUBLISHED_CARRIERS.filter((c) => c.tracking.status === 'ok').length
+const withCatalog = PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok').length
+const total = PUBLISHED_CARRIERS.length
+const pct = (n: number) => Math.round((n / total) * 100)
+
+const capabilities = [
+  { label: 'Rastreo de envíos', done: tracking, note: 'operativo y verificado en vivo' },
+  { label: 'Catálogo de agencias', done: withCatalog, note: 'sincronizado, con ubigeo INEI' },
+]
+
+/* `detection` dice si podemos reconocer el courier mirando el número de guía.
+   El valor viaja en el API; acá se traduce a lo que significa para quien
+   integra. */
+const detectionNote: Record<string, string> = {
+  strong: 'Su formato de guía es inconfundible: podemos detectarlo solos.',
+  weak: 'Su formato se parece al de otros. Conviene mandar el carrier explícito.',
+  none: 'No hay forma de reconocerlo por el número. El carrier es obligatorio.',
+}
+
+const levelClass: Record<string, string> = {
+  live: 'border-[var(--color-live)]/30 bg-[var(--color-live)]/10 text-[var(--color-live)]',
+  code_derived: 'border-[var(--color-partial)]/30 bg-[var(--color-partial)]/10 text-[var(--color-partial)]',
+  contract_only: 'border-[var(--color-partial)]/30 bg-[var(--color-partial)]/10 text-[var(--color-partial)]',
+  none: 'border-zinc-700 bg-zinc-800/40 text-zinc-500',
+}
+---
+
+<section id="cobertura" class="border-t border-line py-24">
+  <div class="mx-auto max-w-6xl px-6">
+    <h2
+      class="max-w-2xl text-balance font-display text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl"
+      data-reveal
+    >
+      Qué funciona hoy, sin maquillaje
+    </h2>
+    {/* Tres líneas. Eran seis: explicaban cómo se calcula el porcentaje, qué
+        significa el ámbar y de dónde sale el estado de cada uno. Lo primero lo
+        muestran las barras y lo último vive en la documentación; queda lo del
+        ámbar, que es la idea que sostiene toda la sección y no se deduce de
+        mirar un color. */}
+    <p class="mt-4 max-w-2xl text-pretty leading-relaxed text-zinc-400" data-reveal style="--step: 1">
+      Cada courier aporta dos cosas: rastrear envíos y publicar sus agencias. Un courier en
+      ámbar no está «casi listo»: está implementado y esperando algo concreto, y su tarjeta
+      dice qué falta.
+    </p>
+
+    {/* Las dos barras. Una barra de progreso comunica «cuánto falta» de un
+        vistazo, que es lo que un porcentaje solo no hace — y al lado de la tabla
+        se puede verificar fila por fila. */}
+    <dl class="mt-8 grid max-w-3xl gap-6 sm:grid-cols-2" data-reveal style="--step: 2">
+      {
+        capabilities.map((c) => (
+          <div>
+            <div class="flex items-baseline justify-between gap-3">
+              <dt class="text-sm text-zinc-300">{c.label}</dt>
+              <dd class="font-mono text-sm tabular-nums text-zinc-100">
+                {c.done}/{total}
+                <span class="ml-2 text-brand">{pct(c.done)} %</span>
+              </dd>
+            </div>
+            <div
+              class="mt-2 h-1.5 overflow-hidden rounded-full bg-line"
+              role="img"
+              aria-label={`${c.label}: ${c.done} de ${total} couriers`}
+            >
+              <div class="h-full rounded-full bg-brand" style={`width: ${pct(c.done)}%`} />
+            </div>
+            <p class="mt-1.5 text-xs text-zinc-600">{c.note}</p>
+          </div>
+        ))
+      }
+    </dl>
+
+    {/* Tarjeta compacta + detalle en un `<dialog>`.
+
+        La tarjeta mostraba las dos notas completas y volvía a ser un muro de
+        texto —el mismo problema de la tabla, en otro contenedor—. Ahora la
+        tarjeta responde «¿funciona?» de un vistazo y el detalle vive detrás de
+        un clic, que es donde alguien lo busca cuando ya le interesó ese courier.
+
+        `<dialog>` nativo y no un div: trae foco atrapado, cierre con Escape,
+        `::backdrop` y `inert` sobre el resto de la página. Reimplementar eso a
+        mano son cien líneas y siempre queda algo mal. */}
+    <ul class="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {
+        PUBLISHED_CARRIERS.map((c, i) => {
+          const done = [c.tracking.status, c.agencies.status].filter((x) => x === 'ok').length
+          const rows: [string, Status, string][] = [
+            ['Rastreo', c.tracking.status, c.tracking.note],
+            [
+              'Agencias',
+              c.agencies.status,
+              (c.agencies.total !== null ? `${c.agencies.total} · ` : '') + c.agencies.note,
+            ],
+          ]
+          return (
+            <li data-reveal style={`--step: ${i}`}>
+              <button
+                type="button"
+                data-open-carrier={c.id}
+                aria-haspopup="dialog"
+                class="card group/card flex w-full cursor-pointer flex-col rounded-2xl border border-line bg-ink-soft p-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
+              >
+                <span class="flex items-start justify-between gap-3">
+                  <span class="min-w-0">
+                    <span class="block truncate font-medium text-zinc-50">{c.name}</span>
+                    <span class="mt-0.5 block font-mono text-xs text-zinc-600">{c.id}</span>
+                  </span>
+                  <span
+                    class:list={[
+                      'shrink-0 whitespace-nowrap rounded-md border px-2 py-0.5 font-mono text-[11px]',
+                      levelClass[c.level],
+                    ]}
+                  >
+                    {c.level}
+                  </span>
+                </span>
+
+                {/* El mismo criterio que el porcentaje de arriba, por carrier: el
+                    total se puede reconstruir sumando las tarjetas. */}
+                <span class="mt-4 flex items-center gap-2">
+                  {[c.tracking.status, c.agencies.status].map((st) => (
+                    <span
+                      class:list={[
+                        'h-1 flex-1 rounded-full',
+                        st === 'ok'
+                          ? 'bg-brand'
+                          : st === 'pendiente'
+                            ? 'bg-[var(--color-partial)]/50'
+                            : 'bg-line',
+                      ]}
+                      aria-hidden="true"
+                    />
+                  ))}
+                  <span class="shrink-0 font-mono text-xs text-zinc-500">{done}/2</span>
+                </span>
+
+                <span class="mt-4 space-y-2 border-t border-line pt-4">
+                  {rows.map(([label, status]) => (
+                    <span class="flex items-center gap-2 text-sm">
+                      <span
+                        class:list={[icon[status].className, icon[status].pulses && 'glyph-pulse']}
+                        aria-hidden="true"
+                      >
+                        {icon[status].symbol}
+                      </span>
+                      <span class="text-zinc-400">{label}</span>
+                      <span class="ml-auto text-xs text-zinc-500">{icon[status].label}</span>
+                    </span>
+                  ))}
+                </span>
+
+                <span class="mt-4 font-mono text-xs text-zinc-600 transition-colors group-hover/card:text-brand">
+                  Ver detalle →
+                </span>
+              </button>
+
+              <dialog
+                data-carrier-dialog={c.id}
+                aria-labelledby={`dlg-${c.id}-title`}
+                class="detalle w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-line bg-ink-soft p-0 text-zinc-300 backdrop:bg-black/70 backdrop:backdrop-blur-sm"
+              >
+                <div class="flex shrink-0 items-start justify-between gap-4 border-b border-line p-5">
+                  <div class="min-w-0">
+                    <h3 id={`dlg-${c.id}-title`} class="font-display text-lg font-semibold text-zinc-50">
+                      {c.name}
+                    </h3>
+                    <p class="mt-0.5 font-mono text-xs text-zinc-600">{c.id}</p>
+                  </div>
+                  <button
+                    type="button"
+                    data-close-dialog
+                    aria-label="Cerrar"
+                    class="shrink-0 rounded-lg border border-line px-2.5 py-1 font-mono text-xs text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100"
+                  >
+                    esc
+                  </button>
+                </div>
+
+                <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+                  {rows.map(([label, status, note]) => (
+                    <div>
+                      <p class="flex items-center gap-2">
+                        <span
+                          class:list={[icon[status].className, icon[status].pulses && 'glyph-pulse']}
+                          aria-hidden="true"
+                        >
+                          {icon[status].symbol}
+                        </span>
+                        <span class="text-sm font-medium text-zinc-200">{label}</span>
+                        <span class="ml-auto text-xs text-zinc-500">{icon[status].label}</span>
+                      </p>
+                      <p class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-500">{note}</p>
+                    </div>
+                  ))}
+
+                  {/* Lo que no entra en la tarjeta y sí importa al integrar. */}
+                  <dl class="grid gap-4 border-t border-line pt-5 sm:grid-cols-2">
+                    <div>
+                      <dt class="text-xs text-zinc-600">Nivel de evidencia</dt>
+                      <dd class="mt-1 font-mono text-sm text-zinc-200">{c.level}</dd>
+                      <dd class="mt-1 text-pretty text-xs leading-relaxed text-zinc-500">
+                        {LEVELS[c.level].detail}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt class="text-xs text-zinc-600">Detección del número</dt>
+                      <dd class="mt-1 font-mono text-sm text-zinc-200">{c.detection}</dd>
+                      <dd class="mt-1 text-pretty text-xs leading-relaxed text-zinc-500">
+                        {detectionNote[c.detection]}
+                      </dd>
+                    </div>
+                    <div class="sm:col-span-2">
+                      <dt class="text-xs text-zinc-600">Webhooks</dt>
+                      <dd class="mt-1 text-sm text-zinc-300">
+                        {c.subscribable
+                          ? 'Puedes suscribir un envío de este courier y te avisamos cuando cambie de estado.'
+                          : 'Todavía no se puede suscribir. El alta lo rechaza en el POST, con el motivo.'}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  {/* El enlace a la página del courier. Además de servirle al
+                      lector, es lo que hace que un buscador la descubra: sin un
+                      enlace desde la portada, esa página existe pero nadie llega
+                      a ella. */}
+                  <a
+                    href={`/couriers/${c.id}`}
+                    class="btn block rounded-lg border border-line px-4 py-2.5 text-center text-sm font-medium text-zinc-300 hover:border-brand/40 hover:text-brand"
+                  >
+                    Todo sobre la integración con {c.name} →
+                  </a>
+                </div>
+              </dialog>
+            </li>
+          )
+        })
+      }
+    </ul>
+
+    <script is:inline>
+      ;(() => {
+        for (const button of document.querySelectorAll('[data-open-carrier]')) {
+          const dialog = document.querySelector(
+            `[data-carrier-dialog="${button.dataset.openCarrier}"]`,
+          )
+          if (!dialog) continue
+          // `showModal` y no `show`: es lo que atrapa el foco, habilita Escape y
+          // pinta el `::backdrop`.
+          button.addEventListener('click', () => dialog.showModal())
+          dialog.querySelector('[data-close-dialog]')?.addEventListener('click', () => dialog.close())
+          // Clic en el fondo. El `<dialog>` recibe el evento cuando se toca el
+          // backdrop, así que alcanza con comprobar que el objetivo sea él mismo.
+          dialog.addEventListener('click', (e) => {
+            if (e.target === dialog) dialog.close()
+          })
+        }
+      })()
+    </script>
+  </div>
+</section>

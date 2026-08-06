@@ -39,12 +39,16 @@ body {
 }
 
 /* La grilla de fondo. Muy tenue a propósito: tiene que leerse como textura, no
-   como contenido — a 8 % ya compite con el texto. */
+   como contenido — a 8 % ya compite con el texto.
+
+   El tamaño del mosaico sale de `--tile` para que la grilla y su
+   desplazamiento no puedan desincronizarse: el mismo valor define el paso del
+   dibujo y el journey de la animación (ver `.drift`). */
 .grid-bg {
   background-image:
     linear-gradient(to right, color-mix(in oklab, var(--color-line) 55%, transparent) 1px, transparent 1px),
     linear-gradient(to bottom, color-mix(in oklab, var(--color-line) 55%, transparent) 1px, transparent 1px);
-  background-size: 56px 56px;
+  background-size: var(--tile, 56px) var(--tile, 56px);
   mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 35%, transparent 78%);
 }
 
@@ -70,38 +74,38 @@ body {
 
    1. EL PULSO ES SEMÁNTICO, NO DECORATIVO. Late lo que está vivo de verdad: el
       punto de «servicio operativo» y los carriers cuyo rastreo funciona HOY. Si
-      latiera todo, el pulso no diría nada — y esta página ya usa el color para
+      latiera todo, el pulse no diría nada — y esta página ya usa el color para
       decir la verdad sobre el estado, así que el movimiento tiene que decir lo
-      mismo. Un courier en ámbar no late: está esperando evidencia, no
+      mismo. Un courier en ámbar no glyph-pulse: está esperando evidencia, no
       trabajando.
 
    2. NADA APARECE POR JAVASCRIPT. El HTML se sirve visible y completo; el JS
-      sólo AGREGA el estado inicial de la animación, y sólo después de decidir
+      solo AGREGA el estado inicial de la animación, y solo después de decidir
       que corresponde. Es la única forma de animar entradas sin apostar el
       contenido a que un observer llegue a correr: si el script falla, si el
       navegador es viejo o si alguien lo bloquea, la landing se ve entera.
 
-   3. Se anima sólo `opacity` y `transform`, que el compositor resuelve sin
+   3. Se anima solo `opacity` y `transform`, que el compositor resuelve sin
       recalcular layout. Nada de animar `height`, `top` ni `box-shadow` en
       bucle.
    ══════════════════════════════════════════════════════════════════════════ */
 
 /* Todo cuelga de .motion, que un script inline del <head> agrega ANTES de
-   pintar y sólo si el visitante no pidió menos movimiento. Sin esa clase, las
+   pintar y solo si el visitante no pidió menos movimiento. Sin esa clase, las
    reglas de abajo no aplican a nada. */
 
-.motion [data-revelar] {
+.motion [data-reveal] {
   opacity: 0;
   transform: translateY(14px);
 }
 
 /* Las filas de tabla se revelan sin desplazarse: `transform` sobre un
    `table-row` es terreno irregular entre navegadores y acá no aporta nada. */
-.motion [data-revelar='fade'] {
+.motion [data-reveal='fade'] {
   transform: none;
 }
 
-.motion [data-revelar].visible {
+.motion [data-reveal].visible {
   opacity: 1;
   transform: none;
   /* Salida rápida y frenada larga: se lee como algo que se acomoda, no como
@@ -109,17 +113,17 @@ body {
   transition:
     opacity 620ms cubic-bezier(0.22, 1, 0.36, 1),
     transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: calc(var(--paso, 0) * 70ms);
+  transition-delay: calc(var(--step, 0) * 70ms);
 }
 
-/* ── El pulso ──
+/* ── El pulse ──
    Dos capas: el punto sólido NO se mueve —tiene que seguir leyéndose como
    viñeta— y el halo es un ::after que se expande y se apaga detrás. */
-.pulso {
+.pulse {
   position: relative;
 }
 
-.pulso::after {
+.pulse::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -142,12 +146,12 @@ body {
 }
 
 /* Variante para un glifo de texto (el ● de la tabla), donde un halo absoluto
-   quedaría descentrado respecto del trazo. Acá late el glifo mismo. */
-.late {
-  animation: late 2.8s ease-in-out infinite;
+   quedaría descentrado respecto del trazo. Acá glyph-pulse el glifo mismo. */
+.glyph-pulse {
+  animation: glyph-pulse 2.8s ease-in-out infinite;
 }
 
-@keyframes late {
+@keyframes glyph-pulse {
   0%,
   100% {
     opacity: 1;
@@ -162,26 +166,26 @@ body {
 /* ── Tarjetas ──
    El hover levanta apenas y tiñe el borde con el acento. 2px alcanza: más se
    siente como un botón y estas cajas no son clickeables. */
-.tarjeta {
+.card {
   transition:
     transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
     border-color 260ms ease,
     box-shadow 260ms ease;
 }
 
-.tarjeta:hover {
+.card:hover {
   transform: translateY(-2px);
   border-color: color-mix(in oklab, var(--color-brand) 26%, var(--color-line));
   box-shadow: 0 14px 34px -20px color-mix(in oklab, var(--color-brand) 45%, transparent);
 }
 
 /* Filas de la tabla de cobertura: sin desplazamiento (movería la tabla
-   entera), sólo un realce del fondo para seguir la fila con la vista. */
-.fila {
+   entera), solo un realce del fondo para seguir la row con la vista. */
+.row {
   transition: background-color 200ms ease;
 }
 
-.fila:hover {
+.row:hover {
   background-color: color-mix(in oklab, var(--color-brand) 4%, transparent);
 }
 
@@ -195,16 +199,484 @@ body {
     color-mix(in oklab, var(--color-brand) 13%, transparent),
     transparent 70%
   );
-  animation: respirar 12s ease-in-out infinite;
+  animation: breathe 12s ease-in-out infinite;
 }
 
-@keyframes respirar {
+@keyframes breathe {
   0%,
   100% {
     opacity: 0.45;
   }
   50% {
     opacity: 1;
+  }
+}
+
+/* ── La retícula viva ──
+   Dos capas de la misma grilla, una encima de la otra y alineadas al píxel: la
+   tenue de siempre y una del color de marca que solo existe dentro de un círculo
+   pegado al cursor. Más un resplandor que sigue al cursor con retraso.
+
+   Nada de esto se anima desde JavaScript. El script escribe dos números —`--mx`
+   y `--my`— y una transformada; el resto son transiciones y un keyframe. */
+.reticle {
+  /* `fixed` y no `absolute`: es una capa del documento entero, no del hero.
+     La grilla se queda quieta y el contenido pasa por encima.
+
+     `z-index: -1` la mete DEBAJO del contenido en flujo y ENCIMA del fondo del
+     `body` —así funciona el apilado con z negativo—, que es exactamente el hueco
+     donde tiene que vivir: se ve en todo lo que no tenga fondo propio, y las
+     tarjetas opacas la tapan solas. */
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  /* Decorativa: el cursor tiene que llegar al contenido de abajo, y el padre es
+     quien escucha el movimiento. */
+  pointer-events: none;
+  --tile: 56px;
+  /* Fuera de cuadro hasta que haya un cursor de verdad. En longitudes, no en
+     porcentajes: entran en un `calc()` de `mask-position`. */
+  --mx: -9999px;
+  --my: -9999px;
+
+  /* Las dos perillas de intensidad, acá arriba porque son lo único que se toca
+     al calibrar el efecto. Van bajas a propósito: esto pasa por DEBAJO del
+     titular del hero, así que en cuanto el verde se puede señalar ya está
+     compitiendo con el texto que tiene que leerse primero. */
+  --glow-strength: 11%;
+  --grid-strength: 24%;
+}
+
+/* El desplazamiento infinito. Recorre exactamente un mosaico, así que al
+   reiniciarse el dibujo cae donde ya estaba y la vuelta no se ve. Es una sola
+   propiedad animada por CSS: ningún cuadro de JavaScript involucrado.
+
+   14 s por mosaico son ~4 px por segundo. Es deliberadamente demasiado lento
+   para seguirlo con la vista: tiene que notarse que la página respira, no que
+   algo se está moviendo. */
+.drift {
+  animation: drift 14s linear infinite;
+}
+
+@keyframes drift {
+  to {
+    background-position: var(--tile, 56px) var(--tile, 56px);
+  }
+}
+
+/* El desvanecido hacia abajo, el mismo de `.grid-bg`: la grilla revelada tiene
+   que morir donde muere la tenue. Sin esto, pasear el cursor por la parte baja
+   del hero encendería líneas en una zona donde la grilla de fondo ya no está, y
+   se leería como dos elementos distintos. */
+/* Viñeta, no desvanecido hacia abajo. El original nacía en el borde superior
+   porque la grilla vivía en el hero; fija a pantalla completa, ese degradado
+   apagaría la grilla a media ventana y se leería como un corte. */
+.reticle .grid-bg,
+.reticle-revealed {
+  mask-image: radial-gradient(ellipse 100% 85% at 50% 45%, #000 45%, transparent 100%);
+}
+
+.reticle-revealed {
+  opacity: 0;
+  transition: opacity 340ms ease;
+}
+
+.reticle-lit {
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in oklab, var(--color-brand) var(--grid-strength), transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--color-brand) var(--grid-strength), transparent) 1px,
+      transparent 1px
+    );
+  background-size: var(--tile) var(--tile);
+
+  /* El corte que sigue al cursor. El borde se apaga bien adentro del radio para
+     que no se vea el filo del círculo, solo la grilla desvaneciéndose.
+
+     El círculo se mueve con `mask-position` y se dimensiona con `mask-size`, NO
+     metiendo las variables adentro del `radial-gradient()`. Es a propósito: un
+     valor inválido dentro de la función invalida el `mask-image` completo, y
+     esta máscara es lo único que mantiene la grilla de marca dentro del círculo
+     — sin ella no se degrada a "menos efecto", se degrada a la grilla verde
+     encendida sobre todo el hero. Afuera queda `no-repeat`, es decir tapado. */
+  mask-image: radial-gradient(circle closest-side, #000 8%, transparent 70%);
+  mask-size: calc(var(--radius) * 2) calc(var(--radius) * 2);
+  mask-position: calc(var(--mx) - var(--radius)) calc(var(--my) - var(--radius));
+  mask-repeat: no-repeat;
+}
+
+/* El resplandor. Vive aparte de la grilla porque no se mueve con ella: la grilla
+   queda pegada al cursor y esto lo persigue. */
+.reticle-glow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--glow);
+  height: var(--glow);
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle at center,
+    color-mix(in oklab, var(--color-brand) var(--glow-strength), transparent),
+    transparent 68%
+  );
+  filter: blur(26px);
+  opacity: 0;
+  transition: opacity 340ms ease;
+}
+
+.reticle[data-active] .reticle-revealed,
+.reticle[data-active] .reticle-glow {
+  opacity: 1;
+}
+
+/* Solo mientras se está usando: `will-change` permanente reserva una capa de
+   composición que el resto del tiempo no hace falta. */
+.reticle[data-active] .reticle-glow {
+  will-change: transform;
+}
+
+/* ── El journey ──
+   El orden es el contenido de esta sección, así que la animación lo dice: una
+   línea que baja y los hitos encendiéndose detrás, en secuencia. No es adorno —
+   un envío advance en una dirección y la página se mueve en esa dirección.
+
+   Todo cuelga del `.visible` que ya agrega el observador de `Base.astro` al
+   contenedor: sin JavaScript nuevo, y sin JavaScript a secas la lista se sirve
+   entera y legible. */
+/* La guía apagada sobre la que corre el journey. Vertical en pantallas
+   angostas —seis columnas en un teléfono darían 50 px cada una— y horizontal
+   desde `md`, que es donde el journey entero se lee de un vistazo.
+
+   Los 6 px de desplazamiento son la mitad del punto (13 px): así la línea le
+   pasa por el centro en las dos orientaciones. */
+.journey-track {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background: var(--color-line);
+}
+
+.journey-dot {
+  position: absolute;
+  left: 0;
+  top: 5px;
+  width: 13px;
+  height: 13px;
+  border-radius: 9999px;
+  border: 1px solid var(--color-line);
+  background: var(--color-ink);
+}
+
+/* El envío que progress la línea. Es una segunda capa sobre el punto y no el
+   punto pintándose, porque así se anima `opacity` y `transform` y nada más — un
+   borde o un fondo animados repintan en cada cuadro. */
+.journey-dot::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 9999px;
+  background: var(--color-brand);
+  opacity: 0;
+}
+
+/* `delivered` es terminal y se marca con un borde más grueso, NO pintándolo.
+   Pintado quedaba encendido siempre y competía con el avance: era el único
+   punto verde antes de que el journey llegara, así que la secuencia parecía
+   arrancar ya terminada. El relleno significa una sola cosa —«el envío pasó por
+   acá»— y no puede significar además «este es el último». */
+.journey-dot[data-last='true'] {
+  border-width: 2px;
+  border-color: color-mix(in oklab, var(--color-brand) 45%, var(--color-line));
+}
+
+/* `scaleY` sobre la línea en vez de animar `height`: la altura obliga a
+   recalcular layout en cada cuadro, la escala la resuelve el compositor. */
+.motion .journey-track {
+  transform: scaleY(0);
+  transform-origin: top;
+}
+
+.motion .journey.visible .journey-track {
+  transform: scaleY(1);
+  transition: transform 1500ms cubic-bezier(0.33, 1, 0.68, 1) 160ms;
+}
+
+.motion .journey [data-step] {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+/* Los 240 ms por hito no son un número redondo cualquiera: seis hitos × 240 ms
+   terminan junto con los 1500 ms de la línea, así que el último se enciende
+   cuando la línea lo alcanza y no antes. */
+.motion .journey.visible [data-step] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: calc(160ms + var(--step, 0) * 240ms);
+}
+
+/* ── El avance ──
+   Un envío progress los hitos en bucle, y DEJA RASTRO: cada punto por el que
+   pasó queda encendido hasta que el ciclo vuelve a empezar. Es la diferencia
+   entre «acá está el paquete ahora» y «esto es lo que ya se completó», y la
+   segunda es la que dice el modelo — un envío entregado pasó por todos los
+   estados anteriores, no los perdió.
+
+   No contradice la regla 1 —«glyph-pulse lo que está vivo»—: acá el movimiento no
+   decora un estado, ES el contenido. La sección explica que un envío atraviesa
+   estados en orden, y antes lo explicaba con una lista quieta.
+
+   ── Cómo se hace que todos se apaguen JUNTOS ──
+   Un `animation-delay` por punto no sirve: desplaza el ciclo entero, así que
+   cada uno terminaría su vuelta en un instante distinto y el rastro se
+   desarmaría de a poco en vez de reiniciarse. Se anima UN solo número en el
+   contenedor —`--progress`, de 0 a 1— y cada punto decide su encendido
+   comparándolo con su posición. Un solo reloj, todos leyendo la misma hora. */
+
+/* Registrado para que el navegador lo interpole como número. Sin esto un
+   custom property salta de 0 a 1 a mitad de camino en vez de recorrerlo. */
+@property --progress {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+
+.journey {
+  --cycle: 9s;
+  --steps: 6;
+  /* En reposo, TODO encendido. Es el estado estático correcto: el journey
+     completo. Solo la animación lo lleva a 0 para volver a recorrerlo. */
+  --progress: 1;
+}
+
+/* El rastro: la línea de marca que crece con el avance, por encima de la guía
+   apagada. `scaleY` de un número que ya está animado — sin animación propia, no
+   puede desincronizarse de los puntos. */
+.journey-trail {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background: color-mix(in oklab, var(--color-brand) 60%, transparent);
+  transform: scaleY(var(--progress));
+  transform-origin: top;
+}
+
+/* El punto, apilado: a la izquierda del texto. */
+.journey-step {
+  position: relative;
+  padding-left: 2.25rem;
+}
+
+.journey-states {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.6rem;
+}
+
+/* ── En row, desde `md` ── */
+@media (min-width: 48rem) {
+  .journey-track,
+  .journey-trail {
+    top: 6px;
+    bottom: auto;
+    left: 0;
+    right: 0;
+    width: auto;
+    height: 1px;
+  }
+
+  /* Mismo `--progress`, otro eje. El valor no cambia: cambia hacia dónde crece. */
+  .journey-trail {
+    transform: scaleX(var(--progress));
+    transform-origin: left;
+  }
+
+  /* El punto deja de flotar y pasa a encabezar la columna, centrado. Su altura
+     en el flujo es lo que apoya el texto justo debajo de la línea. */
+  .journey-step {
+    padding-left: 0;
+    text-align: center;
+  }
+
+  /* `relative` y no `static`, aunque acá el punto ya no necesite desplazarse: su
+     capa encendida es un `::after` con `inset: -1px` absoluto, y sin un ancestro
+     posicionado propio se estiraría contra el `<li>` entero — un bloque verde
+     del alto de la columna en lugar de un punto. `inset: auto` anula el
+     `left/top` que usa la versión apilada. */
+  .journey-dot {
+    position: relative;
+    inset: auto;
+    display: block;
+    margin: 0 auto 0.9rem;
+  }
+
+  .journey-states {
+    justify-content: center;
+  }
+}
+
+/* El punto se enciende cuando el avance pasa su posición, y se queda. El ×3
+   hace que prenda en un tercio de su turno en vez de desvanecerse durante todo
+   el tramo: se lee como que llegó, no como que aparece de a poco. */
+.journey-dot::after {
+  opacity: clamp(
+    0,
+    calc((var(--progress) - var(--step, 0) / var(--steps)) * var(--steps) * 3),
+    1
+  );
+}
+
+/* El guardado envuelve TODO lo que se mueve.
+   `rgb(from …)` no es lo que necesitamos: se usa como sonda. Llegó a cada motor
+   junto con `@property` —o después—, así que donde esta regla aplica, `--progress`
+   se interpola seguro. Sin la sonda no hay animación y queda el journey
+   completo y quieto, que es un estado correcto; sin el guardado, un navegador
+   viejo saltaría de todo apagado a todo encendido cada nueve segundos. */
+@supports (color: rgb(from white r g b)) {
+  .motion .journey {
+    --progress: 0;
+  }
+
+  .motion .journey.visible {
+    animation: progress var(--cycle) linear 1600ms infinite;
+  }
+}
+
+@keyframes progress {
+  from {
+    --progress: 0;
+  }
+  to {
+    --progress: 1;
+  }
+}
+
+/* ── /docs ── */
+
+/* La sección que se está leyendo. Es el único indicador de «dónde estoy» en una
+   página de 2000 líneas de referencia, así que usa tres canales a la vez —color,
+   fondo y barra lateral— y no solo color. */
+.sidebar-link.active {
+  color: var(--color-brand);
+  background: color-mix(in oklab, var(--color-brand) 7%, transparent);
+  border-left-color: var(--color-brand);
+}
+
+/* La barra de scroll de la sidebar, fina y sin fondo: a ancho completo compite
+   con el borde derecho del panel y se lee como una segunda línea. */
+#sidebar::-webkit-scrollbar {
+  width: 3px;
+}
+#sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+#sidebar::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border-radius: 4px;
+}
+
+/* El command palette. Se anima con `opacity` y `transform` y se apaga con
+   `pointer-events`, así que cerrado no intercepta clics aunque siga en el DOM. */
+.search-overlay {
+  transition: opacity 180ms ease-out;
+}
+
+.search-overlay.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.search-modal {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.985);
+  transition:
+    opacity 180ms ease-out,
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.search-overlay.is-open .search-modal {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── El detalle de un carrier ──
+   Entra con una transición de opacidad y escala. `allow-discrete` es lo que
+   permite animar un elemento que pasa de `display: none` a visible, y
+   `@starting-style` define desde dónde arranca.
+
+   Donde no se soporte, el diálogo aparece sin animación y funciona igual: el
+   comportamiento lo da `<dialog>`, no esto. */
+.detalle {
+  /* El navegador centra un `<dialog>` modal con `margin: auto`, y el preflight
+     de Tailwind resetea el margen de todo — así que sin esto aparece pegado a
+     la esquina superior izquierda. No es un ajuste estético: es reponer el
+     comportamiento por defecto que el reset se llevó puesto. */
+  margin: auto;
+
+  /* Que el diálogo no supere la ventana. El cuerpo scrollea adentro; la cabecera
+     con el botón de cerrar queda siempre visible. */
+  max-height: min(85dvh, 44rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+  transition:
+    opacity 200ms ease,
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    overlay 200ms allow-discrete,
+    display 200ms allow-discrete;
+}
+
+/* `<dialog>` cerrado es `display: none`. Como arriba se declaró `flex`, hay que
+   devolvérselo explícitamente cuando NO está abierto, o quedaría siempre
+   visible. */
+.detalle:not([open]) {
+  display: none;
+}
+
+.detalle[open] {
+  opacity: 1;
+  transform: none;
+}
+
+@starting-style {
+  .detalle[open] {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+.detalle::backdrop {
+  opacity: 0;
+  transition:
+    opacity 200ms ease,
+    overlay 200ms allow-discrete,
+    display 200ms allow-discrete;
+}
+
+.detalle[open]::backdrop {
+  opacity: 1;
+}
+
+@starting-style {
+  .detalle[open]::backdrop {
+    opacity: 0;
   }
 }
 
@@ -222,7 +694,7 @@ header:not([data-scrolled]) {
 
 /* ── Botones ──
    Un desplazamiento de 1px: suficiente para que el clic se sienta físico. */
-.boton {
+.btn {
   transition:
     background-color 200ms ease,
     border-color 200ms ease,
@@ -230,10 +702,10 @@ header:not([data-scrolled]) {
     transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.boton:hover {
+.btn:hover {
   transform: translateY(-1px);
 }
 
-.boton:active {
+.btn:active {
   transform: translateY(0);
 }

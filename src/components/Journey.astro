@@ -1,0 +1,123 @@
+---
+import { JOURNEY, DETOURS, PUBLISHED_CARRIERS } from '../data/api.ts'
+
+// Derivado, no escrito a mano: este párrafo ya nació viejo una vez. Se redactó
+// diciendo «Marvisur es el único courier cuyo rastreo funciona» y dos días
+// después rastreaban tres. Ahora se corrige solo al tocar PUBLISHED_CARRIERS.
+const tracking = PUBLISHED_CARRIERS.filter((c) => c.tracking.status === 'ok')
+const awaitingEvidence = PUBLISHED_CARRIERS.filter(
+  (c) => c.tracking.status === 'pendiente' && c.agencies.status === 'ok',
+)
+const listNames = (cs: typeof PUBLISHED_CARRIERS) =>
+  cs.length < 2
+    ? cs.map((c) => c.name).join('')
+    : `${cs.slice(0, -1).map((c) => c.name).join(', ')} y ${cs[cs.length - 1].name}`
+---
+
+<section id="journey" class="scroll-mt-20 border-t border-line py-24">
+  <div class="mx-auto max-w-6xl px-6">
+    <h2
+      class="max-w-2xl text-balance font-display text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl"
+      data-reveal
+    >
+      Un envío, once estados, un solo vocabulario
+    </h2>
+    <p class="mt-4 max-w-2xl text-pretty leading-relaxed text-zinc-400" data-reveal style="--step: 1">
+      Cada courier nombra los hitos a su manera y ninguno usa los mismos. Este es el
+      recorrido al que los traducimos —el mismo para los cinco—, con el literal original
+      siempre adjunto en <code class="font-mono text-sm text-zinc-300">status_raw</code>.
+    </p>
+
+    {/* Una lista ordenada de verdad: el orden ES el contenido, así que un lector
+        de pantalla tiene que anunciar «1 de 6» y no leer seis párrafos sueltos.
+
+        Se dibuja en dos formas según el ancho, y el CSS de `.journey-*` en
+        `global.css` hace el cambio: apilada con la línea vertical en pantallas
+        angostas, en row con la línea horizontal desde `md`. Seis columnas en un
+        teléfono darían columnas de 50 px; una lista vertical en un monitor
+        desperdicia el ancho que el journey necesita para leerse de un vistazo.
+
+        `--steps` lo lee el bucle del avance para repartir el ciclo. Derivado del
+        array: agregar un hito sin tocar el número desfasaría la secuencia. */}
+    <ol
+      class="journey relative mt-14 grid gap-9 md:grid-cols-6 md:gap-4"
+      data-reveal="fade"
+      style={`--step: 2; --steps: ${JOURNEY.length}`}
+    >
+      <span class="journey-track" aria-hidden="true"></span>
+      <span class="journey-trail" aria-hidden="true"></span>
+
+      {
+        JOURNEY.map((h, i) => (
+          <li class="journey-step" data-step style={`--step: ${i}`}>
+            <span class="journey-dot" data-last={i === JOURNEY.length - 1} aria-hidden="true" />
+
+            <span class="journey-states">
+              {h.states.map((e, j) => (
+                <>
+                  {j > 0 && <span class="font-mono text-[10px] text-zinc-600">o</span>}
+                  <code class="font-mono text-xs text-zinc-100">{e}</code>
+                </>
+              ))}
+            </span>
+
+            <p class="mt-2 text-pretty text-xs leading-relaxed text-zinc-500">{h.title}</p>
+          </li>
+        ))
+      }
+    </ol>
+
+    {/* El literal sale del journey: en una columna de la row no entra, y
+        suelto en un solo hito de seis se leía como un dato faltante en los otros
+        cinco en vez de como el ejemplo de la traducción que es. Aquí abajo se ve
+        lo que es — el literal del courier y el estado al que lo mapeamos. */}
+    <div class="mt-12 grid gap-8 border-t border-line pt-10 lg:grid-cols-2" data-reveal>
+      <div>
+        <h3 class="text-sm font-medium text-zinc-300">De su palabra a la nuestra</h3>
+        {/* Eran cuatro párrafos —105 palabras— para decir dos cosas: cuántos
+            couriers están validados y que no inventamos los que faltan. Los
+            números y los nombres siguen interpolados: este párrafo ya nació
+            desactualizado una vez, decía «Marvisur es el único que rastrea» y
+            dos días después rastreaban tres. El tramo de los pendientes
+            desaparece solo cuando no quede ninguno. */}
+        <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-500">
+          Validados contra respuestas reales: {tracking.length} de{' '}
+          {PUBLISHED_CARRIERS.length} couriers ({listNames(tracking)}).
+          {awaitingEvidence.length > 0 && (
+            <> {listNames(awaitingEvidence)} siguen pendientes — no agregamos estados
+            estimados mientras no lleguen sus respuestas.</>
+          )}
+        </p>
+
+        <ul class="mt-4 space-y-2">
+          {
+            JOURNEY.filter((h) => h.literal).map((h) => (
+              <li class="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs">
+                <span class="text-zinc-600">{h.literal!.carrier} devolvió</span>
+                <span class="rounded border border-line bg-ink-soft px-1.5 py-0.5 text-zinc-300">
+                  "{h.literal!.raw}"
+                </span>
+                <span class="text-zinc-700" aria-hidden="true">→</span>
+                <code class="text-brand/80">{h.states[0]}</code>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+
+      <div>
+        <h3 class="text-sm font-medium text-zinc-300">Y los que se salen del camino</h3>
+        <dl class="mt-3 space-y-2">
+          {
+            DETOURS.map((d) => (
+              <div class="flex flex-wrap items-baseline gap-x-3">
+                <dt class="font-mono text-sm text-zinc-400">{d.status}</dt>
+                <dd class="text-sm leading-relaxed text-zinc-600">{d.note}</dd>
+              </div>
+            ))
+          }
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>

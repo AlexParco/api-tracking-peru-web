@@ -1,0 +1,249 @@
+---
+import CodeBlock from './CodeBlock.astro'
+import { ENDPOINTS, EVENTS, WEBHOOK_DECISIONS, WEBHOOK_EXAMPLE } from '../data/api.ts'
+
+/* Consultar y que te avisen, en una sola sección.
+ *
+ * Estaban separadas y no debían estarlo: no son dos productos, son las dos
+ * formas de hablar con el mismo. Y hay un hecho que las une y que ninguna decía
+ * sola — el objeto que vuelve es EL MISMO: el `Shipment` de un GET es el que
+ * viaja dentro del webhook. Quien aprende a leer uno ya sabe leer el otro, y ese
+ * argumento se perdía al partirlas en dos secciones.
+ *
+ * Por eso el orden es: primero QUÉ vuelve, después las dos formas de pedirlo. */
+
+const methodClass: Record<string, string> = {
+  GET: 'text-[var(--color-live)]',
+  POST: 'text-sky-400',
+  DELETE: 'text-rose-400',
+}
+
+// Los nombres, sin la explicación de cada uno: la lista muestra el alcance en un
+// renglón y el detalle vive en la documentación.
+const eventNames = EVENTS.map((e) => e.name)
+---
+
+<section id="api" class="border-t border-line py-24">
+  <div class="mx-auto max-w-6xl px-6">
+    <h2
+      class="max-w-2xl text-balance font-display text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl"
+      data-reveal
+    >
+      Pregúntale, o deja que te avise
+    </h2>
+    <p class="mt-4 max-w-2xl text-pretty leading-relaxed text-zinc-400" data-reveal style="--step: 1">
+      Las dos formas devuelven el mismo{' '}
+      <code class="font-mono text-sm text-zinc-300">Shipment</code>: estado canónico, timeline
+      {/* Decía «sin remitente ni destinatario, que no reenviamos». Es FALSO:
+          `Provides.Parties` es true en Marvisur y Olva, que sí publican los
+          nombres. Lo que ningún carrier reenvía son los documentos de identidad
+          (`PartyDocuments: false` en los cinco). Verificado contra el código del
+          backend el 2026-08-05. */}
+      ordenado con zona horaria explícita, bultos y pago. El literal del courier siempre
+      adjunto en <code class="font-mono text-sm text-zinc-300">status_raw</code>, porque
+      normalizar no debería significar perder el dato original.
+    </p>
+    <p class="mt-3 max-w-2xl text-pretty text-sm leading-relaxed text-zinc-500" data-reveal style="--step: 2">
+      Quien aprende a leer una respuesta ya sabe leer el webhook: el objeto que llega a tu
+      endpoint es exactamente el mismo.
+    </p>
+
+    <h3 class="mt-14 font-display text-xl font-semibold tracking-tight text-zinc-100" data-reveal>
+      Cuando preguntas tú
+    </h3>
+    <p class="mt-2 font-mono text-xs text-zinc-600" data-reveal style="--step: 1">
+      Toca un endpoint para ver qué contesta.
+    </p>
+    <div class="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
+      {/* La lista es un tablist vertical de verdad, no divs con onclick: las
+          flechas ↑↓ navegan, Home/End saltan a los extremos y el lector de
+          pantalla anuncia "pestaña 3 de 9". Un endpoint es exactamente eso —una
+          opción entre varias que cambia un panel—, así que el patrón ARIA que
+          corresponde ya existe y no hay por qué inventar otro. */}
+      <div
+        role="tablist"
+        aria-orientation="vertical"
+        aria-label="Endpoints del API"
+        class="divide-y divide-line/60 border-y border-line/60"
+        data-reveal
+        style="--step: 3"
+      >
+        {/* El fondo teñido significa UNA sola cosa: cuál está abierto. Hubo un
+            `destacado` que teñía /v1/coverage con el mismo verde al 0.03 contra
+            el 0.06 del seleccionado; eso no son dos estados, es uno mal
+            dibujado, y la row se leía como abierta desde que cargaba la
+            página. Si algún día hace falta destacar un endpoint, que sea por
+            otro canal — no por este fondo. */}
+        {
+          ENDPOINTS.map((e, i) => (
+            <button
+              type="button"
+              role="tab"
+              id={`tab-${e.id}`}
+              aria-controls={`panel-${e.id}`}
+              aria-selected={i === 0 ? 'true' : 'false'}
+              tabindex={i === 0 ? 0 : -1}
+              data-tab
+              class:list={[
+                'group relative w-full cursor-pointer py-3.5 pl-4 pr-3 text-left transition-colors duration-200',
+                'hover:bg-brand/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60',
+                'aria-selected:bg-brand/[0.06]',
+              ]}
+            >
+              {/* La barra del acento crece desde el centro en vez de aparecer:
+                  scaleY se compone, un width animado obliga a recalcular. */}
+              <span
+                aria-hidden="true"
+                class="absolute inset-y-0 left-0 w-0.5 origin-center scale-y-0 bg-brand transition-transform duration-300 ease-out group-aria-selected:scale-y-100"
+              />
+              <span class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span class:list={['font-mono text-xs font-semibold', methodClass[e.method]]}>
+                  {e.method}
+                </span>
+                <code class="font-mono text-sm text-zinc-300 transition-colors group-hover:text-zinc-100 group-aria-selected:text-zinc-50">
+                  {e.path}
+                </code>
+              </span>
+              <span class="mt-1 block text-sm leading-relaxed text-zinc-500">{e.summary}</span>
+            </button>
+          ))
+        }
+      </div>
+
+      {/* Los nueve paneles se renderizan en el HTML y se ocultan con `hidden`.
+          Sin JS queda visible el primero y el resto no estorba: la página sigue
+          sirviendo contenido real en vez de una caja vacía esperando un script.
+          El costo son unos KB de HTML que comprimen a casi nada. */}
+      {/* El tope de altura no es cosmético: el panel de /v1/agencies mide unos
+          700px y en un portátil de 768px de alto quedaría cortado por abajo sin
+          forma de llegar al final. Con el cap, el caso largo scrollea dentro de
+          su caja y los cortos ni se enteran. */}
+      <div
+        class="lg:sticky lg:top-20 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto"
+        data-reveal
+        style="--step: 4"
+      >
+        {
+          ENDPOINTS.map((e, i) => (
+            <div
+              role="tabpanel"
+              id={`panel-${e.id}`}
+              aria-labelledby={`tab-${e.id}`}
+              tabindex="0"
+              hidden={i !== 0}
+              data-panel
+              class="space-y-4 focus-visible:outline-none"
+            >
+              {e.request && <CodeBlock title={e.request.title} code={e.request.code} />}
+              <CodeBlock title={e.response.title} code={e.response.code} tone="brand" />
+              {e.note && <p class="text-xs leading-relaxed text-zinc-600">{e.note}</p>}
+            </div>
+          ))
+        }
+      </div>
+    </div>
+
+
+    <h3 class="mt-20 font-display text-xl font-semibold tracking-tight text-zinc-100" data-reveal>
+      Cuando prefieres que te avise
+    </h3>
+
+    <div class="mt-6">
+    <div class="grid gap-10 lg:grid-cols-[1fr_minmax(0,30rem)] lg:items-center lg:gap-14">
+      <div>
+        <p class="text-pretty leading-relaxed text-zinc-400" data-reveal style="--step: 1">
+          Registras un endpoint HTTPS, suscribes un envío y recibes un POST firmado cada vez
+          que ese envío <strong class="font-medium text-zinc-300">cambia de estado</strong>.
+          Un poller de fondo hace el trabajo aburrido: acelera cerca de la entrega y se apaga
+          solo cuando el envío termina.
+        </p>
+
+        <ol class="mt-8 space-y-2.5" data-reveal style="--step: 2">
+          {
+            [
+              ['POST /v1/webhooks', 'guarda el signing secret'],
+              ['POST /v1/tracking/subscriptions', 'un envío por request'],
+              ['tu endpoint recibe', 'verifica la firma y responde 2xx'],
+            ].map(([call, note], i) => (
+              <li class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm">
+                <span class="font-mono text-xs text-zinc-600">{i + 1}</span>
+                <code class="font-mono text-zinc-200">{call}</code>
+                <span class="text-zinc-500">{note}</span>
+              </li>
+            ))
+          }
+        </ol>
+
+        <p class="mt-7 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-zinc-500">
+          <span>Cuatro eventos:</span>
+          {
+            eventNames.map((n, i) => (
+              <>
+                <code class="font-mono text-[var(--color-live)]">{n}</code>
+                {i < eventNames.length - 1 && <span class="text-zinc-700">·</span>}
+              </>
+            ))
+          }
+        </p>
+
+        <p class="mt-6 text-sm leading-relaxed text-zinc-500">
+          Hay {WEBHOOK_DECISIONS.length} decisiones del subsistema que cambian cómo escribes
+          el receptor —reintentos, deduplicación, verify-before-enable, guarda anti-SSRF—.{' '}
+          <a
+            href="/docs#webhooks-reglas"
+            class="text-brand/80 underline-offset-2 hover:underline"
+          >
+            Están todas en la documentación
+          </a>.
+        </p>
+      </div>
+
+      <div data-reveal style="--step: 3">
+        {/* «una entrega, recortada» no decía de qué era la entrega, y «recortada» era
+            una nota sobre el ejemplo, no sobre lo que el bloque muestra. Además
+            `/docs` llamaba «POST a tu endpoint» a este mismo bloque: dos nombres
+            para la misma cosa. Que el recorte se ve solo, en el `"…"` del payload. */}
+        <CodeBlock title="POST a tu endpoint" code={WEBHOOK_EXAMPLE} tone="brand" />
+      </div>
+    </div>
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  ;(() => {
+    const list = document.querySelector('[role="tablist"][aria-label="Endpoints del API"]')
+    if (!list) return
+
+    const tabs = [...list.querySelectorAll('[data-tab]')]
+    const panels = [...document.querySelectorAll('[data-panel]')]
+    if (!tabs.length || tabs.length !== panels.length) return
+
+    const select = (i, moveFocus) => {
+      tabs.forEach((t, j) => {
+        t.setAttribute('aria-selected', String(j === i))
+        // Roving tabindex: un solo tab en el orden de tabulación, así que Tab
+        // atraviesa la list en vez de recorrer sus nueve elementos uno por uno.
+        t.tabIndex = j === i ? 0 : -1
+      })
+      panels.forEach((p, j) => p.toggleAttribute('hidden', j !== i))
+      // El glow se mueve SÓLO si el usuario navegó con el teclado. Con el mouse
+      // ya está where tiene que estar, y forzarlo haría saltar el scroll.
+      if (moveFocus) tabs[i].focus()
+    }
+
+    tabs.forEach((tab, i) => {
+      tab.addEventListener('click', () => select(i, false))
+      tab.addEventListener('keydown', (ev) => {
+        const jump = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[ev.key]
+        let target = null
+        if (jump) target = (i + jump + tabs.length) % tabs.length
+        else if (ev.key === 'Home') target = 0
+        else if (ev.key === 'End') target = tabs.length - 1
+        if (target === null) return
+        ev.preventDefault()
+        select(target, true)
+      })
+    })
+  })()
+</script>

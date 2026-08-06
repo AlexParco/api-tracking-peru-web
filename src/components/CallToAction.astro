@@ -1,0 +1,113 @@
+---
+import TrialForm from './TrialForm.astro'
+import { FREE, BETA } from '../data/plans.ts'
+---
+
+<section id="empezar" class="scroll-mt-20 border-t border-line py-24">
+  <div class="mx-auto max-w-6xl px-6">
+    <div class="card rounded-2xl border border-line bg-ink-soft p-8 md:p-12" data-reveal>
+      {/* Dos columnas: el argumento a la izquierda, el formulario en su propio
+          panel a la derecha. En una sola, el contenido se apretaba contra el
+          borde izquierdo de una tarjeta de 6xl y sobraba media caja vacía. */}
+      {/* `items-center`: el panel conserva su altura natural y se centra contra la
+          columna izquierda, que es más alta. Estirarlo llenaba el hueco de afuera
+          creando uno adentro; centrarlo reparte el aire arriba y abajo. */}
+      <div class="grid gap-10 lg:grid-cols-[1fr_minmax(0,23rem)] lg:items-center lg:gap-14">
+        <div>
+          <h2 class="text-balance font-display text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
+            Empieza gratis, y no vence
+          </h2>
+          <p class="mt-4 text-pretty leading-relaxed text-zinc-400">
+            Déjanos tu correo y te emitimos la key en el momento. El plan Free no vence y no
+            pide tarjeta: si tu volumen crece, subes de plan cuando quieras. Y si el courier
+            que te importa está en ámbar, dilo — eso prioriza el orden en que se completan.
+          </p>
+
+          {/* Los números de la prueba, aquí y no apretados bajo el botón: la
+              columna izquierda tenía media pantalla vacía, y esto es justo lo que
+              alguien necesita saber ANTES de dejar su correo. Salen de `TRIAL`,
+              que espeja los del backend. */}
+          {/* Mismo patrón que las métricas del hero: la etiqueta arriba y el número
+              abajo. Antes la unidad iba en un `dt` con `sr-only` Y repetida
+              visible, así que un lector de pantalla la escuchaba dos veces:
+              «días 4 días de acceso completo». */}
+          <dl class="mt-9 grid max-w-md grid-cols-2 gap-x-8 gap-y-6">
+            {[
+              [FREE.webhooks, 'webhooks activos', 'envíos vigilados a la vez'],
+              ['1.000', 'consultas al mes', 'de rastreo bajo demanda'],
+              [FREE.rpm, 'req / minuto', 'guardarraíl contra ráfagas'],
+              ['S/ 0', 'para siempre', 'no vence ni pide tarjeta'],
+            ].map(([big, unit, note]) => (
+              <div>
+                <dt class="text-sm text-zinc-500">{unit}</dt>
+                <dd class="mt-1 font-display text-3xl font-semibold tabular-nums text-zinc-50">
+                  {big}
+                </dd>
+                <p class="mt-1 text-xs leading-relaxed text-zinc-600">{note}</p>
+              </div>
+            ))}
+          </dl>
+
+          {/* Lo que decide y no es un número. El primero es el argumento fuerte:
+              la key sale en la misma respuesta del alta, no hay espera. */}
+          <ul class="mt-8 max-w-md space-y-2.5 border-t border-line pt-6">
+            {[
+              // Decía «no esperas un correo para empezar». Cierto pero engañoso:
+              // el correo SÍ llega, con la key y la fecha de vencimiento. Leída
+              // sola, la frase sonaba a que no había correo.
+              `Ves la key en pantalla apenas la pides, y además te llega por correo con su fecha de vencimiento.`,
+              'Una key gratuita por dirección de correo. Si esa dirección ya tiene la suya, te lo decimos en el momento.',
+              `El plan Free no vence: no te cobramos, no se renueva sola y no hay nada que cancelar.`,
+              `Mientras dure la beta, el precio que tomes queda fijo — y ${BETA.endsWhen} para que termine.`,
+            ].map((x) => (
+              <li class="flex gap-3 text-sm leading-relaxed text-zinc-400">
+                <span class="mt-1.5 size-1.5 shrink-0 rounded-full bg-brand" aria-hidden="true" />
+                <span class="text-pretty">{x}</span>
+              </li>
+            ))}
+          </ul>
+
+        </div>
+
+        {/* El formulario y no un botón de correo: pedir la prueba es la acción
+            más barata de la página y no debería costar abrir un cliente de mail.
+            Para lo demás —un plan pago, un volumen raro— sigue el correo, que
+            ahí sí hace falta contar más de lo que entra en dos campos. */}
+        <div class="rounded-xl border border-line bg-ink p-6">
+          <TrialForm />
+
+
+
+          {/* Debajo del formulario: primero la acción gratis, después la
+              alternativa paga. */}
+          <div class="mt-6 border-t border-line pt-5">
+            <p class="text-sm text-zinc-500">¿Un plan pago o algo a medida?</p>
+            <a
+              href="mailto:hola@tracking-peru.com?subject=Acceso%20al%20API"
+              class="mt-1 block font-mono text-sm text-brand/80 underline-offset-2 hover:underline"
+            >
+              hola@tracking-peru.com
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <dl class="mt-10 grid gap-6 border-t border-line pt-8 sm:grid-cols-3">
+        <div>
+          <dt class="text-sm text-zinc-500">Autenticación</dt>
+          <dd class="mt-1 font-mono text-sm text-zinc-300">X-API-Key</dd>
+        </div>
+        <div>
+          <dt class="text-sm text-zinc-500">Formato</dt>
+          <dd class="mt-1 font-mono text-sm text-zinc-300">JSON · REST</dd>
+        </div>
+        <div>
+          <dt class="text-sm text-zinc-500">Webhooks</dt>
+          <dd class="mt-1 font-mono text-sm text-[var(--color-live)]">
+            <a href="#api" class="transition-colors hover:text-zinc-100">firmados · HMAC</a>
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </div>
+</section>

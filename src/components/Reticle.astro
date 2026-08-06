@@ -1,0 +1,157 @@
+---
+/* La retícula viva.
+
+   Junta dos efectos en un solo componente porque comparten la MISMA grilla: si
+   fueran dos, habría que mantener dos mosaicos alineados al píxel y cualquier
+   desfase se vería como un doblez.
+
+   1. La grilla se desplaza sola, muy lento y en diagonal. Es `background-position`
+      animado sobre un mosaico de 56 px: el bucle cierra solo al completar un
+      mosaico, así que no hace falta ningún rAF para moverla.
+   2. Bajo el cursor se revela una segunda grilla, la del color de marca, con un
+      resplandor que la sigue con retraso.
+
+   El único trabajo de JavaScript es leer dónde está el cursor. Todo lo demás
+   —desplazamiento, recorte, aparición— es CSS, y por eso el efecto se apaga
+   entero y sin restos cuando el visitante pidió menos movimiento.
+
+   Vive UNA sola vez, en el layout, como capa fija detrás de toda la página. Al
+   ser `position: fixed` la grilla no scrollea con el contenido: las secciones
+   pasan por encima de ella. Y como está fija, las coordenadas del puntero ya
+   vienen en el sistema que necesita —las del viewport—, así que no hay que
+   restarle la caja de ningún padre ni releerla al scrollear.
+
+   Es decorativa: `pointer-events: none` y `aria-hidden`. Escucha en el
+   documento entero. */
+
+interface Props {
+  /** Radio del círculo que revela la grilla de marca. */
+  radius?: number
+  /** Diámetro del resplandor que sigue al cursor. */
+  glow?: number
+  class?: string
+}
+
+const { radius = 240, glow = 340, class: className } = Astro.props
+---
+
+<div
+  class:list={['reticle', className]}
+  style={`--radius: ${radius}px; --glow: ${glow}px`}
+  data-reticle
+  aria-hidden="true"
+>
+  {/* La capa de siempre: la textura tenue que ya tenía el hero. */}
+  <div class="grid-bg drift absolute inset-0"></div>
+
+  {/* La capa revelada, en dos elementos y no en uno: el de afuera lleva el mismo
+      desvanecido hacia abajo que `.grid-bg` y el de adentro el círculo del
+      cursor. Un solo elemento necesitaría `mask-composite: intersect`, que donde
+      no se soporta no degrada a menos grilla sino a TODA la grilla encendida. */}
+  <div class="reticle-revealed absolute inset-0">
+    <div class="reticle-lit drift absolute inset-0"></div>
+  </div>
+
+  <div class="reticle-glow" data-glow></div>
+</div>
+
+{/* Inline como el resto de la página: la landing no sirve ni un bundle de JS y
+    esto no justifica el primero. Es idempotente por si algún día hay dos
+    retículas en la misma página y el script se emite dos veces. */}
+<script is:inline>
+  ;(() => {
+    // Sin `.motion` el visitante pidió menos movimiento; sin puntero fino no hay
+    // hover que seguir. En los dos casos el efecto no existe: la grilla queda
+    // quieta y la capa de marca nunca se enciende.
+    if (!document.documentElement.classList.contains('motion')) return
+    if (!matchMedia('(pointer: fine)').matches) return
+
+    const layer = document.querySelector('[data-reticle]')
+    const glow = layer?.querySelector('[data-glow]')
+    if (layer && glow) {
+
+      // De la variable inline y no de `offsetWidth`: este script corre a half
+      // del parseo del documento, y medir el elemento ahí fuerza un layout
+      // temprano para obtener un número que ya está escrito en el atributo.
+      const half = (parseFloat(layer.style.getPropertyValue('--glow')) || 0) / 2
+      let cursorX = 0
+      let cursorY = 0 // en coordenadas de viewport
+      let targetX = 0
+      let targetY = 0 // ya en coordenadas de viewport
+      let x = 0
+      let y = 0 // la posición amortiguada del resplandor
+      let frame = 0
+      let prev = 0
+
+      const paint = () => {
+        glow.style.transform = `translate3d(${x - half}px, ${y - half}px, 0)`
+        // El recorte NO se amortigua: tiene que quedar pegado al cursor, o el
+        // corte se lee como que la grilla arrastra. El retraso es del
+        // resplandor, y solo del resplandor.
+        layer.style.setProperty('--mx', `${targetX}px`)
+        layer.style.setProperty('--my', `${targetY}px`)
+      }
+
+      const tick = (t) => {
+        // Sin `getBoundingClientRect`: la capa es `fixed`, así que las
+        // coordenadas del puntero YA están en su sistema. Antes había que leer
+        // la caja del padre una vez por cuadro; ahora no hay nada que leer, y de
+        // paso desaparece el único cálculo de layout que hacía el efecto.
+        targetX = cursorX
+        targetY = cursorY
+
+        // Corregido por duración de cuadro: a 120 Hz el resplandor no puede
+        // alcanzar al cursor al doble de velocidad que a 60 Hz. El tope de 50 ms
+        // evita el salto al volver de una pestaña en segundo plano.
+        const delta = prev ? Math.min(t - prev, 50) : 16.7
+        prev = t
+        const k = 1 - 0.82 ** (delta / 16.7)
+        x += (targetX - x) * k
+        y += (targetY - y) * k
+        paint()
+
+        // Se detiene cuando alcanzó al cursor. Quedarse girando mientras el
+        // puntero está quieto sería gastar un cuadro por nada.
+        if (Math.hypot(targetX - x, targetY - y) > 0.4) {
+          frame = requestAnimationFrame(tick)
+        } else {
+          x = targetX
+          y = targetY
+          frame = 0
+        }
+      }
+
+      const start = () => {
+        if (frame) return
+        prev = 0
+        frame = requestAnimationFrame(tick)
+      }
+
+      let started = false
+      document.addEventListener(
+        'pointermove',
+        (e) => {
+          cursorX = e.clientX
+          cursorY = e.clientY
+          if (!started) {
+            // El primer movimiento lo ubica de golpe. Sin esto el resplandor
+            // cruzaría la pantalla desde el origen la primera vez.
+            started = true
+            targetX = x = cursorX
+            targetY = y = cursorY
+            paint()
+            layer.setAttribute('data-active', '')
+          }
+          start()
+        },
+        { passive: true },
+      )
+
+      // Se apaga al salir de la ventana. El bucle frena solo y se corta; para
+      // entonces la opacidad ya lo hizo invisible.
+      document.addEventListener('pointerleave', () => layer.removeAttribute('data-active'), {
+        passive: true,
+      })
+    }
+  })()
+</script>

@@ -1,0 +1,268 @@
+---
+import { FREE } from '../data/plans.ts'
+
+/* El formulario de la key gratuita.
+ *
+ * Manda a `POST /free` del API, ya desplegado en api.tracking-peru.com. Ese
+ * endpoint es público a propósito —es como consigue su primera key alguien que
+ * todavía no tiene ninguna—; el anti-abuso es una cuenta por correo y un límite
+ * por IP, no una credencial.
+ *
+ * Los mensajes de error salen de los códigos que el endpoint devuelve de verdad
+ * (409 correo repetido, 400 correo mal formado, 429 demasiados intentos), no de
+ * un catch genérico: «error 409» no le dice nada a nadie.
+ *
+ * Sin JavaScript el `<form>` no tiene `action`, así que no puede enviarse a
+ * ningún lado — y el `<noscript>` da el correo directo.
+ */
+
+/* El alta va a `POST /free` del API, que es público: sin API key, con límite
+   por IP y una cuenta por correo. No es un secreto —es una URL que cualquiera
+   ve en el HTML—, así que el default vive acá y no en un secreto de CI. El env
+   queda como override para apuntar a otro host en desarrollo.
+
+   Y tiene que ser un default y no un build-arg porque el CLI de deploy corre
+   `docker build` pelado, sin `--build-arg`: una variable que sólo existiera en
+   el workflow llegaría vacía al HTML y el formulario quedaría muerto en
+   producción sin que nadie se entere hasta probarlo. */
+const ENDPOINT = import.meta.env.PUBLIC_TRIAL_ENDPOINT || 'https://api.tracking-peru.com/free'
+const MAIL = 'hola@tracking-peru.com'
+---
+
+<form id="trial-form" method="post" novalidate data-endpoint={ENDPOINT} data-mail={MAIL}>
+  <div class="grid gap-4">
+    <div>
+      {/* El nombre no lleva `required` y la etiqueta lo dice con la palabra.
+          Marcar lo opcional con un asterisco al lado de lo obligatorio obliga a
+          descifrar la convención; escribirlo, no. */}
+      <label for="trial-name" class="block text-sm text-zinc-400">
+        Nombre <span class="text-zinc-600">(opcional)</span>
+      </label>
+      <input
+        id="trial-name"
+        name="name"
+        type="text"
+        autocomplete="name"
+        class="mt-1.5 w-full rounded-lg border border-line bg-ink-soft px-3.5 py-2.5 text-zinc-100 focus:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/30"
+      />
+    </div>
+
+    <div>
+      <label for="trial-email" class="block text-sm text-zinc-400">
+        Correo electrónico <span class="text-[var(--color-partial)]" aria-hidden="true">*</span>
+        <span class="sr-only">(obligatorio)</span>
+      </label>
+      <input
+        id="trial-email"
+        name="email"
+        type="email"
+        required
+        autocomplete="email"
+        inputmode="email"
+        aria-describedby="trial-email-error"
+        class="mt-1.5 w-full rounded-lg border border-line bg-ink-soft px-3.5 py-2.5 text-zinc-100 focus:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/30"
+      />
+      {/* Se sirve vacío y el script lo llena. `aria-live` lo anuncia sin robar el
+          foco: moverlo al error hace perder el lugar a quien tabula. */}
+      <p
+        id="trial-email-error"
+        class="mt-1.5 text-sm text-[var(--color-partial)]"
+        aria-live="polite"
+        hidden
+      >
+      </p>
+    </div>
+  </div>
+
+  <div class="mt-5 flex flex-wrap items-center gap-3">
+    {/* Sale DESHABILITADO y lo habilita el script.
+        Sin `action`, un submit sin JavaScript se iría por GET a la misma URL y
+        dejaría el correo del visitante en la barra de direcciones y en el
+        historial. Un botón que no puede funcionar no debería poder apretarse, y
+        el `<noscript>` de abajo dice qué hacer en su lugar.
+        El `method="post"` es el cinturón por si algo lo habilitara igual. */}
+    <button
+      type="submit"
+      disabled
+      class="btn rounded-lg bg-brand px-5 py-2.5 font-medium text-ink hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      Crear mi key gratis
+    </button>
+    <p class="text-sm text-zinc-500">
+      {FREE.webhooks} webhooks · sin tarjeta · no vence
+    </p>
+  </div>
+
+  <p id="trial-status" class="mt-4 text-sm leading-relaxed" aria-live="polite" hidden></p>
+
+  {/* El alta devuelve la key en la MISMA respuesta, así que se muestra aquí y no
+      se manda al visitante a revisar el correo. Se sirve oculto y con el hueco
+      del valor vacío: no hay ninguna key en el HTML hasta que el servidor emite
+      la de este visitante. */}
+  <div id="trial-key-panel" class="mt-5 rounded-xl border border-brand/30 bg-brand/[0.04] p-4" hidden>
+    <p class="font-mono text-xs text-brand">tu key</p>
+    <div class="mt-2 flex items-start gap-2">
+      <code
+        id="trial-key"
+        class="min-w-0 flex-1 break-all rounded-lg border border-line bg-ink px-3 py-2 font-mono text-sm text-zinc-100"
+      ></code>
+      <button
+        type="button"
+        id="trial-copy"
+        class="btn shrink-0 rounded-lg border border-line px-3 py-2 text-sm text-zinc-300 hover:border-zinc-600 hover:text-zinc-100"
+      >
+        Copiar
+      </button>
+    </div>
+    <p id="trial-key-note" class="mt-2.5 text-pretty text-xs leading-relaxed text-zinc-500"></p>
+  </div>
+
+  <noscript>
+    <p class="mt-4 text-sm leading-relaxed text-zinc-500">
+      El formulario necesita JavaScript. Escríbenos a{' '}
+      <a
+        href={`mailto:${MAIL}?subject=${encodeURIComponent('Key gratuita')}`}
+        class="text-brand/80 underline-offset-2 hover:underline"
+      >
+        {MAIL}
+      </a>{' '}
+      y te emitimos la key igual.
+    </p>
+  </noscript>
+</form>
+
+<script is:inline>
+  ;(() => {
+    const form = document.getElementById('trial-form')
+    if (!form) return
+
+    const email = document.getElementById('trial-email')
+    const name = document.getElementById('trial-name')
+    const error = document.getElementById('trial-email-error')
+    const status = document.getElementById('trial-status')
+    const button = form.querySelector('button[type="submit"]')
+    const keyPanel = document.getElementById('trial-key-panel')
+    const keyEl = document.getElementById('trial-key')
+    const keyNote = document.getElementById('trial-key-note')
+    const copy = document.getElementById('trial-copy')
+    const endpoint = form.dataset.endpoint
+    const mail = form.dataset.mail
+
+    // Hay JavaScript: recién ahora el botón puede hacer algo.
+    button.disabled = false
+
+    // `novalidate` en el form y la validación aquí: el globo nativo del navegador
+    // sale en el idioma del NAVEGADOR, no en el de la página, se va al scrollear
+    // y no lo anuncia un lector de pantalla. Este mensaje sí.
+    const invalid = (msg) => {
+      error.textContent = msg
+      error.hidden = false
+      email.setAttribute('aria-invalid', 'true')
+      email.focus()
+    }
+
+    const clean = () => {
+      error.hidden = true
+      email.removeAttribute('aria-invalid')
+    }
+
+    const say = (msg, ok) => {
+      status.textContent = msg
+      status.hidden = false
+      status.className =
+        'mt-4 text-sm leading-relaxed ' +
+        (ok ? 'text-[var(--color-live)]' : 'text-[var(--color-partial)]')
+    }
+
+    email.addEventListener('input', () => {
+      if (!error.hidden) clean()
+    })
+
+    copy?.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(keyEl.textContent || '')
+        copy.textContent = 'Copiada'
+        setTimeout(() => (copy.textContent = 'Copiar'), 1800)
+      } catch {
+        // Sin permiso de portapapeles: se selecciona para que la copie a mano.
+        const range = document.createRange()
+        range.selectNodeContents(keyEl)
+        const sel = getSelection()
+        sel.removeAllRanges()
+        sel.addRange(range)
+        copy.textContent = 'Cópiala'
+      }
+    })
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const value = email.value.trim()
+
+      if (!value) return invalid('Necesitamos un correo para mandarte la key.')
+      // Comprobación deliberadamente laxa. Una expresión estricta rechaza
+      // correos que existen de verdad, y el único chequeo que vale es que el
+      // mensaje llegue.
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value)) {
+        return invalid('Ese correo no parece completo. Revísalo y prueba de nuevo.')
+      }
+      clean()
+
+      button.disabled = true
+      say('Enviando…', true)
+      try {
+        const r = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: value, name: name.value.trim() }),
+        })
+        // Una cuenta por correo: el alta rechaza el segundo intento.
+        if (r.status === 409) {
+          say(`Ese correo ya tiene una cuenta. Si ya tienes tu key, úsala; si la perdiste, escríbenos a ${mail}.`, false)
+          return
+        }
+        // El API valida la forma del correo aparte de nosotros, y es más
+        // estricto en los bordes. Se repite acá el mismo mensaje que en la
+        // validación local, para que el motivo sea el mismo mensaje.
+        if (r.status === 400) {
+          return invalid('Ese correo no parece completo. Revísalo y prueba de nuevo.')
+        }
+        // El alta tiene límite por IP. Sin este caso quedaba en el `catch` como
+        // «el servidor respondió 429», que suena a que el sitio se rompió.
+        if (r.status === 429) {
+          say('Demasiados intentos desde tu conexión. Espera un momento y vuelve a probar.', false)
+          return
+        }
+        if (!r.ok) throw new Error(`el servidor respondió ${r.status}`)
+
+        const data = await r.json().catch(() => ({}))
+        // `api_key`, tal como lo declara `freeResponse` en el backend.
+        const key = data.api_key
+        form.reset()
+
+        if (!key) {
+          // Si no vino en la respuesta, igual salió por correo.
+          say(`Listo. Te mandamos la key a ${value}.`, true)
+          return
+        }
+
+        keyEl.textContent = key
+        // Sin fecha de vencimiento, porque no la hay: el plan gratis es
+        // permanente y la respuesta del API ni siquiera trae `expires_at`.
+        //
+        // Tampoco dice «se muestra una sola vez — guárdala ahora», que asusta de
+        // más: la key también viaja por correo (el backend la manda al emitirla),
+        // así que perderla de la pantalla no la pierde.
+        keyNote.textContent = `Cópiala para empezar ya. También te la enviamos a ${value}.`
+        keyPanel.hidden = false
+        status.hidden = true
+        keyEl.focus?.()
+      } catch (err) {
+        // Se dice qué falló y se ofrece la salida. Un «intenta más tarde» deja
+        // al visitante sin nada que hacer con un pedido que sí quería mandar.
+        say(`No pudimos enviarlo (${err.message}). Escríbenos a ${mail} y lo resolvemos.`, false)
+      } finally {
+        button.disabled = false
+      }
+    })
+  })()
+</script>

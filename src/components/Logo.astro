@@ -1,0 +1,46 @@
+---
+/* El isotipo.
+ *
+ * ── Qué dibuja ──
+ *
+ * Tres trazos entran por la izquierda con recorridos distintos y salen como uno
+ * solo. Es el producto en una forma: cada courier nombra los hitos a su manera
+ * y la respuesta es una. Un paquete o un camión los puede usar cualquiera de los
+ * couriers que integramos; esto solo lo puede usar algo que unifica.
+ *
+ * ── Por qué vive en un componente ──
+ *
+ * Lo usan la barra de la portada, la de la documentación y el favicon. Tres
+ * copias del mismo `<path>` es una que un día queda vieja.
+ *
+ * ── El grosor es un parámetro, no un capricho ──
+ *
+ * A 16 px —la pestaña del navegador— las tres entradas se funden con el trazo
+ * normal. El favicon usa uno más grueso. Es la práctica habitual: un isotipo
+ * bien hecho tiene una versión para tamaños chicos, no se escala y ya.
+ */
+
+interface Props {
+  size?: number
+  /** 2 para pantalla, ~2.6 para 16 px o menos. */
+  stroke?: number
+  class?: string
+}
+
+const { size = 24, stroke = 2, class: className } = Astro.props
+---
+
+<svg
+  viewBox="0 0 24 24"
+  width={size}
+  height={size}
+  fill="none"
+  stroke="currentColor"
+  stroke-width={stroke}
+  stroke-linecap="round"
+  class:list={className}
+  role="img"
+  aria-label="API Tracking Perú"
+>
+  <path d="M3 5c5 0 5 7 9 7M3 12h9M3 19c5 0 5-7 9-7M12 12h9"></path>
+</svg>

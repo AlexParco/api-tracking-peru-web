@@ -1,37 +1,37 @@
 ---
 interface Props {
   /** Etiqueta de la barra de título. Suele ser el comando o la ruta. */
-  titulo?: string
-  codigo: string
+  title?: string
+  code: string
   /** Clase de acento del punto de la barra. */
-  tono?: 'brand' | 'zinc'
+  tone?: 'brand' | 'zinc'
 }
 
-const { titulo, codigo, tono = 'zinc' } = Astro.props
+const { title, code, tone = 'zinc' } = Astro.props
 ---
 
 <div class="overflow-hidden rounded-xl border border-line bg-ink-soft">
   {
-    titulo && (
+    title && (
       <div class="flex items-center gap-2 border-b border-line px-4 py-2.5">
-        {/* Este punto NO late, aunque sea del color de marca. Es cromo de
-            ventana —dice "acá empieza un bloque de código"—, no una señal de que
-            algo esté vivo. Con un pulso acá habría once latiendo en la página y
-            el pulso dejaría de significar lo que significa en la tabla de
+        {/* Este punto NO glyph-pulse, aunque sea del color de marca. Es cromo de
+            ventana —dice "aquí empieza un bloque de código"—, no una señal de que
+            algo esté vivo. Con un pulse aquí habría once latiendo en la página y
+            el pulse dejaría de significar lo que significa en la tabla de
             cobertura, que es donde el movimiento sí informa algo. */}
         <span
           class:list={[
             'size-2 shrink-0 rounded-full',
-            tono === 'brand' ? 'bg-brand' : 'bg-zinc-600',
+            tone === 'brand' ? 'bg-brand' : 'bg-zinc-600',
           ]}
         />
-        <span class="font-mono text-xs text-zinc-500">{titulo}</span>
+        <span class="font-mono text-xs text-zinc-500">{title}</span>
       </div>
     )
   }
   {/* overflow-x-auto en el contenedor del código y no en la página: una línea
       larga tiene que scrollear dentro de su caja, nunca mover el body. */}
   <div class="overflow-x-auto">
-    <pre class="p-4 font-mono text-[13px] leading-relaxed text-zinc-300"><code set:text={codigo} /></pre>
+    <pre class="p-4 font-mono text-[13px] leading-relaxed text-zinc-300"><code set:text={code} /></pre>
   </div>
 </div>

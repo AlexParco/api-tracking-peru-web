@@ -1,13 +1,23 @@
 ---
 import '../styles/global.css'
+import Reticle from '../components/Reticle.astro'
 
 interface Props {
-  titulo: string
-  descripcion: string
+  title: string
+  description: string
+  /** Datos estructurados de la página. Se serializan en el `<head>`. */
+  jsonLd?: Record<string, unknown>
 }
 
-const { titulo, descripcion } = Astro.props
-const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://rastreo.dev')
+const { title, description, jsonLd } = Astro.props
+
+const SITIO = 'API Tracking Perú'
+const ORIGEN = Astro.site ?? new URL('https://tracking-peru.com')
+const canonical = new URL(Astro.url.pathname, ORIGEN)
+
+/* La vista previa. Absoluta y no relativa: los rastreadores de WhatsApp, Slack
+   y X no resuelven rutas contra la página, la descartan. */
+const og = new URL('/og.png', ORIGEN)
 ---
 
 <!doctype html>
@@ -15,24 +25,52 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://rastreo.dev
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{titulo}</title>
-    <meta name="description" content={descripcion} />
+
+    <title>{title}</title>
+    <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
 
+    {/* El sitio es de tema oscuro fijo. Declararlo acá y no sólo en el CSS evita
+        el destello blanco antes de que la hoja cargue: el navegador ya pinta el
+        fondo y las barras de scroll en oscuro. */}
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#08090b" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content={titulo} />
-    <meta property="og:description" content={descripcion} />
+    <meta property="og:site_name" content={SITIO} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     <meta property="og:locale" content="es_PE" />
-    <meta name="twitter:card" content="summary_large_image" />
+    <meta property="og:image" content={og} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="API Tracking Perú — rastreo y agencias de couriers peruanos detrás de un solo contrato"
+    />
 
-    <!-- El favicon va inline como data URI: es un emoji, no justifica un
-         request más ni un archivo en public/. -->
+    {/* `summary_large_image` con imagen. Declararlo sin ella —como estaba— hace
+        que X degrade a una tarjeta vacía, que es peor que no declarar nada. */}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={og} />
+
+    <!-- El isotipo, inline como data URI: un archivo menos que pedir. Trazo 2.6
+         en vez de 2 y el cuadrado lima de fondo: a 16 px el trazo normal funde
+         las tres entradas y el símbolo suelto se pierde contra la pestaña. Es la
+         versión para tamaños chicos, no el mismo SVG escalado. -->
     <link
       rel="icon"
-      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='5' fill='%23a3e635'/><path d='M3 5c5 0 5 7 9 7M3 12h9M3 19c5 0 5-7 9-7M12 12h9' fill='none' stroke='%2308090b' stroke-width='2.6' stroke-linecap='round'/></svg>"
     />
-    <meta name="theme-color" content="#08090b" />
+    <!-- Safari en la barra de marcadores usa el mask-icon, no el SVG. -->
+    <link rel="mask-icon" href="/favicon.svg" color="#a3e635" />
+    <!-- iOS al guardar en pantalla de inicio: PNG opaco, sin transparencia. -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    {jsonLd && <script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />}
 
     {/* Se decide ANTES de pintar, y por eso va en el <head> y no al final: si
         el estado inicial de las animaciones se aplicara después del primer
@@ -47,6 +85,11 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://rastreo.dev
   </head>
 
   <body class="bg-ink text-zinc-200 antialiased">
+    {/* La retícula, una sola vez y para todo el documento. Va aquí y no en cada
+        página porque es fondo, no contenido: dos instancias serían dos grillas
+        desalineadas y dos scripts peleando por el mismo cursor. */}
+    <Reticle />
+
     <a
       href="#contenido"
       class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-brand focus:px-4 focus:py-2 focus:font-medium focus:text-ink"
@@ -59,49 +102,49 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://rastreo.dev
       ;(() => {
         // La barra no es movimiento: separa la nav del contenido cuando hay
         // contenido debajo. Corre siempre, incluso con reduced-motion.
-        const cabecera = document.querySelector('header')
-        if (cabecera) {
-          const marcar = () => cabecera.toggleAttribute('data-scrolled', scrollY > 8)
-          marcar()
-          addEventListener('scroll', marcar, { passive: true })
+        const header = document.querySelector('header')
+        if (header) {
+          const mark = () => header.toggleAttribute('data-scrolled', scrollY > 8)
+          mark()
+          addEventListener('scroll', mark, { passive: true })
         }
 
         if (!document.documentElement.classList.contains('motion')) return
 
-        // Los contadores arrancan desde cero SÓLO acá: el valor real ya está en
+        // Los contadores arrancan desde cero SÓLO aquí: el valor real ya está en
         // el HTML, así que sin JS —o con reduced-motion— se lee el número
         // correcto y no un cero animándose que nunca llega.
-        const contar = (el) => {
-          const destino = Number(el.dataset.contador)
-          if (!Number.isFinite(destino)) return
+        const count = (el) => {
+          const target = Number(el.dataset.counter)
+          if (!Number.isFinite(target)) return
           const arranque = performance.now()
-          const paso = (t) => {
-            const avance = Math.min(1, (t - arranque) / 950)
-            const suave = 1 - (1 - avance) ** 3
-            // El valor exacto se escribe al final y no se deriva del easing:
+          const tick = (t) => {
+            const progress = Math.min(1, (t - arranque) / 950)
+            const eased = 1 - (1 - progress) ** 3
+            // El valor exacto se escribe al final y no se drift del easing:
             // redondear 817,6 daría 818 por casualidad, no por corrección.
-            el.textContent = avance < 1 ? String(Math.round(destino * suave)) : String(destino)
-            if (avance < 1) requestAnimationFrame(paso)
+            el.textContent = progress < 1 ? String(Math.round(target * eased)) : String(target)
+            if (progress < 1) requestAnimationFrame(tick)
           }
-          requestAnimationFrame(paso)
+          requestAnimationFrame(tick)
         }
 
-        const observador = new IntersectionObserver(
-          (entradas) => {
-            for (const e of entradas) {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            for (const e of entries) {
               if (!e.isIntersecting) continue
               e.target.classList.add('visible')
-              if (e.target.dataset.contador) contar(e.target)
+              if (e.target.dataset.counter) count(e.target)
               // Una sola vez: que las cosas se desvanezcan al volver a
               // scrollear marea y no aporta nada.
-              observador.unobserve(e.target)
+              observer.unobserve(e.target)
             }
           },
           { rootMargin: '0px 0px -10% 0px', threshold: 0.01 },
         )
 
-        for (const el of document.querySelectorAll('[data-revelar], [data-contador]')) {
-          observador.observe(el)
+        for (const el of document.querySelectorAll('[data-reveal], [data-counter]')) {
+          observer.observe(el)
         }
       })()
     </script>

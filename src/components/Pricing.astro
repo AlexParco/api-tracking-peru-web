@@ -1,0 +1,202 @@
+---
+import { PLANS, INCLUDED_IN_ALL, annualSaving, planLink } from '../data/plans.ts'
+import { PUBLISHED_CARRIERS, METRICS } from '../data/api.ts'
+
+const tracking = PUBLISHED_CARRIERS.filter((c) => c.tracking.status === 'ok').length
+const withCatalog = PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok').length
+
+---
+
+<section id="precios" class="scroll-mt-20 border-t border-line py-24">
+  <div class="mx-auto max-w-6xl px-6">
+    <h2
+      class="max-w-2xl text-balance font-display text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl"
+      data-reveal
+    >
+      Una key, un plan, sin sorpresas
+    </h2>
+    <p class="mt-4 max-w-2xl text-pretty leading-relaxed text-zinc-400" data-reveal style="--step: 1">
+      Los cuatro llegan a los mismos endpoints y a los mismos carriers. Lo que cambia es
+      cuántos envíos puedes tener vigilados a la vez —ese es el medidor— y cómo te
+      respondemos cuando algo se rompe.
+    </p>
+
+    {/* Una línea, no un recuadro con tres párrafos.
+
+        Antes había una banda que explicaba que el fin de la beta es «un hito
+        medible, no cuando esté completo» y cómo funciona el conteo de cuota. Las
+        dos son razonamiento interno: la primera es una nota sobre cómo tomamos
+        la decisión, y la segunda es documentación —vive en `/docs#errores`, que
+        es donde alguien la busca cuando le importa—.
+
+        De todo eso, lo único que le cambia algo a quien está mirando precios es
+        que el suyo queda fijo. Eso es lo que queda. */}
+    <p
+      class="mt-8 flex flex-wrap items-baseline gap-x-2 text-sm text-zinc-400"
+      data-reveal
+      style="--step: 2"
+    >
+      <span class="rounded-full border border-brand/30 px-2 py-0.5 font-mono text-[11px] text-brand">
+        beta
+      </span>
+      <span class="text-pretty">
+        El precio que tomes ahora te queda fijo, también cuando salgamos de beta.
+      </span>
+    </p>
+
+    <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {
+        PLANS.map((p, i) => {
+          const saving = annualSaving(p)
+          return (
+            <div
+              class:list={[
+                'card flex flex-col rounded-2xl border p-6',
+                p.featured ? 'border-brand/35 bg-brand/[0.03]' : 'border-line bg-ink-soft',
+              ]}
+              data-reveal
+              style={`--step: ${i}`}
+            >
+              <div class="flex items-baseline justify-between gap-3">
+                <h3 class="font-display text-lg font-semibold text-zinc-50">{p.name}</h3>
+                {p.featured && (
+                  <span class="rounded-full border border-brand/30 px-2 py-0.5 font-mono text-[10px] text-brand">
+                    recomendado
+                  </span>
+                )}
+              </div>
+
+              {/* Los dos precios a la vista, sin conmutador mensual/anual. Ese
+                  botón esconde la mitad de la información detrás de un clic y no
+                  funciona sin JavaScript; aquí quien quiere comparar ya los tiene. */}
+              <p class="mt-4 flex items-baseline gap-1.5">
+                {p.free ? (
+                  <>
+                    <span class="font-mono text-sm text-zinc-500">S/</span>
+                    <span class="font-display text-4xl font-semibold tabular-nums text-zinc-50">0</span>
+                    <span class="text-sm text-zinc-500">para siempre</span>
+                  </>
+                ) : p.monthly !== null ? (
+                  <>
+                    <span class="font-mono text-sm text-zinc-500">S/</span>
+                    <span class="font-display text-4xl font-semibold tabular-nums text-zinc-50">
+                      {p.monthly}
+                    </span>
+                    <span class="text-sm text-zinc-500">al mes</span>
+                  </>
+                ) : (
+                  <span class="font-display text-4xl font-semibold text-zinc-50">A convenir</span>
+                )}
+              </p>
+
+              {/* En los planes con precio, aquí va el anual. En el de a medida iba
+                  «según tu volumen», y entre el nombre («A medida») y el precio
+                  («A convenir») quedaban tres formas seguidas de decir lo mismo.
+                  La línea se deja vacía y conserva su alto, que es lo único que
+                  hacía falta para que las tres tarjetas alineen. */}
+              <p class="mt-1.5 min-h-[1.25rem] text-sm text-zinc-500">
+                {p.free && <span class="text-zinc-600">sin tarjeta, no vence</span>}
+                {!p.free && p.annual !== null && saving && (
+                  <>
+                    o <span class="tabular-nums text-zinc-300">S/ {p.annual}</span> al año —{' '}
+                    <span class="text-brand/80">{saving.months} meses gratis</span>
+                  </>
+                )}
+              </p>
+
+              <p class="mt-4 min-h-[2.5rem] text-pretty text-sm leading-relaxed text-zinc-400">
+                {p.summary}
+              </p>
+
+              {/* Las cuatro filas van en el mismo orden y con la misma altura en
+                  las tres tarjetas, así que se comparan en horizontal sin una
+                  tabla — que en un teléfono habría que scrollear de costado. */}
+              <dl class="mt-5 divide-y divide-line/70 border-y border-line/70 text-sm">
+                {[
+                  ['Webhooks activos', p.webhooksLabel ?? p.webhooks, 'negociado'],
+                  ['Requests por minuto', p.rpm, 'negociado'],
+                  ['Consultas de rastreo', p.queries, null],
+                  ['Soporte', p.support, null],
+                ].map(([label, value, fallback]) => (
+                  <div class="flex items-baseline justify-between gap-3 py-2.5">
+                    <dt class="shrink-0 text-zinc-500">{label}</dt>
+                    <dd
+                      class:list={[
+                        'text-right font-mono tabular-nums',
+                        value === null ? 'text-xs text-zinc-500' : 'text-zinc-100',
+                      ]}
+                    >
+                      {value === null ? fallback : value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+
+              <a
+                href={planLink(p)}
+                class:list={[
+                  'btn mt-6 rounded-lg px-5 py-2.5 text-center font-medium',
+                  p.featured
+                    ? 'bg-brand text-ink hover:bg-white'
+                    : 'border border-line text-zinc-300 hover:border-zinc-600 hover:text-zinc-100',
+                ]}
+              >
+                {p.free ? 'Empezar gratis' : p.monthly !== null ? 'Pedir esta key' : 'Conversemos'}
+              </a>
+            </div>
+          )
+        })
+      }
+    </div>
+
+    <div class="mt-10 grid gap-8 lg:grid-cols-[1.1fr_1fr]" data-reveal>
+      <div>
+        <h3 class="text-sm font-medium text-zinc-300">Los tres incluyen</h3>
+        <ul class="mt-4 space-y-2.5">
+          {
+            INCLUDED_IN_ALL.map((x) => (
+              <li class="flex gap-3 text-sm leading-relaxed text-zinc-400">
+                <span class="mt-1.5 size-1.5 shrink-0 rounded-full bg-brand" aria-hidden="true" />
+                <span class="text-pretty">{x}</span>
+              </li>
+            ))
+          }
+        </ul>
+        <p class="mt-4 max-w-xl text-pretty text-xs leading-relaxed text-zinc-600">
+          Hoy eso son {tracking} couriers con rastreo operativo y {withCatalog} catálogos de
+          agencias ({METRICS.agenciesSynced} puntos sincronizados). Los que faltan entran a
+          tu key sin que pagues de nuevo.
+        </p>
+      </div>
+
+      <div class="space-y-4">
+        {/* El RPM se explica, no se lista y ya. Un número al lado de un precio se
+            lee como cuota comprada; éste no lo es, y confundirlo hace que alguien
+            pague el plan caro esperando el doble de consultas al mes. */}
+        <div class="rounded-xl border border-line bg-ink-soft p-5">
+          <p class="text-sm font-medium text-zinc-200">El límite por minuto es un guardarraíl</p>
+          <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-500">
+            No es una cuota que compras: está para que un bucle mal escrito no tumbe el
+            servicio para el resto. Nadie sube de plan por el RPM — se sube por cuántos
+            envíos puede vigilar a la vez, que es lo que de verdad se mide.
+          </p>
+        </div>
+
+        {/* El estado real del cobro. Va aquí y no en letra chica: alguien que ve
+            tres precios asume que hay un checkout, y todavía no lo hay.
+            Descubrirlo al hacer clic es peor que leerlo antes. */}
+        <div class="rounded-xl border border-partial/25 bg-partial/[0.04] p-5">
+          <p class="font-mono text-xs text-[var(--color-partial)]">cómo se paga hoy</p>
+          <p class="mt-2.5 text-pretty text-sm leading-relaxed text-zinc-400">
+            El pago automático todavía no está montado. Hoy escribes, coordinamos el pago y
+            te emitimos la key el mismo día — sin formulario y sin tarjeta guardada.
+          </p>
+          <p class="mt-2.5 text-pretty text-sm leading-relaxed text-zinc-500">
+            Los botones abren un correo con el plan ya puesto en el asunto. Cuando el link
+            de pago esté, el mismo botón lleva al checkout y la key se emite sola.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

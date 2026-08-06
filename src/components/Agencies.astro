@@ -1,0 +1,508 @@
+---
+/* El buscador de agencies.
+ *
+ * Tiene DOS modos y el mismo código para los dos:
+ *
+ * - Sin `PUBLIC_API_URL` → filtra en el navegador sobre los datos de ejemplo
+ *   que van en el HTML. Es where estamos hoy: el API no está desplegado.
+ * - Con `PUBLIC_API_URL` → consulta `GET /v1/agencies` de verdad.
+ *
+ * Pasar de uno a otro es una variable de entorno, no una reescritura.
+ *
+ * SIN JAVASCRIPT LA SECCIÓN SIGUE SIRVIENDO. La list se renderiza entera en el
+ * HTML y el script solo la filtra escondiendo `<li>`. Es la regla 2 de
+ * `global.css` aplicada a algo que normalmente la rompe: un buscador que sin JS
+ * es una box vacía no muestra nada, este muestra el catálogo completo.
+ *
+ * ── Sobre la autenticación ────────────────────────────────────────────────
+ * El componente consulta SIN key, a propósito. Una key en una página pública
+ * está publicada: viaja en el bundle, se lee con Ctrl+U y cualquiera la usa con
+ * tu cupo. No hay forma de esconderla en el navegador.
+ *
+ * Entonces el modo vivo necesita del backend, antes de encenderse:
+ *   1. una lectura ANÓNIMA de `/v1/agencies`, con cupo por IP;
+ *   2. CORS isOpen al origen de la landing;
+ *   3. el API desplegado en un host público.
+ * Mientras alguna falte, dejar `PUBLIC_API_URL` sin definir y queda en ejemplo.
+ */
+
+import { MOCK_AGENCIES } from '../data/agencies-mock.ts'
+import { PUBLISHED_CARRIERS } from '../data/api.ts'
+
+const API = import.meta.env.PUBLIC_API_URL ?? ''
+const isLive = API !== ''
+
+// Solo los carriers que de verdad publican catálogo. Ofrecer un filtro por un
+// courier que no tiene agencies es prometer un resultado vacío.
+const withCatalog = PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok')
+
+const nameOf = new Map(PUBLISHED_CARRIERS.map((c) => [c.id, c.name]))
+
+/**
+ * Todo lo que el filtro mira, junto y en minúsculas, calculado en build.
+ *
+ * El carrier va adentro —su id Y su nombre legible— porque se muestra en cada
+ * card: escribir «olva» y no obtener nada mientras la palabra está en
+ * pantalla se lee como que el buscador está roto, no como que buscaba otra cosa.
+ * Lo que se ve, se busca.
+ */
+const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
+  [
+    a.carrier,
+    nameOf.get(a.carrier),
+    a.name,
+    a.location.address,
+    a.location.district,
+    a.location.province,
+    a.location.department,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+---
+
+<section id="agencias" class="scroll-mt-20 border-t border-line py-24">
+  <div class="mx-auto max-w-6xl px-6">
+    <h2
+      class="max-w-2xl text-balance font-display text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl"
+      data-reveal
+    >
+      Busca una agencia
+    </h2>
+    <p
+      class="mt-4 max-w-2xl text-pretty leading-relaxed text-zinc-400"
+      data-reveal
+      style="--step: 1"
+    >
+      El mismo <code class="font-mono text-sm text-zinc-300">GET /v1/agencies</code> que
+      usarías tú, contra los catálogos de los couriers que publican uno. Cada resultado
+      dice de dónde salió su ubigeo — y cuándo no lo pudimos resolver.
+    </p>
+
+    {
+      !isLive && (
+        <p
+          class="mt-6 flex max-w-2xl flex-wrap items-baseline gap-x-2 rounded-lg border border-partial/25 bg-partial/[0.04] px-4 py-3 text-sm leading-relaxed text-zinc-400"
+          data-reveal
+          style="--step: 2"
+        >
+          <span class="font-mono text-xs text-[var(--color-partial)]">datos de ejemplo</span>
+          <span class="text-pretty">
+            El API todavía no está desplegado, así que estas {MOCK_AGENCIES.length} agencias son ficticias y
+            están para probar el buscador. No son el catálogo.
+          </span>
+        </p>
+      )
+    }
+
+    <div class="mt-8 flex flex-col gap-3 sm:flex-row" data-reveal style="--step: 3">
+      <div class="flex-1">
+        <label for="agencias-q" class="sr-only">Buscar por distrito, dirección o nombre</label>
+        <input
+          id="agencias-q"
+          type="search"
+          autocomplete="off"
+          placeholder="Distrito, dirección o nombre…"
+          data-query
+          class="w-full rounded-lg border border-line bg-ink-soft px-4 py-2.5 text-zinc-100 placeholder:text-zinc-600 focus:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/30"
+        />
+      </div>
+      <div>
+        {/* Un menú propio y no un `<select>`. El desplegable nativo lo dibuja el
+            sistema operativo: ignora el tema de la página, no acepta CSS y en
+            macOS aparece con fondo claro sobre un sitio oscuro.
+
+            El precio de reemplazarlo es tener que reimplementar el teclado, así
+            que está entero: flechas, Inicio/Fin, Enter, Espacio y Escape, con
+            `combobox`/`listbox` para que un lector de pantalla lo anuncie como
+            lo que es. El valor vive en un input oculto, así que el filtro de
+            abajo sigue leyendo `.value` y escuchando `change` sin enterarse. */}
+        <div class="relative w-full sm:w-56" data-dropdown>
+          <span id="agencias-carrier-label" class="sr-only">Filtrar por courier</span>
+          <input type="hidden" data-carrier value="" />
+
+          <button
+            type="button"
+            id="agencias-carrier"
+            role="combobox"
+            aria-haspopup="listbox"
+            aria-expanded="false"
+            aria-controls="agencias-carrier-menu"
+            aria-labelledby="agencias-carrier-label agencias-carrier"
+            data-dropdown-button
+            class="flex w-full items-center justify-between gap-2 rounded-lg border border-line bg-ink-soft px-4 py-2.5 text-left text-zinc-100 transition-colors hover:border-zinc-600 focus:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/30"
+          >
+            <span class="truncate" data-dropdown-label>Todos los couriers</span>
+            <svg
+              class="size-4 shrink-0 text-zinc-500 transition-transform duration-200"
+              data-dropdown-chevron
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+
+          <ul
+            id="agencias-carrier-menu"
+            role="listbox"
+            aria-labelledby="agencias-carrier-label"
+            tabindex="-1"
+            data-dropdown-menu
+            hidden
+            class="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-line bg-ink-soft p-1.5 shadow-2xl shadow-black/60"
+          >
+            {[{ id: '', name: 'Todos los couriers' }, ...withCatalog].map((c, i) => (
+              <li
+                role="option"
+                aria-selected={i === 0 ? 'true' : 'false'}
+                data-value={c.id}
+                data-dropdown-option
+                class="flex cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-zinc-300"
+              >
+                <span class="truncate">{c.name}</span>
+                <svg
+                  class="size-4 shrink-0 text-brand opacity-0"
+                  data-dropdown-check
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  aria-hidden="true"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                </svg>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    {/* `polite` y no `assertive`: el conteo cambia en cada tecla y un lector de
+        pantalla que interrumpa en cada una vuelve la caja inusable. */}
+    <p class="mt-4 font-mono text-xs text-zinc-600" data-status aria-live="polite">
+      {isLive ? 'consultando…' : `${MOCK_AGENCIES.length} agencias`}
+    </p>
+
+    {/* En vivo NO se sirven los datos de ejemplo. Si se sirvieran, el banner que
+        los delata no está —está atado a `!isLive`— y cualquier fallo del API los
+        dejaría a la vista presentados como el catálogo. Un buscador vacío que
+        dice por qué está vacío es honesto; uno lleno de agencias ficticias sin
+        avisar, no. */}
+    {/* Cada card lleva su borde, en vez del truco de `gap-px` sobre un
+        contenedor teñido. Ese truco dibuja los separadores gratis, pero cuando
+        la cantidad de resultados es impar la celda que sobra queda pintada con
+        el color del contenedor y se ve como una card vacía. En una grilla
+        fija da igual; en una que cambia con cada tecla, no. */}
+    <ul class="mt-4 grid items-start gap-3 sm:grid-cols-2" data-list>
+      {
+        (isLive ? [] : MOCK_AGENCIES).map((a) => (
+          <li
+            class="rounded-xl border border-line bg-ink-soft p-4"
+            data-item
+            data-carrier-id={a.carrier}
+            data-search={indexOf(a)}
+          >
+            <p class="flex flex-wrap items-baseline gap-x-2">
+              <span class="font-mono text-xs text-brand/80">{a.carrier}</span>
+              <span class="font-medium text-zinc-100">{a.name}</span>
+            </p>
+            <p class="mt-1 text-sm leading-relaxed text-zinc-500">{a.location.address}</p>
+            <p class="mt-1.5 text-sm text-zinc-600">
+              {[a.location.district, a.location.province, a.location.department]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+
+            {/* El ubigeo y su procedencia van juntos siempre. El código solo no
+                dice nada: `carrier` lo declaró el courier, `matched` lo
+                resolvimos por texto y puede estar mal. */}
+            <p class="mt-2 font-mono text-xs">
+              {a.location.ubigeo ? (
+                <span class="text-zinc-500">
+                  ubigeo {a.location.ubigeo}
+                  <span class="text-zinc-700"> · {a.ubigeo_source}</span>
+                </span>
+              ) : (
+                <span class="text-[var(--color-partial)]">sin ubigeo · ubicación sin resolver</span>
+              )}
+            </p>
+          </li>
+        ))
+      }
+    </ul>
+
+    {/* Se sirve oculto y el script lo muestra: es el único estado que no puede
+        estar en el HTML inicial, porque al cargar nunca hay «cero resultados». */}
+    <p class="mt-6 text-sm leading-relaxed text-zinc-500" data-empty hidden>
+      Ninguna agencia coincide. Prueba con el distrito solo, o quita el filtro de courier.
+    </p>
+    <p class="mt-6 text-sm leading-relaxed text-[var(--color-partial)]" data-error hidden></p>
+
+    {/* Un buscador es lo único de esta página que no puede funcionar sin JS. En
+        vez de dejar una caja muerta, se ofrece la consulta que hace el buscador
+        —que además es la que el visitante va a escribir en su código. */}
+    {
+      isLive && (
+        <noscript>
+          <p class="mt-6 max-w-2xl text-pretty text-sm leading-relaxed text-zinc-500">
+            El buscador necesita JavaScript. La misma consulta, sin él:
+            <code class="mt-2 block overflow-x-auto rounded-lg border border-line bg-ink-soft p-3 font-mono text-xs text-zinc-300">
+              curl "{API}/v1/agencies?carrier=olva&q=miraflores"
+            </code>
+          </p>
+        </noscript>
+      )
+    }
+  </div>
+</section>
+
+<script is:inline define:vars={{ API }}>
+  ;(() => {
+    // `'agencias'` con A: es el id del `<section>`, que es un ancla de la URL y
+    // parte de la superficie pública — no un identificador de código. El refactor
+    // a inglés lo tradujo acá y dejó de coincidir con el HTML, así que `seccion`
+    // daba null y el `return` de abajo apagaba TODA la sección: el buscador
+    // también, no solo el desplegable.
+    const seccion = document.getElementById('agencias')
+    if (!seccion) return
+
+    const q = seccion.querySelector('[data-query]')
+    const carrier = seccion.querySelector('[data-carrier]')
+
+    // ── El desplegable propio ──
+    // Escribe en el input oculto y dispara `change`, así que el filtro de abajo
+    // no sabe que dejó de existir un `<select>`.
+    ;(() => {
+      const root = seccion.querySelector('[data-dropdown]')
+      if (!root) return
+      const button = root.querySelector('[data-dropdown-button]')
+      const menu = root.querySelector('[data-dropdown-menu]')
+      const label = root.querySelector('[data-dropdown-label]')
+      const chevron = root.querySelector('[data-dropdown-chevron]')
+      const options = [...root.querySelectorAll('[data-dropdown-option]')]
+      let active = 0
+      let open = false
+
+      const paint = () => {
+        options.forEach((o, i) => {
+          const selected = o.getAttribute('aria-selected') === 'true'
+          o.querySelector('[data-dropdown-check]').classList.toggle('opacity-0', !selected)
+          // El resaltado sigue al teclado, no al ratón: si sólo respondiera al
+          // hover, al bajar con las flechas no se vería dónde estás parado.
+          o.classList.toggle('bg-white/[0.06]', i === active)
+          o.classList.toggle('text-zinc-100', i === active || selected)
+          if (i === active) o.id = 'agencias-carrier-activa'
+          else o.removeAttribute('id')
+        })
+        // Se quita en vez de dejarlo vacío: un `aria-activedescendant=""` apunta
+        // a un elemento que no existe y algunos lectores lo reportan como error.
+        if (open) button.setAttribute('aria-activedescendant', 'agencias-carrier-activa')
+        else button.removeAttribute('aria-activedescendant')
+      }
+
+      const show = () => {
+        open = true
+        menu.hidden = false
+        button.setAttribute('aria-expanded', 'true')
+        chevron.classList.add('rotate-180')
+        active = Math.max(0, options.findIndex((o) => o.getAttribute('aria-selected') === 'true'))
+        paint()
+      }
+
+      const hide = (focus) => {
+        open = false
+        menu.hidden = true
+        button.setAttribute('aria-expanded', 'false')
+        chevron.classList.remove('rotate-180')
+        paint()
+        if (focus) button.focus()
+      }
+
+      const choose = (i) => {
+        options.forEach((o, j) => o.setAttribute('aria-selected', String(i === j)))
+        label.textContent = options[i].querySelector('span').textContent
+        carrier.value = options[i].dataset.value
+        active = i
+        hide(true)
+        // El filtro escucha `change`, igual que con el `<select>`.
+        carrier.dispatchEvent(new Event('change'))
+      }
+
+      const move = (step) => {
+        active = (active + step + options.length) % options.length
+        paint()
+        options[active].scrollIntoView({ block: 'nearest' })
+      }
+
+      button.addEventListener('click', () => (open ? hide(false) : show()))
+
+      button.addEventListener('keydown', (e) => {
+        if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) {
+          e.preventDefault()
+          if (!open) return show()
+          if (e.key === 'ArrowDown') return move(1)
+          if (e.key === 'ArrowUp') return move(-1)
+          return choose(active)
+        }
+        if (e.key === 'Escape' && open) {
+          e.preventDefault()
+          hide(true)
+        }
+        if (e.key === 'Home' && open) {
+          e.preventDefault()
+          active = 0
+          paint()
+        }
+        if (e.key === 'End' && open) {
+          e.preventDefault()
+          active = options.length - 1
+          paint()
+        }
+      })
+
+      options.forEach((o, i) => {
+        o.addEventListener('click', () => choose(i))
+        o.addEventListener('mousemove', () => {
+          if (active !== i) {
+            active = i
+            paint()
+          }
+        })
+      })
+
+      // Un clic afuera cierra. Se escucha en captura para llegar antes de que
+      // otro manejador detenga la propagación.
+      document.addEventListener(
+        'pointerdown',
+        (e) => {
+          if (open && !root.contains(e.target)) hide(false)
+        },
+        true,
+      )
+
+      paint()
+    })()
+    const list = seccion.querySelector('[data-list]')
+    const estado = seccion.querySelector('[data-status]')
+    const empty = seccion.querySelector('[data-empty]')
+    const error = seccion.querySelector('[data-error]')
+    if (!q || !carrier || !list) return
+
+    const rows = [...list.querySelectorAll('[data-item]')]
+
+    // `total` es cuántas hay; `mostradas` cuántas se ven. En vivo se pide una
+    // página de 20 sobre catálogos de cientos, así que decir solo el total sería
+    // anunciar 417 agencies con veinte en pantalla.
+    const count = (mostradas, total = mostradas) => {
+      const n = total === 1 ? '1 agencia' : `${total} agencies`
+      estado.textContent = total > mostradas ? `${n} · mostrando ${mostradas}` : n
+      empty.toggleAttribute('hidden', mostradas !== 0)
+    }
+
+    // ── Modo ejemplo: filtra las rows que ya están en el HTML ──
+    const filterLocal = () => {
+      const query = q.value.trim().toLowerCase()
+      const cual = carrier.value
+      let matches = 0
+      for (const row of rows) {
+        const pasa =
+          (!cual || row.dataset.carrierId === cual) &&
+          (!query || row.dataset.search.includes(query))
+        row.toggleAttribute('hidden', !pasa)
+        if (pasa) matches++
+      }
+      count(matches)
+    }
+
+    // ── Modo vivo: consulta el API ──
+    let inFlight = null
+
+    const escapeHtml = (s) =>
+      String(s ?? '').replace(
+        /[&<>"']/g,
+        (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+      )
+
+    const paint = (agencies) => {
+      // Se arma con `escapeHtml()` en cada campo y no con `textContent` por nodo
+      // porque el nombre y la dirección vienen del courier, no de nosotros: son
+      // texto ajeno entrando al DOM y hay exactamente una forma de que eso sea
+      // seguro.
+      list.innerHTML = agencies
+        .map((a) => {
+          const l = a.location ?? {}
+          const where = [l.district, l.province, l.department].filter(Boolean).join(' · ')
+          const ubigeo = l.ubigeo
+            ? `<span class="text-zinc-500">ubigeo ${escapeHtml(l.ubigeo)}<span class="text-zinc-700"> · ${escapeHtml(a.ubigeo_source)}</span></span>`
+            : '<span class="text-[var(--color-partial)]">sin ubigeo · ubicación sin resolver</span>'
+          return `<li class="rounded-xl border border-line bg-ink-soft p-4">
+            <p class="flex flex-wrap items-baseline gap-x-2">
+              <span class="font-mono text-xs text-brand/80">${escapeHtml(a.carrier)}</span>
+              <span class="font-medium text-zinc-100">${escapeHtml(a.name)}</span>
+            </p>
+            <p class="mt-1 text-sm leading-relaxed text-zinc-500">${escapeHtml(l.address)}</p>
+            <p class="mt-1.5 text-sm text-zinc-600">${escapeHtml(where)}</p>
+            <p class="mt-2 font-mono text-xs">${ubigeo}</p>
+          </li>`
+        })
+        .join('')
+    }
+
+    const query = async () => {
+      // Se cancela la anterior: sin esto, una respuesta lenta de hace tres
+      // teclas puede llegar después de la current y pisar los resultados buenos.
+      inFlight?.abort()
+      inFlight = new AbortController()
+
+      const url = new URL('/v1/agencies', API)
+      if (q.value.trim()) url.searchParams.set('q', q.value.trim())
+      if (carrier.value) url.searchParams.set('carrier', carrier.value)
+      url.searchParams.set('per_page', '20')
+
+      try {
+        const r = await fetch(url, { signal: inFlight.signal, headers: { Accept: 'application/json' } })
+        if (!r.ok) throw new Error(`el API respondió ${r.status}`)
+        const datos = await r.json()
+        const agencies = datos.agencies ?? []
+        paint(agencies)
+        count(agencies.length, datos.pagination?.total ?? agencies.length)
+        error.hidden = true
+      } catch (e) {
+        if (e.name === 'AbortError') return
+        // La list se vacía antes de mostrar el error: dejar los resultados de
+        // la consulta anterior debajo de un mensaje de fallo los presenta como
+        // la respuesta a lo que se acaba de escribir.
+        list.innerHTML = ''
+        empty.hidden = true
+        estado.textContent = ''
+        // Y se dice qué pasó. Una box vacía sin explicación se lee como «no hay
+        // agencies», que es una respuesta distinta y falsa.
+        error.textContent = `No se pudo query el catálogo: ${e.message}.`
+        error.hidden = false
+      }
+    }
+
+    const search = API ? query : filterLocal
+
+    // 220 ms: sin esto el modo vivo dispara un request por tecla. En modo
+    // ejemplo no haría falta, pero se comparte para que el comportamiento que
+    // pruebas sea el que se publica.
+    let timer = 0
+    const schedule = () => {
+      clearTimeout(timer)
+      timer = setTimeout(search, 220)
+    }
+
+    q.addEventListener('input', schedule)
+    carrier.addEventListener('change', search)
+
+    // En modo vivo la list del HTML son los datos de ejemplo: hay que
+    // reemplazarla por lo que conteste el API antes de que nadie la lea.
+    if (API) search()
+  })()
+</script>
