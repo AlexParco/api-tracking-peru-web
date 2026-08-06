@@ -10,7 +10,20 @@ interface Props {
 const { title, code, tone = 'zinc' } = Astro.props
 ---
 
-<div class="overflow-hidden rounded-xl border border-line bg-ink-soft">
+{/* `min-w-0` no es decorativo: sin él este bloque desborda la página entera en
+    móvil.
+
+    Un ítem de grid o de flex tiene `min-width: auto`, que se resuelve a su
+    ANCHO DE CONTENIDO MÍNIMO. Para un `<pre>` eso es su línea más larga sin
+    cortar —acá, una URL de curl de ~82 caracteres—, así que el ítem se niega a
+    bajar de ~655 px y estira la columna, el contenedor y el `<body>` con él. El
+    `overflow-x-auto` de más abajo no lo salva: scrollea el interior, pero la
+    caja de afuera ya se agrandó.
+
+    Medido en Chrome a 390 px: la portada armaba un documento de 635 px, con el
+    scroll horizontal que eso implica. Con `min-w-0` el mínimo pasa a cero, la
+    columna se ajusta a lo disponible y la línea larga scrollea donde debe. */}
+<div class="min-w-0 overflow-hidden rounded-xl border border-line bg-ink-soft">
   {
     title && (
       <div class="flex items-center gap-2 border-b border-line px-4 py-2.5">

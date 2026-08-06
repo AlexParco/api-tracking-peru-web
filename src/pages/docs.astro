@@ -321,7 +321,13 @@ const GAPS = [
               <span class:list={['font-mono text-xs font-semibold', methodClass[e.method]]}>
                 {e.method}
               </span>
-              <code class="font-mono text-base text-zinc-50">{e.path}</code>
+              {/* `overflow-wrap: anywhere` y no `break-all`: el segundo parte en
+                  cada final de línea aunque sobre espacio, y deja rutas cortadas
+                  a la mitad sin motivo. `anywhere` sólo interviene cuando la
+                  ruta de verdad no entra — que a 320 px pasa con
+                  `/v1/tracking/{carrier}/{number}`, de 298 px contra 272
+                  disponibles. */}
+              <code class="font-mono text-base text-zinc-50 [overflow-wrap:anywhere]">{e.path}</code>
             </h3>
             <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">{e.summary}</p>
 
@@ -357,7 +363,11 @@ const GAPS = [
             JOURNEY.map((h, i) => (
               <li class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span class="w-5 shrink-0 font-mono text-xs text-zinc-700">{i + 1}</span>
-                <span class="flex flex-wrap items-baseline gap-x-2">
+                {/* `min-w-0`: sin él este grupo es un ítem flex con
+                    `min-width: auto`, o sea que se niega a bajar del ancho de
+                    su estado más largo («available_for_pickup»), y a 390 px eso
+                    empujaba el documento entero a 434 px. */}
+                <span class="flex min-w-0 flex-wrap items-baseline gap-x-2">
                   {h.states.map((s, j) => (
                     <>
                       {j > 0 && <span class="font-mono text-xs text-zinc-600">o</span>}
@@ -365,7 +375,19 @@ const GAPS = [
                     </>
                   ))}
                 </span>
-                <span class="min-w-0 flex-1 text-pretty text-sm leading-relaxed text-zinc-500">
+                {/* `basis-40` en vez de `min-w-0`, y es lo que arregla el scroll
+                    horizontal de /docs.
+
+                    Con `flex-1` la base es 0, así que el título SIEMPRE «cabe»
+                    en la línea que quede y nunca baja a una propia: en un
+                    teléfono los estados ocupaban 326 de 342 px y el título se
+                    comprimía a 4 px, con su texto desbordando hasta 410 y
+                    arrastrando el documento a 434.
+
+                    Con una base de 10rem, cuando no queda ese espacio el
+                    título se va a la línea siguiente y ahí la usa entera. En
+                    pantalla ancha sigue en la misma línea, como antes. */}
+                <span class="flex-1 basis-40 text-pretty text-sm leading-relaxed text-zinc-500">
                   {h.title}
                 </span>
               </li>

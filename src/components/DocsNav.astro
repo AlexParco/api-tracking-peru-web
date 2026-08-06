@@ -25,7 +25,10 @@ import Logo from './Logo.astro'
           <Logo size={15} />
         </span>
         <span class="truncate">API Tracking <span class="text-zinc-500">Perú</span></span>
-        <span class="flex-shrink-0 rounded-md bg-brand/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-brand">
+        {/* Oculta en pantallas chicas: es una etiqueta decorativa, y a 390 px
+            los ~38 px que ocupa salen del ancho de la marca o del botón de la
+            acción principal. La barra ya dice `docs` en la URL y en el título. */}
+        <span class="hidden flex-shrink-0 rounded-md bg-brand/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-brand sm:inline-block">
           docs
         </span>
       </a>
@@ -56,7 +59,7 @@ import Logo from './Logo.astro'
       </div>
     </div>
 
-    <div class="flex items-center gap-1 sm:gap-5">
+    <div class="flex min-w-0 items-center gap-1 sm:gap-5">
       <button
         id="docs-search-mobile"
         type="button"

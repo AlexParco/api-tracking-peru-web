@@ -18,13 +18,38 @@ const sections = [
 const inDocs = Astro.url.pathname.startsWith('/docs')
 ---
 
+{/*
+ * ── Por qué hay un menú en móvil ──
+ *
+ * Los enlaces de sección eran `hidden md:flex`: por debajo de 768 px
+ * desaparecían y NO los reemplazaba nada. En un teléfono, la mitad del sitio
+ * quedaba sin forma de llegar salvo scrolleando a ciegas.
+ *
+ * Y de paso la barra desbordaba: logo + «Docs» + «Pedir acceso» miden más que
+ * 390 px, así que la página entera scrolleaba en horizontal (medido: 434 px de
+ * documento en /docs contra 390 de ventana). Se arregla solo al mover los dos
+ * enlaces adentro del menú.
+ *
+ * ── Por qué `<details>` y no un botón con JavaScript ──
+ *
+ * Abre y cierra sin una línea de script, con teclado y con lector de pantalla,
+ * porque el navegador ya sabe hacerlo. Es la regla del sitio —sin JS todo sigue
+ * sirviendo— aplicada a lo que normalmente la rompe. El script de abajo sólo
+ * agrega el cierre por conveniencia; si no corre, el menú sigue funcionando.
+ */}
 <header class="sticky top-0 z-40 border-b border-line/70 bg-ink/80 backdrop-blur">
-  <nav class="mx-auto flex h-14 max-w-6xl items-center justify-between px-6" aria-label="Principal">
-    <a href="/" class="flex items-center gap-2.5 font-semibold tracking-tight text-zinc-100">
+  <nav class="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-6" aria-label="Principal">
+    {/* `min-w-0` + `truncate`: si algo se tiene que achicar es el logotipo, no
+        el botón de la acción principal. En la práctica no se recorta, pero
+        garantiza que ningún ancho de pantalla vuelva a desbordar la barra. */}
+    <a
+      href="/"
+      class="flex min-w-0 items-center gap-2.5 font-semibold tracking-tight text-zinc-100"
+    >
       <span class="grid size-6 shrink-0 place-items-center rounded-md bg-brand text-ink">
         <Logo size={15} />
       </span>
-      API Tracking <span class="text-zinc-500">Perú</span>
+      <span class="truncate">API Tracking <span class="text-zinc-500">Perú</span></span>
     </a>
 
     <div class="hidden items-center gap-7 text-sm text-zinc-400 md:flex">
@@ -44,7 +69,7 @@ const inDocs = Astro.url.pathname.startsWith('/docs')
 
         `aria-current` y no solo el color: quien navega por lectura de pantalla
         también tiene que saber en qué página está. */}
-    <div class="flex items-center gap-2">
+    <div class="hidden items-center gap-2 md:flex">
       <a
         href="/docs"
         aria-current={inDocs ? 'page' : undefined}
@@ -64,5 +89,132 @@ const inDocs = Astro.url.pathname.startsWith('/docs')
         Pedir acceso
       </a>
     </div>
+
+    <details id="menu" class="menu shrink-0 md:hidden">
+      <summary
+        class="grid size-9 cursor-pointer place-items-center rounded-lg border border-line text-zinc-300 transition-colors hover:border-zinc-600 hover:text-zinc-100"
+        aria-label="Menú"
+      >
+        {/* Dos iconos y no uno que se transforma: el estado abierto/cerrado lo
+            resuelve el selector `[open]`, sin animación que mantener. */}
+        <svg class="cerrado size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M4 7h16M4 12h16M4 17h16"></path>
+        </svg>
+        <svg class="abierto size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18"></path>
+        </svg>
+      </summary>
+
+      {/* El panel es `absolute` y no parte del flujo: dentro de una barra
+          `sticky` de altura fija, un panel en flujo la estiraría y empujaría la
+          página al abrirse. */}
+      {/* Fondo OPACO, no translúcido. Con `bg-ink/95` el titular del hero se
+          leía por debajo de los enlaces y el panel parecía un error de
+          renderizado. Un menú que tapa contenido tiene que taparlo: acá la
+          legibilidad gana sobre el efecto de vidrio, que además no se aprecia
+          en una tira de 300 px de alto. */}
+      <div class="panel absolute inset-x-0 top-full border-b border-line bg-ink shadow-xl shadow-black/50">
+        <div class="mx-auto max-w-6xl px-6 py-3">
+          <ul class="divide-y divide-line/60">
+            {
+              sections.map((s) => (
+                <li>
+                  <a
+                    href={toHome(s.anchor)}
+                    class="block py-3 text-sm text-zinc-300 transition-colors hover:text-zinc-100"
+                  >
+                    {s.label}
+                  </a>
+                </li>
+              ))
+            }
+            <li>
+              <a
+                href="/docs"
+                aria-current={inDocs ? 'page' : undefined}
+                class:list={[
+                  'block py-3 text-sm transition-colors',
+                  inDocs ? 'text-brand' : 'text-zinc-300 hover:text-zinc-100',
+                ]}
+              >
+                Documentación
+              </a>
+            </li>
+          </ul>
+
+          {/* La acción principal queda a un toque, no escondida entre los
+              enlaces: es el único elemento con relleno del panel. */}
+          <a
+            href={toHome('#empezar')}
+            class="mt-3 block rounded-lg bg-zinc-100 px-4 py-2.5 text-center text-sm font-medium text-ink transition-colors hover:bg-white"
+          >
+            Pedir acceso
+          </a>
+        </div>
+      </div>
+    </details>
   </nav>
 </header>
+
+<style>
+  /* Sin el marcador por defecto. `::-webkit-details-marker` es para Safari, que
+     ignora `list-style` en el summary. */
+  .menu > summary {
+    list-style: none;
+  }
+  .menu > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* Los dos iconos ocupan la misma celda del grid del summary, así que basta
+     con esconder el que no toca — sin saltos de layout al alternar. */
+  .menu > summary > svg {
+    grid-area: 1 / 1;
+  }
+  .menu:not([open]) > summary > .abierto,
+  .menu[open] > summary > .cerrado {
+    display: none;
+  }
+
+  /* El panel se esconde a mano, sin confiar en que `<details>` lo haga.
+     Chrome moderno oculta el contenido cerrado con `content-visibility: hidden`
+     sobre `::details-content`, y a un hijo `position: absolute` —cuyo bloque
+     contenedor es el `<header>`, no el `<details>`— eso NO lo alcanza: medido
+     cerrado, el panel se seguía pintando, 36×321 px sobre la página.
+     Ser explícito acá cuesta dos líneas y no depende de qué versión de qué
+     navegador implementó cuál parte de la especificación. */
+  .menu:not([open]) .panel {
+    display: none;
+  }
+
+  .menu[open] > summary {
+    border-color: var(--color-zinc-600, #52525b);
+    color: rgb(244 244 245);
+  }
+</style>
+
+<script is:inline>
+  ;(() => {
+    const menu = document.getElementById('menu')
+    if (!menu) return
+
+    // Los enlaces del panel son anclas de ESTA misma página: sin esto el menú
+    // queda abierto tapando justo la sección a la que se acaba de saltar.
+    // `closest` cubre el clic en cualquier hijo del enlace.
+    menu.addEventListener('click', (e) => {
+      if (e.target.closest('a')) menu.removeAttribute('open')
+    })
+
+    // Escape y clic afuera, que es lo que espera cualquiera que abrió un menú.
+    // El `<summary>` se excluye a propósito: si no, el clic que lo cierra por
+    // fuera pelearía con el que lo alterna por dentro.
+    addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') menu.removeAttribute('open')
+    })
+    addEventListener('click', (e) => {
+      if (menu.hasAttribute('open') && !menu.contains(e.target)) {
+        menu.removeAttribute('open')
+      }
+    })
+  })()
+</script>
