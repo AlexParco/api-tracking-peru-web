@@ -1,0 +1,63 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      # Compila el sitio: si Astro no buildea, el deploy no corre.
+      - run: pnpm build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar deploy CLI
+        run: |
+          git clone https://github.com/AlexParco/deploy.git /tmp/deploy-cli
+          cd /tmp/deploy-cli
+          npm install
+          npm run build
+          npm link
+
+      - name: Configurar SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo -e "Host *\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null" > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+
+      - name: Crear archivo de secretos
+        run: |
+          mkdir -p .deploy
+          cat > .deploy/secrets << 'EOF'
+          SERVER_HOST=${{ secrets.SERVER_HOST }}
+          SERVER_PORT=${{ secrets.SERVER_PORT }}
+          SERVER_KEY=~/.ssh/deploy_key
+          EOF
+
+      - name: Deploy
+        run: deploy deploy

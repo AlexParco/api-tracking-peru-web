@@ -1,0 +1,25 @@
+# Deploy de la landing en tracking-peru.com (apex). Mismo VPS y misma CLI que el
+# API (github.com/AlexParco/deploy), corrido desde GitHub Actions.
+#
+# www: la herramienta rutea UN dominio por servicio, así que www.tracking-peru.com
+# se resuelve con una Redirect Rule de Cloudflare (www → apex). Ver el runbook.
+project: tracking-peru-web
+
+server:
+  host: ${SERVER_HOST}
+  user: deploy
+  port: ${SERVER_PORT}
+  key: ${SERVER_KEY}
+
+services:
+  web:
+    build: .
+    dockerfile: Dockerfile
+    port: 80
+    domain: tracking-peru.com
+    healthcheck: / # nginx sirve index.html → 200
+    startup_timeout: 30
+
+proxy:
+  ssl: true
+  email: alexparco16@gmail.com
