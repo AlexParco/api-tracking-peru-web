@@ -41,9 +41,16 @@ import { MOCK_AGENCIES } from '../data/agencies-mock.ts'
    No se corrige el dato ajeno ni se recorta el nombre —los dos se muestran tal
    como los publica el courier—: sólo se omite la línea que repetiría algo que ya
    está a la vista. Se compara sin distinguir mayúsculas ni espacios de más,
-   porque la repetición no siempre es carácter por carácter. */
+   porque la repetición no siempre es carácter por carácter.
+
+   NO lleva `export`. Astro sube los `export` del frontmatter al ámbito del
+   módulo, mientras que los `const` normales viven dentro de la función de
+   render — así que un ayudante exportado no ve a uno que no lo está, y esto
+   reventaba con «norm is not defined» al renderizar. Sin `export` las dos
+   quedan en el mismo ámbito, que además es lo correcto: sólo las usa este
+   componente. */
 const norm = (x: string) => (x ?? '').toUpperCase().replace(/\s+/g, ' ').trim()
-export const repeats = (name: string, address: string) => {
+const repeats = (name: string, address: string) => {
   const a = norm(address)
   return a.length > 0 && norm(name).includes(a)
 }
