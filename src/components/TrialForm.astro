@@ -214,6 +214,14 @@ const MAIL = 'hola@tracking-peru.com'
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: value, name: name.value.trim() }),
+          // Sin tope, una respuesta que nunca llega deja el botón bloqueado y
+          // «Enviando…» para siempre: el visitante no puede reintentar ni sabe
+          // que algo falló. Quince segundos son de sobra para un alta que sólo
+          // escribe una fila. `?.` porque en un navegador sin
+          // `AbortSignal.timeout` el valor queda en undefined, que es
+          // exactamente «sin señal» — degrada al comportamiento anterior en vez
+          // de romper el envío.
+          signal: AbortSignal.timeout?.(15000),
         })
         // Una cuenta por correo: el alta rechaza el segundo intento.
         if (r.status === 409) {
@@ -228,11 +236,33 @@ const MAIL = 'hola@tracking-peru.com'
         }
         // El alta tiene límite por IP. Sin este caso quedaba en el `catch` como
         // «el servidor respondió 429», que suena a que el sitio se rompió.
+        //
+        // `Retry-After` es parte del contrato del API y está en su lista de
+        // cabeceras expuestas por CORS, así que acá SÍ se puede leer: sin eso,
+        // «espera un momento» obliga a adivinar si son diez segundos o diez
+        // minutos.
         if (r.status === 429) {
-          say('Demasiados intentos desde tu conexión. Espera un momento y vuelve a probar.', false)
+          const espera = Number(r.headers.get('Retry-After'))
+          // Con singular. `Retry-After: 60` decía «1 minutos» y `1`, «1
+          // segundos» — el redondeo a minutos hace que el caso de uno no sea
+          // raro, es el más probable apenas pasa el minuto.
+          const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`
+          const cuanto = Number.isFinite(espera) && espera > 0
+            ? `Vuelve a probar en ${espera < 60 ? plural(espera, 'segundo', 'segundos') : plural(Math.ceil(espera / 60), 'minuto', 'minutos')}.`
+            : 'Espera un momento y vuelve a probar.'
+          say(`Demasiados intentos desde tu conexión. ${cuanto}`, false)
           return
         }
-        if (!r.ok) throw new Error(`el servidor respondió ${r.status}`)
+
+        if (!r.ok) {
+          /* El API devuelve `{ error: { code, message, request_id } }` y también
+             manda el id en `X-Request-ID`. Se pasa al mensaje porque es lo que
+             hace que escribirnos sirva de algo: con ese id el error se busca en
+             los logs, sin él sólo queda «no me anduvo ayer». */
+          const cuerpo = await r.json().catch(() => null)
+          const id = cuerpo?.error?.request_id ?? r.headers.get('X-Request-ID')
+          throw new Error(id ? `error ${r.status}, referencia ${id}` : `el servidor respondió ${r.status}`)
+        }
 
         const data = await r.json().catch(() => ({}))
         // `api_key`, tal como lo declara `freeResponse` en el backend.
@@ -259,7 +289,17 @@ const MAIL = 'hola@tracking-peru.com'
       } catch (err) {
         // Se dice qué falló y se ofrece la salida. Un «intenta más tarde» deja
         // al visitante sin nada que hacer con un pedido que sí quería mandar.
-        say(`No pudimos enviarlo (${err.message}). Escríbenos a ${mail} y lo resolvemos.`, false)
+        //
+        // El corte por tiempo se separa porque no es lo mismo: ahí no sabemos
+        // si el alta ocurrió o no, y decirle que reintente sin avisarle eso lo
+        // manda derecho al 409 de «ese correo ya tiene una cuenta».
+        const timeout = err.name === 'TimeoutError' || err.name === 'AbortError'
+        say(
+          timeout
+            ? `El servidor tardó demasiado. Revisa tu correo por si la key llegó igual; si no, escríbenos a ${mail}.`
+            : `No pudimos enviarlo (${err.message}). Escríbenos a ${mail} y lo resolvemos.`,
+          false,
+        )
       } finally {
         button.disabled = false
       }
