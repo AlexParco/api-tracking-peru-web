@@ -5,7 +5,8 @@
  *
  * - Sin `PUBLIC_API_URL` → filtra en el navegador sobre los datos de ejemplo
  *   que van en el HTML. Es donde estamos hoy.
- * - Con `PUBLIC_API_URL` → consulta `GET /v1/agencies` de verdad.
+ * - Con `PUBLIC_API_URL` → consulta `GET /v1/agencies` de verdad. Es el modo
+ *   que corre en producción desde el 2026-08-06.
  *
  * Pasar de uno a otro es una variable de entorno, no una reescritura.
  *
@@ -19,19 +20,33 @@
  * está publicada: viaja en el bundle, se lee con Ctrl+U y cualquiera la usa con
  * tu cupo. No hay forma de esconderla en el navegador.
  *
- * De las tres condiciones para encender el modo vivo, dos ya se cumplen desde
- * que el API está en producción (2026-08-06):
- *   1. una lectura ANÓNIMA de `/v1/agencies`, con cupo por IP  → FALTA;
- *   2. CORS abierto al origen de la landing                    → hecho;
- *   3. el API desplegado en un host público                    → hecho.
+ * Las tres condiciones para el modo vivo ya se cumplen (2026-08-06):
+ *   1. lectura ANÓNIMA de `/v1/agencies`, con cupo por IP  → hecho;
+ *   2. CORS abierto al origen de la landing                → hecho;
+ *   3. el API desplegado en un host público                → hecho.
  *
- * La que falta es la que importa. Hoy `GET /v1/agencies` sin key responde 401
- * («falta X-API-Key»), porque `router.go` aplica `mw.APIKey` a todo `/v1`; el
- * único endpoint público es `POST /free`, que sí se usa de verdad en el
- * formulario. Mientras siga así, `PUBLIC_API_URL` va sin definir.
+ * El catálogo se lee sin API key a propósito: es información pública —dónde
+ * quedan las agencias— y pedir credencial para eso obligaría a publicar una en
+ * el HTML, que es peor. El resto de `/v1` sigue exigiendo `X-API-Key`.
+ *
+ * Los datos de ejemplo NO se borraron: siguen sirviendo de modo de respaldo si
+ * algún día conviene compilar sin apuntar al API.
  */
 
 import { MOCK_AGENCIES } from '../data/agencies-mock.ts'
+
+/* Olva mete la dirección DENTRO del nombre de la agencia: «ACOBAMBA (HCV) - AV
+   MANUEL CANDAMO NRO 620 CERCADO ACOBAMBA», y su campo `address` es esa misma
+   dirección. La tarjeta la mostraba dos veces seguidas.
+   No se corrige el dato ajeno ni se recorta el nombre —los dos se muestran tal
+   como los publica el courier—: sólo se omite la línea que repetiría algo que ya
+   está a la vista. Se compara sin distinguir mayúsculas ni espacios de más,
+   porque la repetición no siempre es carácter por carácter. */
+const norm = (x: string) => (x ?? '').toUpperCase().replace(/\s+/g, ' ').trim()
+export const repeats = (name: string, address: string) => {
+  const a = norm(address)
+  return a.length > 0 && norm(name).includes(a)
+}
 import { PUBLISHED_CARRIERS } from '../data/api.ts'
 
 const API = import.meta.env.PUBLIC_API_URL ?? ''
@@ -203,25 +218,40 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
         la cantidad de resultados es impar la celda que sobra queda pintada con
         el color del contenedor y se ve como una tarjeta vacía. En una grilla
         fija da igual; en una que cambia con cada tecla, no. */}
-    <ul class="mt-4 grid items-start gap-3 sm:grid-cols-2" data-list>
+    {/* Dos reglas, y las dos son para que la grilla tenga un ritmo único.
+
+        Sin `items-start`: con él cada tarjeta se quedaba en su alto natural y,
+        como la fila mide lo que la más alta, las cortas dejaban un escalón
+        debajo. Con datos reales la diferencia dentro de una misma fila llegaba
+        a 66 px —hay nombres de una línea y otros de tres—. El valor por
+        omisión, `stretch`, las iguala.
+
+        Y adentro los márgenes son FIJOS, no `mt-auto`: pegar el pie al fondo
+        iguala los bordes pero desiguala el interior, porque el hueco pasa a
+        valer lo que le sobre a cada tarjeta. Con márgenes fijos, la separación
+        entre líneas es idéntica en todas y lo que sobra queda abajo. */}
+    <ul class="mt-4 grid gap-3 sm:grid-cols-2" data-list>
       {
         (isLive ? [] : MOCK_AGENCIES).map((a) => (
           <li
-            class="rounded-xl border border-line bg-ink-soft p-4"
+            class="flex flex-col rounded-xl border border-line bg-ink-soft p-4"
             data-item
             data-carrier-id={a.carrier}
             data-search={indexOf(a)}
           >
             <p class="flex flex-wrap items-baseline gap-x-2">
               <span class="font-mono text-xs text-brand/80">{a.carrier}</span>
-              <span class="font-medium text-zinc-100">{a.name}</span>
+              <span class="line-clamp-2 font-medium text-zinc-100">{a.name}</span>
             </p>
-            <p class="mt-1 text-sm leading-relaxed text-zinc-500">{a.location.address}</p>
-            <p class="mt-1.5 text-sm text-zinc-600">
-              {[a.location.district, a.location.province, a.location.department]
+            {!repeats(a.name, a.location.address) && (
+              <p class="mt-1 text-sm leading-relaxed text-zinc-500">{a.location.address}</p>
+            )}
+            {(() => {
+              const where = [a.location.district, a.location.province, a.location.department]
                 .filter(Boolean)
-                .join(' · ')}
-            </p>
+                .join(' · ')
+              return where ? <p class="mt-1.5 text-sm text-zinc-600">{where}</p> : null
+            })()}
 
             {/* El ubigeo y su procedencia van juntos siempre. El código solo no
                 dice nada: `carrier` lo declaró el courier, `matched` lo
@@ -404,7 +434,7 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
     // página de 20 sobre catálogos de cientos, así que decir solo el total sería
     // anunciar 417 agencies con veinte en pantalla.
     const count = (mostradas, total = mostradas) => {
-      const n = total === 1 ? '1 agencia' : `${total} agencies`
+      const n = total === 1 ? '1 agencia' : `${total} agencias`
       estado.textContent = total > mostradas ? `${n} · mostrando ${mostradas}` : n
       empty.toggleAttribute('hidden', mostradas !== 0)
     }
@@ -427,6 +457,14 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
     // ── Modo vivo: consulta el API ──
     let inFlight = null
 
+    // Misma regla que en el render estático: no repetir la dirección cuando ya
+    // viene dentro del nombre (pasa con todo el catálogo de Olva).
+    const norm = (x) => String(x ?? '').toUpperCase().replace(/\s+/g, ' ').trim()
+    const repite = (name, address) => {
+      const a = norm(address)
+      return a.length > 0 && norm(name).includes(a)
+    }
+
     const escapeHtml = (s) =>
       String(s ?? '').replace(
         /[&<>"']/g,
@@ -445,13 +483,13 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
           const ubigeo = l.ubigeo
             ? `<span class="text-zinc-500">ubigeo ${escapeHtml(l.ubigeo)}<span class="text-zinc-700"> · ${escapeHtml(a.ubigeo_source)}</span></span>`
             : '<span class="text-[var(--color-partial)]">sin ubigeo · ubicación sin resolver</span>'
-          return `<li class="rounded-xl border border-line bg-ink-soft p-4">
+          return `<li class="flex flex-col rounded-xl border border-line bg-ink-soft p-4">
             <p class="flex flex-wrap items-baseline gap-x-2">
               <span class="font-mono text-xs text-brand/80">${escapeHtml(a.carrier)}</span>
-              <span class="font-medium text-zinc-100">${escapeHtml(a.name)}</span>
+              <span class="line-clamp-2 font-medium text-zinc-100">${escapeHtml(a.name)}</span>
             </p>
-            <p class="mt-1 text-sm leading-relaxed text-zinc-500">${escapeHtml(l.address)}</p>
-            <p class="mt-1.5 text-sm text-zinc-600">${escapeHtml(where)}</p>
+            ${repite(a.name, l.address) ? '' : `<p class="mt-1 text-sm leading-relaxed text-zinc-500">${escapeHtml(l.address)}</p>`}
+            ${where ? `<p class="mt-1.5 text-sm text-zinc-600">${escapeHtml(where)}</p>` : ''}
             <p class="mt-2 font-mono text-xs">${ubigeo}</p>
           </li>`
         })
