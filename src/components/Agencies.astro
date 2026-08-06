@@ -503,11 +503,72 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
         .join('')
     }
 
+    /* El esqueleto de carga.
+     *
+     * Reproduce la FORMA de la tarjeta real —chip del courier, nombre,
+     * dirección, pie— y no un rectángulo genérico: así lo que aparece después
+     * ocupa el mismo sitio y la lista no da un salto al llegar los datos.
+     *
+     * `aria-hidden` porque no es contenido: quien usa lector de pantalla se
+     * entera por `aria-busy` en la lista y por el texto del estado, no por
+     * cinco párrafos vacíos.
+     *
+     * Los anchos varían por fila (un patrón fijo, no al azar, para que el
+     * resultado sea el mismo en cada render) porque cinco barras idénticas
+     * repetidas veinte veces se leen como una tabla rota, no como algo que está
+     * por llegar.
+     */
+    const anchos = [
+      ['w-14', 'w-32', 'w-full', 'w-2/3', 'w-40'],
+      ['w-12', 'w-40', 'w-5/6', 'w-1/2', 'w-32'],
+      ['w-16', 'w-28', 'w-full', 'w-3/5', 'w-44'],
+    ]
+    let mostradoEn = 0
+    const skeleton = (n) => {
+      mostradoEn = performance.now()
+      list.setAttribute('aria-busy', 'true')
+      list.innerHTML = Array.from({ length: n }, (_, i) => {
+        const [c, nom, dir, don, pie] = anchos[i % anchos.length]
+        return `<li class="flex flex-col rounded-xl border border-line bg-ink-soft p-4" aria-hidden="true">
+          <p class="flex items-baseline gap-x-2">
+            <span class="skel h-3 ${c} rounded"></span>
+            <span class="skel h-3.5 ${nom} rounded"></span>
+          </p>
+          <p class="mt-2.5 skel h-3 ${dir} rounded"></p>
+          <p class="mt-2.5 skel h-3 ${don} rounded"></p>
+          <p class="mt-3 skel h-3 ${pie} rounded"></p>
+        </li>`
+      }).join('')
+    }
+
     const query = async () => {
       // Se cancela la anterior: sin esto, una respuesta lenta de hace tres
       // teclas puede llegar después de la current y pisar los resultados buenos.
       inFlight?.abort()
       inFlight = new AbortController()
+
+      /* El esqueleto NO se muestra de inmediato.
+       *
+       * La búsqueda ya espera 220 ms a que dejes de escribir, y el API suele
+       * contestar en menos de 150. Pintar el esqueleto al toque haría que en la
+       * mayoría de las consultas parpadee y desaparezca antes de que alcances a
+       * leerlo — más ruido que información. Con este retardo, sólo aparece
+       * cuando la espera de verdad se nota.
+       *
+       * La cantidad es la que hay en pantalla, para que la lista conserve su
+       * alto y nada salte. En la primera carga no hay nada, así que van seis:
+       * suficiente para que se lea como una lista cargando sin llenar la
+       * pantalla de barras grises.
+       *
+       * Hoy el API tarda ~680 ms medidos, o sea que el esqueleto se ve de
+       * verdad. Los dos umbrales están igual porque protegen de cosas
+       * distintas: el retardo, de un API rápido; el mínimo de abajo, de que
+       * aparezca y se vaya antes de que el ojo lo registre. Si algún día la
+       * respuesta baja a 150 ms, esto sigue comportándose bien sin tocarlo. */
+      const visibles = list.querySelectorAll('li').length
+      mostradoEn = 0
+      const lento = setTimeout(() => skeleton(visibles || 6), 140)
+      estado.textContent = 'consultando…'
 
       const url = new URL('/v1/agencies', API)
       if (q.value.trim()) url.searchParams.set('q', q.value.trim())
@@ -519,20 +580,35 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
         if (!r.ok) throw new Error(`el API respondió ${r.status}`)
         const datos = await r.json()
         const agencies = datos.agencies ?? []
+        clearTimeout(lento)
+
+        /* Si el esqueleto alcanzó a mostrarse, se le da un mínimo de 260 ms en
+           pantalla. Aparecer y desaparecer en 40 ms no se lee como «está
+           cargando»: se lee como un defecto. Y si nunca se mostró, `mostradoEn`
+           vale 0 y esto no espera nada. */
+        const visto = mostradoEn ? performance.now() - mostradoEn : Infinity
+        if (visto < 260) await new Promise((r) => setTimeout(r, 260 - visto))
+
         paint(agencies)
+        list.removeAttribute('aria-busy')
         count(agencies.length, datos.pagination?.total ?? agencies.length)
         error.hidden = true
       } catch (e) {
+        // El `AbortError` es de una consulta que reemplazamos nosotros: la que
+        // la sustituye ya programó su propio esqueleto, así que acá sólo se
+        // cancela el de esta y se sale sin tocar la pantalla.
+        clearTimeout(lento)
         if (e.name === 'AbortError') return
-        // La list se vacía antes de mostrar el error: dejar los resultados de
+        // La lista se vacía antes de mostrar el error: dejar los resultados de
         // la consulta anterior debajo de un mensaje de fallo los presenta como
         // la respuesta a lo que se acaba de escribir.
         list.innerHTML = ''
+        list.removeAttribute('aria-busy')
         empty.hidden = true
         estado.textContent = ''
-        // Y se dice qué pasó. Una box vacía sin explicación se lee como «no hay
-        // agencies», que es una respuesta distinta y falsa.
-        error.textContent = `No se pudo query el catálogo: ${e.message}.`
+        // Y se dice qué pasó. Una caja vacía sin explicación se lee como «no hay
+        // agencias», que es una respuesta distinta y falsa.
+        error.textContent = `No se pudo consultar el catálogo: ${e.message}.`
         error.hidden = false
       }
     }

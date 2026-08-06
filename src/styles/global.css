@@ -709,3 +709,42 @@ header:not([data-scrolled]) {
 .btn:active {
   transform: translateY(0);
 }
+
+/* ── Barras del esqueleto de carga ──────────────────────────────────────────
+   Van acá y no en un `<style>` de Agencies.astro porque el esqueleto se inyecta
+   con `innerHTML` desde un script: los estilos con ámbito de Astro marcan los
+   elementos de la PLANTILLA con un atributo, y a un nodo creado después nunca
+   se lo ponen — la regla no lo alcanzaría.
+
+   El barrido se hace con `background-position`, que el compositor resuelve sin
+   recalcular layout ni repintar cada barra. Con veinte tarjetas en pantalla eso
+   importa: animar `opacity` de cien nodos a la vez es lo que convierte una
+   pantalla de carga en una que se traba. */
+.skel {
+  display: inline-block;
+  background-color: var(--color-line);
+}
+
+/* El brillo sólo con `.motion`: si el visitante pidió menos movimiento, las
+   barras quedan quietas. Siguen leyéndose como huecos por su forma y su color,
+   que es lo que tienen que comunicar — el movimiento no aporta información. */
+.motion .skel {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklab, var(--color-line) 45%, white) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: skel-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes skel-sweep {
+  from {
+    background-position: 180% 0;
+  }
+  to {
+    background-position: -80% 0;
+  }
+}
