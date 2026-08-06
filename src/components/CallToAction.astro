@@ -1,6 +1,6 @@
 ---
 import TrialForm from './TrialForm.astro'
-import { FREE, BETA } from '../data/plans.ts'
+import { FREE } from '../data/plans.ts'
 ---
 
 <section id="empezar" class="scroll-mt-20 border-t border-line py-24">
@@ -52,13 +52,19 @@ import { FREE, BETA } from '../data/plans.ts'
               la key sale en la misma respuesta del alta, no hay espera. */}
           <ul class="mt-8 max-w-md space-y-2.5 border-t border-line pt-6">
             {[
-              // Decía «no esperas un correo para empezar». Cierto pero engañoso:
-              // el correo SÍ llega, con la key y la fecha de vencimiento. Leída
-              // sola, la frase sonaba a que no había correo.
-              `Ves la key en pantalla apenas la pides, y además te llega por correo con su fecha de vencimiento.`,
+              /* Decía «además te llega por correo con su fecha de vencimiento»,
+                 y esa fecha NO existe: el correo del alta
+                 (`internal/email/templates.go`, FreeEmail) dice «No vence» en
+                 negrita, porque el plan gratis es permanente. Además se
+                 contradecía con la viñeta de acá abajo. */
+              `Ves la key en pantalla apenas la pides, y además te llega por correo.`,
               'Una key gratuita por dirección de correo. Si esa dirección ya tiene la suya, te lo decimos en el momento.',
               `El plan Free no vence: no te cobramos, no se renueva sola y no hay nada que cancelar.`,
-              `Mientras dure la beta, el precio que tomes queda fijo — y ${BETA.endsWhen} para que termine.`,
+              /* Sólo el precio fijo. Antes decía además cuándo termina la beta
+                 —«que los cinco carriers rastreen en vivo»—, que es un criterio
+                 interno nuestro: al cliente no le cambia nada y lo obliga a
+                 llevar la cuenta de nuestra hoja de ruta. */
+              `Mientras dure la beta, el precio que tomes ahora te queda fijo.`,
             ].map((x) => (
               <li class="flex gap-3 text-sm leading-relaxed text-zinc-400">
                 <span class="mt-1.5 size-1.5 shrink-0 rounded-full bg-brand" aria-hidden="true" />

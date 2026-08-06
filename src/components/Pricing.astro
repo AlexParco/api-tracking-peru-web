@@ -1,5 +1,5 @@
 ---
-import { PLANS, INCLUDED_IN_ALL, annualSaving, planLink } from '../data/plans.ts'
+import { PLANS, INCLUDED_IN_ALL, BETA, annualSaving, planLink } from '../data/plans.ts'
 import { PUBLISHED_CARRIERS, METRICS } from '../data/api.ts'
 
 const tracking = PUBLISHED_CARRIERS.filter((c) => c.tracking.status === 'ok').length
@@ -30,19 +30,28 @@ const withCatalog = PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok')
         es donde alguien la busca cuando le importa—.
 
         De todo eso, lo único que le cambia algo a quien está mirando precios es
-        que el suyo queda fijo. Eso es lo que queda. */}
-    <p
-      class="mt-8 flex flex-wrap items-baseline gap-x-2 text-sm text-zinc-400"
-      data-reveal
-      style="--step: 2"
-    >
-      <span class="rounded-full border border-brand/30 px-2 py-0.5 font-mono text-[11px] text-brand">
-        beta
-      </span>
-      <span class="text-pretty">
-        El precio que tomes ahora te queda fijo, también cuando salgamos de beta.
-      </span>
-    </p>
+        que el suyo queda fijo. Eso es lo que queda.
+
+        Va condicionado a `BETA.priceLock` y no escrito a secas: cuando la beta
+        termine, la promesa deja de ser cierta y hay que sacarla de la página.
+        Atado a la bandera es cambiar un booleano; escrito a mano es acordarse
+        de que esta línea existe. */}
+    {
+      BETA.priceLock && (
+        <p
+          class="mt-8 flex flex-wrap items-baseline gap-x-2 text-sm text-zinc-400"
+          data-reveal
+          style="--step: 2"
+        >
+          <span class="rounded-full border border-brand/30 px-2 py-0.5 font-mono text-[11px] text-brand">
+            beta
+          </span>
+          <span class="text-pretty">
+            El precio que tomes ahora te queda fijo, también cuando salgamos de beta.
+          </span>
+        </p>
+      )
+    }
 
     <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       {

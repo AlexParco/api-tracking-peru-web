@@ -125,23 +125,24 @@ export const INCLUDED_IN_ALL: string[] = [
  *
  * La regla real es carrier-agnóstica y mejor: lo que NO funciona no gasta cuota.
  */
+/*
+ * Las otras dos decisiones de la beta NO son campos de este objeto, y eso es
+ * deliberado.
+ *
+ * - La beta termina cuando los cinco carriers rastreen en vivo. Es un hito
+ *   medible en vez de «cuando esté completo», pero es una discusión nuestra:
+ *   al cliente no le cambia nada y lo obliga a seguir nuestra hoja de ruta.
+ * - Lo que no funciona no gasta cuota. Eso es comportamiento del API y vive en
+ *   `/docs`, junto al resto del contrato.
+ *
+ * Estuvieron como propiedades de `BETA` y se filtraron igual: se quitaron de la
+ * sección de precios pero quedaron en el cierre de la portada, y así salieron a
+ * producción. Un comentario que dice «esto no se publica» no impide publicarlo;
+ * no exportar el valor, sí.
+ */
 export const BETA = {
   /** Quien entra ahora conserva el precio de hoy aunque suba después. */
   priceLock: true,
-
-  /*
-   * Lo de abajo NO se publica, y es a propósito.
-   *
-   * `endsWhen` y `onlySuccessCounts` son decisiones reales y quedan escritas
-   * acá, pero en una página de precios eran razonamiento interno: la primera
-   * explica cómo elegimos el criterio («un hito medible, no cuando esté
-   * completo»), que es una discusión nuestra; la segunda es documentación, y
-   * vive en `/docs#errores` junto al resto del comportamiento del API.
-   *
-   * Al cliente que mira precios solo le cambia algo el `priceLock`.
-   */
-  endsWhen: 'los cinco carriers rastreen en vivo',
-  onlySuccessCounts: true,
 }
 
 /**
