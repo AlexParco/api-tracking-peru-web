@@ -30,6 +30,13 @@ const capabilities = [
   { label: 'Catálogo de agencias', done: withCatalog, note: 'sincronizado, con ubigeo INEI' },
 ]
 
+/* ¿Queda alguna capacidad «en curso» (ámbar)? Hoy no: los couriers publicados
+   rastrean y publican agencias. Sin ámbar, el párrafo que lo explica insinuaría
+   un estado que no existe —texto engañoso—, así que se muestra sólo si aplica. */
+const hasAmber = PUBLISHED_CARRIERS.some(
+  (c) => c.tracking.status === 'pendiente' || c.agencies.status === 'pendiente',
+)
+
 /* `detection` dice si podemos reconocer el courier mirando el número de guía.
    El valor viaja en el API; acá se traduce a lo que significa para quien
    integra. */
@@ -61,9 +68,20 @@ const levelClass: Record<string, string> = {
         ámbar, que es la idea que sostiene toda la sección y no se deduce de
         mirar un color. */}
     <p class="mt-4 max-w-2xl text-pretty leading-relaxed text-zinc-400" data-reveal style="--step: 1">
-      Cada courier aporta dos cosas: rastrear envíos y publicar sus agencias. Un courier en
-      ámbar no está «casi listo»: está implementado y esperando algo concreto, y su tarjeta
-      dice qué falta.
+      {
+        hasAmber ? (
+          <>
+            Cada courier aporta dos cosas: rastrear envíos y publicar sus agencias. Un courier en
+            ámbar no está «casi listo»: está implementado y esperando algo concreto, y su tarjeta
+            dice qué falta.
+          </>
+        ) : (
+          <>
+            Cada courier aporta dos cosas: rastrear envíos y publicar sus agencias. Hoy los {total}{' '}
+            couriers publicados hacen las dos, verificadas en vivo.
+          </>
+        )
+      }
     </p>
 
     {/* Las dos barras. Una barra de progreso comunica «cuánto falta» de un

@@ -82,10 +82,10 @@ export const CARRIERS: Carrier[] = [
     level: 'contract_only',
     detection: 'weak',
     tracking: {
-      status: 'pendiente',
-      note: 'Mapeado por completo —endpoints, vocabulario de estados y forma de la respuesta—, pero su timeline está detrás de un desafío anti-bot que solo pasa un navegador real.',
+      status: 'ok',
+      note: 'Operativo, verificado en vivo con una guía real. El timeline pasa un desafío anti-bot (Cloudflare) con un navegador real. Algunos estados intermedios todavía se están mapeando.',
     },
-    subscribable: false,
+    subscribable: true,
     published: true,
     agencies: {
       status: 'ok',
@@ -125,14 +125,13 @@ export const CARRIERS: Carrier[] = [
     level: 'code_derived',
     detection: 'none',
     tracking: {
-      status: 'pendiente',
-      // Decía «portado y verificado contra sus estados reales», que contradice el
-      // nivel `code_derived` publicado más a la derecha en la misma fila
-      // («sin captura de tráfico»). Se quita la afirmación en vez de cambiar el
-      // nivel: el nivel lo publica el API y aquí solo se espeja.
-      note: 'Adaptador portado. Traducir la guía a su identificador interno exige un desafío anti-bot que solo pasa un navegador real.',
+      // status ('ok') y level ('code_derived') son campos DISTINTOS: el primero
+      // dice "rastrea en vivo" (verificado 2026-08-05), el segundo, cuánta
+      // evidencia respalda el mapeo del vocabulario (lo publica el API, se espeja).
+      status: 'ok',
+      note: 'Operativo, verificado en vivo. Traducir la guía a su identificador interno pasa un desafío anti-bot (reCAPTCHA) con un navegador real.',
     },
-    subscribable: false,
+    subscribable: true,
     published: true,
     agencies: { status: 'ok', total: 544, note: 'El catálogo más grande. Requiere credencial.' },
   },
