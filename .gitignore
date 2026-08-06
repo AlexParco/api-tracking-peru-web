@@ -17,6 +17,11 @@ pnpm-debug.log*
 .env
 .env.production
 
+# secretos del deploy: host del servidor y ruta de la llave SSH. El CLI los lee
+# de acá y en CI los escribe el workflow desde los secrets de GitHub. Nunca al
+# repositorio.
+.deploy/
+
 # macOS-specific files
 .DS_Store
 

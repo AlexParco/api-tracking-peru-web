@@ -55,29 +55,45 @@ el build. Ningún dato de estado vive dentro de un componente.
 
 ## Pendiente
 
-- **El dominio no está decidido.** Todo apunta a `rastreo.dev`, pero es una
-  recomendación, no una compra. Son **siete referencias en seis archivos** —el
-  README decía cuatro y estaba mal—, así que si se elige otro hay que tocar:
+- **El dominio ya está decidido: `tracking-peru.com`**, con el API en
+  `api.tracking-peru.com`. El producto se llama **API Tracking Perú**. Los dos
+  quedaron aplicados el 2026-08-04 (antes todo apuntaba a `rastreo.dev`, que era
+  una recomendación). El dominio se compró el 2026-08-05 y el API ya responde en
+  `api.tracking-peru.com`, así que `/docs` dejó de declararlo como un hueco.
+
+  Si alguna vez cambia, son estos lugares:
 
   ```
-  astro.config.mjs           site
-  src/layouts/Base.astro     el fallback de canonical
-  src/pages/index.astro      el <title>
-  src/components/Nav.astro   el logotipo (parte "rastreo" + ".dev")
-  src/components/Hero.astro  el host del ejemplo (api.rastreo.dev)
-  src/components/Cierre.astro  el mailto, el texto del mail y el ©
+  astro.config.mjs                    site
+  src/layouts/Base.astro              el fallback de canonical
+  src/components/Hero.astro           el host del ejemplo
+  src/pages/docs.astro                el curl de autenticación y «Lo que falta acá»
+  src/components/CallToAction.astro   el mailto y el texto del mail
+  src/data/plans.ts                   el mailto de cada plan
   ```
 
-  Ojo con el del nav: está partido por un `<span>` (`rastreo<span>.dev</span>`),
-  así que **ningún grep de `rastreo.dev` lo encuentra**. Buscar la cadena
-  completa devuelve seis de las siete y da la sensación de estar completo.
-- **Falta `og:image`, y encima `twitter:card` es `summary_large_image`.** Las
-  metas `og:` están puestas pero sin imagen, así que al compartir el link no hay
-  preview — y declarar una card grande sin imagen es peor que no declararla: X
-  degrada a una card sin nada en vez de al resumen de texto. Si no va a haber
-  imagen pronto, conviene bajar la card a `summary`.
-- Sin analítica ni formulario: el CTA es un `mailto:`. Alcanza para validar
-  demanda antes de montar nada.
+  Ojo con el **nombre**: en el logotipo está partido por un `<span>`
+  (`API Tracking <span>Perú</span>`, en `Nav.astro` y en `DocsNav.astro`), así
+  que ningún grep de la cadena completa lo encuentra. Buscar `Tracking` a secas.
+
+- **El código va en inglés; el texto de la página, en español.** Se unificó el
+  2026-08-04: nombres de archivo, variables, clases CSS y atributos `data-*`
+  están en inglés; los comentarios y todo lo que ve el visitante, en español.
+  Al refactorizar con búsqueda y reemplazo, **comparar el texto renderizado
+  antes y después** — la primera pasada convirtió «sin tarjeta guardada» en
+  «sin card guardada» y «la marca de agua no avanza» en «no advance», y eso no
+  lo detecta ni el compilador ni el build.
+- **El buscador de agencias usa data mock, y no es pereza.** `/v1/agencies`
+  exige `X-API-Key` (`internal/httpapi/router.go` aplica `mw.APIKey` a todo
+  `/v1`), y una key en el navegador es una key publicada. Para que consulte en
+  vivo hace falta primero una lectura anónima del lado del API. El único
+  endpoint público es `POST /free`, que sí se usa de verdad.
+- **Sin analítica.** No hay nada que mida qué secciones se leen ni de dónde
+  llegan las altas del plan gratis.
+- **Faltan `id_format` y un ejemplo real por courier.** Las páginas de courier
+  remiten a `GET /v1/carriers` en vez de escribir el formato de guía, porque
+  inventarlo sería peor que omitirlo: alguien lo copia, le rebota y culpa al
+  API. Con los valores reales se puede mostrar el ejemplo en la página.
 
 ## La sección de webhooks
 
