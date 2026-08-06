@@ -10,6 +10,14 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
+# PUBLIC_API_URL se hornea en el build: Astro lo inlinea en import.meta.env y con
+# él el buscador de agencias pasa a consultar el API real (GET /v1/agencies, sin
+# key: lectura pública rate-limitada por IP) en vez de los datos de ejemplo. NO
+# es secreto —es la URL pública del API y viaja al navegador—, por eso vive acá y
+# no como GitHub Secret: así el MISMO Dockerfile produce el modo vivo tanto en el
+# deploy local como en CI.
+ARG PUBLIC_API_URL=https://api.tracking-peru.com
+ENV PUBLIC_API_URL=$PUBLIC_API_URL
 RUN pnpm build
 
 # --- runtime: nginx sirve el estático ---
