@@ -1,0 +1,77 @@
+---
+import Base from '../layouts/Base.astro'
+import Nav from '../components/Nav.astro'
+import Footer from '../components/Footer.astro'
+import { PUBLISHED_CARRIERS } from '../data/api.ts'
+
+/* La página de 404.
+ *
+ * nginx la sirve con `error_page 404 /404.html`, así que este archivo tiene que
+ * existir para que un enlace viejo no termine en la pantalla gris del servidor.
+ *
+ * ── Por qué lista los couriers ──
+ *
+ * La forma más probable de llegar acá no es un enlace roto nuestro —para eso
+ * está `scripts/check-links.mjs`, que corre antes de cada deploy— sino una URL
+ * de courier escrita a mano o adivinada: alguien prueba `/couriers/olva-courier`
+ * o `/couriers/shalom-peru`. Mandarlo a la portada lo obliga a buscar de nuevo;
+ * darle la lista real lo deja a un clic.
+ *
+ * Sale de `PUBLISHED_CARRIERS`, la misma fuente que genera las páginas. No puede
+ * ofrecer un courier que no existe ni omitir uno nuevo.
+ */
+
+const title = 'Esta página no existe — API Tracking Perú'
+const description = 'La dirección que abriste no corresponde a ninguna página del sitio.'
+---
+
+<Base title={title} description={description}>
+  <Nav />
+
+  <main id="contenido">
+    <div class="mx-auto max-w-2xl px-6 py-24">
+      <p class="font-mono text-xs text-zinc-600">404</p>
+
+      <h1 class="mt-4 text-balance font-display text-4xl font-semibold tracking-tight text-zinc-50">
+        Esta página no existe
+      </h1>
+
+      <p class="mt-5 text-pretty text-lg leading-relaxed text-zinc-400">
+        La dirección que abriste no corresponde a nada del sitio. Puede ser un enlace viejo o
+        un nombre de courier escrito distinto al nuestro.
+      </p>
+
+      <div class="mt-8 flex flex-wrap gap-3">
+        <a href="/" class="btn rounded-lg bg-brand px-5 py-2.5 font-medium text-ink hover:bg-white">
+          Ir al inicio
+        </a>
+        <a
+          href="/docs"
+          class="btn rounded-lg border border-line px-5 py-2.5 font-medium text-zinc-300 hover:border-zinc-600 hover:text-zinc-100"
+        >
+          Ver la documentación
+        </a>
+      </div>
+
+      <div class="mt-14 border-t border-line pt-8">
+        <h2 class="text-sm font-medium text-zinc-300">Si buscabas un courier</h2>
+        <ul class="mt-4 flex flex-wrap gap-2">
+          {
+            PUBLISHED_CARRIERS.map((c) => (
+              <li>
+                <a
+                  href={`/couriers/${c.id}`}
+                  class="inline-block rounded-lg border border-line px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100"
+                >
+                  {c.name}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <Footer />
+</Base>

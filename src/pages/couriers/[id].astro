@@ -1,0 +1,256 @@
+---
+import Base from '../../layouts/Base.astro'
+import Nav from '../../components/Nav.astro'
+import Footer from '../../components/Footer.astro'
+import CodeBlock from '../../components/CodeBlock.astro'
+import { PUBLISHED_CARRIERS, LEVELS, METRICS, type Carrier } from '../../data/api.ts'
+import { FREE } from '../../data/plans.ts'
+
+/* Una página por courier.
+ *
+ * ── Por qué no alcanza con la portada ──
+ *
+ * Quien busca «api rastreo olva» no busca lo mismo que quien busca «api tracking
+ * shalom», y una sola página no puede rankear para las dos: un buscador ordena
+ * PÁGINAS por tema, y una que habla de cinco couriers a la vez no es la mejor
+ * respuesta para ninguno. Cinco páginas, cada una con su tema, sí.
+ *
+ * ── El riesgo, y cómo se evita ──
+ *
+ * Generar cinco plantillas con el nombre cambiado es exactamente lo que los
+ * buscadores penalizan, y con razón: no aportan nada. Por eso cada página se
+ * arma con lo que este courier tiene de PROPIO —qué funciona y qué no, con el
+ * motivo concreto, su nivel de evidencia, si su número de guía se reconoce solo,
+ * si se puede suscribir— y el texto compartido se mantiene al mínimo.
+ *
+ * Si algún día dos couriers quedan con el mismo contenido, la página deja de
+ * merecer existir. Hoy no pasa: las notas de cada uno son distintas porque el
+ * estado de cada integración es distinto.
+ */
+
+export function getStaticPaths() {
+  return PUBLISHED_CARRIERS.map((c) => ({ params: { id: c.id }, props: { carrier: c } }))
+}
+
+interface Props {
+  carrier: Carrier
+}
+
+const { carrier: c } = Astro.props
+
+const tracks = c.tracking.status === 'ok'
+const hasCatalog = c.agencies.status === 'ok'
+
+const detectionNote: Record<string, string> = {
+  strong: 'Su formato de guía es inconfundible, así que podemos detectarlo solos: podés omitir el parámetro carrier.',
+  weak: 'Su formato se parece al de otros couriers. Conviene mandar el carrier explícito para evitar una detección equivocada.',
+  none: 'No hay forma de reconocerlo por el número de guía. El parámetro carrier es obligatorio.',
+}
+
+/* El ejemplo usa el id real del carrier y un marcador para el número, porque el
+   formato de guía de cada courier lo publica `GET /v1/carriers` y no lo tenemos
+   acá. Inventarlo sería peor que omitirlo: alguien lo copia, le rebota y culpa
+   al API. */
+const curl = `$ curl -H "X-API-Key: $API_KEY" \\
+    "https://api.tracking-peru.com/v1/tracking?carrier=${c.id}&number=TU-NUMERO-DE-GUIA"`
+
+/*
+ * Título y descripción, ajustados al largo.
+ *
+ * La plantilla sola no alcanza: «Shalom» deja un título de 44 caracteres —Google
+ * desperdicia media línea— y «Cruz del Sur Cargo» empuja la descripción a 162,
+ * donde la corta. El nombre del courier no debería decidir si el metadato entra
+ * en rango, así que se arma por partes y se recorta o se completa según mida.
+ */
+const base = `API de rastreo de ${c.name}`
+const title =
+  base.length + 21 < 50
+    ? `${base} en Perú — API Tracking Perú` // los nombres cortos desaprovechan el ancho
+    : `${base} — API Tracking Perú`
+
+const cabeza = tracks
+  ? `Rastrea envíos de ${c.name} desde un API REST, con estado canónico y webhooks firmados.`
+  : `Estado real de la integración con ${c.name}: qué funciona hoy, qué falta y por qué.`
+
+// Dos colas, de larga a corta. Se usa la primera que entre en el corte de ~160
+// caracteres; con una sola, un nombre largo la descartaba entera y la
+// descripción quedaba en 96 — desaprovechando más espacio del que sobraba.
+const colas = tracks
+  ? ['Estado real de la integración, nivel de evidencia y cómo empezar.', 'Nivel de evidencia y cómo empezar.']
+  : ['Catálogo de agencias, rastreo y nivel de evidencia publicado.', 'Agencias, rastreo y evidencia.']
+const cola = colas.find((x) => cabeza.length + 1 + x.length <= 160) ?? ''
+const description = cola ? `${cabeza} ${cola}` : cabeza
+
+/* Datos estructurados. Le dicen al buscador que esto es una página sobre un
+   servicio concreto, no prosa suelta — es lo que habilita un resultado
+   enriquecido. Todo sale de la misma fuente que el texto visible, así que no
+   pueden decir cosas distintas. */
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: title,
+  description,
+  isPartOf: { '@type': 'WebSite', name: 'API Tracking Perú' },
+  about: {
+    '@type': 'Service',
+    name: `Rastreo de envíos de ${c.name}`,
+    serviceType: 'API de rastreo de envíos',
+    provider: { '@type': 'Organization', name: 'API Tracking Perú' },
+    areaServed: { '@type': 'Country', name: 'Perú' },
+  },
+}
+---
+
+<Base title={title} description={description} jsonLd={jsonLd}>
+  <Nav />
+
+  <main id="contenido">
+    <div class="mx-auto max-w-4xl px-6 py-16">
+      <p class="font-mono text-xs text-zinc-600">
+        <a href="/#cobertura" class="transition-colors hover:text-zinc-300">Couriers</a>
+        <span class="mx-1.5 text-zinc-700">/</span>
+        <span class="text-zinc-400">{c.id}</span>
+      </p>
+
+      <h1 class="mt-4 text-balance font-display text-4xl font-semibold tracking-tight text-zinc-50">
+        API de rastreo de {c.name}
+      </h1>
+
+      <p class="mt-5 text-pretty text-lg leading-relaxed text-zinc-400">
+        {
+          tracks
+            ? `Rastrea envíos de ${c.name} con el mismo contrato que el resto de couriers peruanos: un estado canónico, el literal original adjunto y webhooks firmados cuando el envío cambia.`
+            : `Todavía no rastreamos envíos de ${c.name}, y acá está el motivo exacto. Lo que sí funciona hoy y qué falta para lo demás.`
+        }
+      </p>
+
+      {/* El estado real primero. Es lo que vino a saber quien llegó buscando
+          este courier, y esconderlo bajo un pitch sería el tipo de página que
+          esta no quiere ser. */}
+      <div class="mt-10 grid gap-4 sm:grid-cols-2">
+        <div class="rounded-2xl border border-line bg-ink-soft p-5">
+          <p class="flex items-baseline justify-between gap-3">
+            <span class="text-sm font-medium text-zinc-200">Rastreo de envíos</span>
+            <span
+              class:list={[
+                'font-mono text-xs',
+                tracks ? 'text-[var(--color-live)]' : 'text-[var(--color-partial)]',
+              ]}
+            >
+              {tracks ? 'operativo' : 'en curso'}
+            </span>
+          </p>
+          <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-500">{c.tracking.note}</p>
+        </div>
+
+        <div class="rounded-2xl border border-line bg-ink-soft p-5">
+          <p class="flex items-baseline justify-between gap-3">
+            <span class="text-sm font-medium text-zinc-200">Catálogo de agencias</span>
+            <span
+              class:list={[
+                'font-mono text-xs',
+                hasCatalog ? 'text-[var(--color-live)]' : 'text-zinc-600',
+              ]}
+            >
+              {hasCatalog ? `${c.agencies.total} puntos` : 'no publica'}
+            </span>
+          </p>
+          <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-500">{c.agencies.note}</p>
+        </div>
+      </div>
+
+      {
+        tracks && (
+          <div class="mt-10">
+            <h2 class="font-display text-xl font-semibold tracking-tight text-zinc-50">
+              Cómo se consulta
+            </h2>
+            <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">
+              {detectionNote[c.detection]}
+            </p>
+            <div class="mt-4">
+              <CodeBlock title={`GET /v1/tracking · ${c.id}`} code={curl} tone="brand" />
+            </div>
+            <p class="mt-3 text-pretty text-xs leading-relaxed text-zinc-600">
+              El formato exacto de guía de {c.name} lo publica{' '}
+              <code class="font-mono text-zinc-400">GET /v1/carriers</code> en{' '}
+              <code class="font-mono text-zinc-400">id_format</code>, junto con un ejemplo
+              real. No lo escribimos acá para que no envejezca en dos lugares.
+            </p>
+          </div>
+        )
+      }
+
+      <div class="mt-10 grid gap-4 sm:grid-cols-2">
+        <div class="rounded-xl border border-line p-5">
+          <p class="text-xs text-zinc-600">Nivel de evidencia</p>
+          <p class="mt-1 font-mono text-sm text-zinc-200">{c.level}</p>
+          <p class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-500">
+            {LEVELS[c.level].detail}
+          </p>
+        </div>
+        <div class="rounded-xl border border-line p-5">
+          <p class="text-xs text-zinc-600">Webhooks</p>
+          <p class="mt-1 font-mono text-sm text-zinc-200">
+            {c.subscribable ? 'suscribible' : 'todavía no'}
+          </p>
+          <p class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-500">
+            {
+              c.subscribable
+                ? `Suscribís un envío de ${c.name} y te avisamos con un POST firmado cada vez que cambia de estado.`
+                : 'El alta de suscripción lo rechaza en el POST, con el motivo. No dejamos crear una que nunca iba a entregar nada.'
+            }
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-12 rounded-2xl border border-brand/30 bg-brand/[0.04] p-6">
+        <p class="font-display text-lg font-semibold text-zinc-50">
+          Empieza gratis
+        </p>
+        <p class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-400">
+          El plan Free no vence ni pide tarjeta: {FREE.webhooks} envíos vigilados a la vez y
+          1.000 consultas al mes. Cubre {c.name} y los otros {PUBLISHED_CARRIERS.length - 1}{' '}
+          couriers — {METRICS.agenciesSynced} agencias sincronizadas incluidas.
+        </p>
+        <div class="mt-5 flex flex-wrap gap-3">
+          <a
+            href="/#empezar"
+            class="btn rounded-lg bg-brand px-5 py-2.5 font-medium text-ink hover:bg-white"
+          >
+            Crear mi key gratis
+          </a>
+          <a
+            href="/docs"
+            class="btn rounded-lg border border-line px-5 py-2.5 font-medium text-zinc-300 hover:border-zinc-600 hover:text-zinc-100"
+          >
+            Ver la documentación
+          </a>
+        </div>
+      </div>
+
+      {/* Enlaces a los otros. Un buscador descubre páginas siguiendo enlaces, y
+          además le da al lector la comparación que vino a hacer. */}
+      <div class="mt-14 border-t border-line pt-8">
+        <h2 class="text-sm font-medium text-zinc-300">Los otros couriers</h2>
+        <ul class="mt-4 flex flex-wrap gap-2">
+          {
+            PUBLISHED_CARRIERS.filter((o) => o.id !== c.id).map((o) => (
+              <li>
+                <a
+                  href={`/couriers/${o.id}`}
+                  class="inline-block rounded-lg border border-line px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-100"
+                >
+                  {o.name}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <Footer />
+
+</Base>
