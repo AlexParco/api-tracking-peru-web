@@ -33,7 +33,7 @@ const listNames = (cs: typeof PUBLISHED_CARRIERS) =>
 
         Se dibuja en dos formas según el ancho, y el CSS de `.journey-*` en
         `global.css` hace el cambio: apilada con la línea vertical en pantallas
-        angostas, en row con la línea horizontal desde `md`. Seis columnas en un
+        angostas, en fila con la línea horizontal desde `md`. Seis columnas en un
         teléfono darían columnas de 50 px; una lista vertical en un monitor
         desperdicia el ancho que el journey necesita para leerse de un vistazo.
 
@@ -67,7 +67,7 @@ const listNames = (cs: typeof PUBLISHED_CARRIERS) =>
       }
     </ol>
 
-    {/* El literal sale del journey: en una columna de la row no entra, y
+    {/* El literal sale del recorrido: en una columna de la fila no entra, y
         suelto en un solo hito de seis se leía como un dato faltante en los otros
         cinco en vez de como el ejemplo de la traducción que es. Aquí abajo se ve
         lo que es — el literal del courier y el estado al que lo mapeamos. */}

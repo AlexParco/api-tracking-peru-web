@@ -180,7 +180,7 @@ body {
 }
 
 /* Filas de la tabla de cobertura: sin desplazamiento (movería la tabla
-   entera), solo un realce del fondo para seguir la row con la vista. */
+   entera), solo un realce del fondo para seguir la fila con la vista. */
 .row {
   transition: background-color 200ms ease;
 }

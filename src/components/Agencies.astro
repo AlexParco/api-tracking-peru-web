@@ -4,7 +4,7 @@
  * Tiene DOS modos y el mismo código para los dos:
  *
  * - Sin `PUBLIC_API_URL` → filtra en el navegador sobre los datos de ejemplo
- *   que van en el HTML. Es where estamos hoy: el API no está desplegado.
+ *   que van en el HTML. Es donde estamos hoy.
  * - Con `PUBLIC_API_URL` → consulta `GET /v1/agencies` de verdad.
  *
  * Pasar de uno a otro es una variable de entorno, no una reescritura.
@@ -12,18 +12,23 @@
  * SIN JAVASCRIPT LA SECCIÓN SIGUE SIRVIENDO. La list se renderiza entera en el
  * HTML y el script solo la filtra escondiendo `<li>`. Es la regla 2 de
  * `global.css` aplicada a algo que normalmente la rompe: un buscador que sin JS
- * es una box vacía no muestra nada, este muestra el catálogo completo.
+ * es una caja vacía no muestra nada, este muestra el catálogo completo.
  *
  * ── Sobre la autenticación ────────────────────────────────────────────────
  * El componente consulta SIN key, a propósito. Una key en una página pública
  * está publicada: viaja en el bundle, se lee con Ctrl+U y cualquiera la usa con
  * tu cupo. No hay forma de esconderla en el navegador.
  *
- * Entonces el modo vivo necesita del backend, antes de encenderse:
- *   1. una lectura ANÓNIMA de `/v1/agencies`, con cupo por IP;
- *   2. CORS isOpen al origen de la landing;
- *   3. el API desplegado en un host público.
- * Mientras alguna falte, dejar `PUBLIC_API_URL` sin definir y queda en ejemplo.
+ * De las tres condiciones para encender el modo vivo, dos ya se cumplen desde
+ * que el API está en producción (2026-08-06):
+ *   1. una lectura ANÓNIMA de `/v1/agencies`, con cupo por IP  → FALTA;
+ *   2. CORS abierto al origen de la landing                    → hecho;
+ *   3. el API desplegado en un host público                    → hecho.
+ *
+ * La que falta es la que importa. Hoy `GET /v1/agencies` sin key responde 401
+ * («falta X-API-Key»), porque `router.go` aplica `mw.APIKey` a todo `/v1`; el
+ * único endpoint público es `POST /free`, que sí se usa de verdad en el
+ * formulario. Mientras siga así, `PUBLIC_API_URL` va sin definir.
  */
 
 import { MOCK_AGENCIES } from '../data/agencies-mock.ts'
@@ -196,7 +201,7 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
     {/* Cada card lleva su borde, en vez del truco de `gap-px` sobre un
         contenedor teñido. Ese truco dibuja los separadores gratis, pero cuando
         la cantidad de resultados es impar la celda que sobra queda pintada con
-        el color del contenedor y se ve como una card vacía. En una grilla
+        el color del contenedor y se ve como una tarjeta vacía. En una grilla
         fija da igual; en una que cambia con cada tecla, no. */}
     <ul class="mt-4 grid items-start gap-3 sm:grid-cols-2" data-list>
       {
@@ -501,7 +506,7 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
     q.addEventListener('input', schedule)
     carrier.addEventListener('change', search)
 
-    // En modo vivo la list del HTML son los datos de ejemplo: hay que
+    // En modo vivo la lista del HTML son los datos de ejemplo: hay que
     // reemplazarla por lo que conteste el API antes de que nadie la lea.
     if (API) search()
   })()
