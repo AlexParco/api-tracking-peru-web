@@ -1,0 +1,241 @@
+---
+import { DOCS_NAV } from '../data/docs-nav.ts'
+
+/* El índice sale de `docs-nav.ts`, que es la misma fuente que arma la sidebar y
+   que drift los endpoints de `api.ts`. Deliberado: un buscador con su propia
+   list se desincroniza en silencio —encontrás un endpoint que ya no existe, o
+   no encontrás uno que sí— y nadie lo reporta porque nadie sabe qué debería
+   haber salido. */
+const INDICE = DOCS_NAV
+---
+
+<div
+  id="search-overlay"
+  class="search-overlay pointer-events-none fixed inset-0 z-[80] opacity-0"
+  role="dialog"
+  aria-modal="true"
+  aria-label="Buscar en la documentación"
+>
+  <div data-search-close class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+
+  <div class="relative mx-auto mt-[10vh] w-full max-w-2xl px-3 sm:mt-[15vh] sm:px-4">
+    <div class="search-modal overflow-hidden rounded-2xl border border-line bg-ink-soft shadow-2xl">
+      <div class="flex items-center gap-3 border-b border-line px-5 py-4">
+        <svg
+          class="size-4 flex-shrink-0 text-zinc-600"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"></path>
+        </svg>
+        <input
+          id="search-input"
+          type="text"
+          placeholder="Buscar endpoints, estados, secciones…"
+          autocomplete="off"
+          spellcheck="false"
+          aria-controls="search-results"
+          class="flex-1 bg-transparent text-base text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
+        />
+        <span id="search-count" class="whitespace-nowrap font-mono text-xs text-zinc-600"></span>
+      </div>
+
+      {/* `aria-live` para que el conteo se anuncie sin robar el foco del input:
+          quien navega a ciegas tiene que enterarse de que la lista cambió. */}
+      <div id="search-results" class="max-h-[55vh] overflow-y-auto py-2" aria-live="polite"></div>
+
+      <div
+        class="flex items-center justify-end gap-5 border-t border-line bg-ink px-5 py-2.5 text-[11px] text-zinc-600"
+      >
+        <span class="flex items-center gap-1.5">
+          <kbd class="inline-flex size-5 items-center justify-center rounded border border-line font-mono text-[10px]">↑</kbd>
+          <kbd class="inline-flex size-5 items-center justify-center rounded border border-line font-mono text-[10px]">↓</kbd>
+          Navegar
+        </span>
+        <span class="flex items-center gap-1.5">
+          <kbd class="inline-flex size-5 items-center justify-center rounded border border-line font-mono text-[10px]">↵</kbd>
+          Abrir
+        </span>
+        <span class="flex items-center gap-1.5">
+          <kbd class="inline-flex h-5 items-center justify-center rounded border border-line px-1.5 font-mono text-[10px]">esc</kbd>
+          Cerrar
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script is:inline define:vars={{ INDICE }}>
+  ;(() => {
+    const overlay = document.getElementById('search-overlay')
+    const input = document.getElementById('search-input')
+    const list = document.getElementById('search-results')
+    const countEl = document.getElementById('search-count')
+    if (!overlay || !input || !list || !countEl) return
+
+    let active = 0
+    let matches = INDICE
+    let isOpen = false
+    let lastFocus = null
+
+    // Sin acentos y en minúsculas de los dos lados: search «autenticacion» tiene
+    // que encontrar «Autenticación». Nadie escribe los acentos en un buscador.
+    const norm = (s) =>
+      String(s ?? '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .trim()
+
+    const escapeHtml = (s) =>
+      String(s ?? '').replace(
+        /[&<>"']/g,
+        (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+      )
+
+    const methodColor = { GET: 'text-[var(--color-live)]', POST: 'text-sky-400', DELETE: 'text-rose-400' }
+
+    const paint = () => {
+      countEl.textContent = `${matches.length} resultado${matches.length === 1 ? '' : 's'}`
+      if (!matches.length) {
+        list.innerHTML =
+          '<p class="px-5 py-12 text-center text-sm text-zinc-600">Sin resultados. Prueba con el nombre de la ruta, o con el estado que buscas.</p>'
+        return
+      }
+      list.innerHTML = matches
+        .map(
+          (e, i) => `
+        <a href="#${escapeHtml(e.id)}" data-res data-i="${i}"
+           class="flex items-center gap-3 px-5 py-3 transition-colors ${i === active ? 'bg-brand/[0.07]' : ''}">
+          <span class="w-10 flex-shrink-0 font-mono text-[10px] font-semibold ${methodColor[e.method] ?? 'text-zinc-700'}">${escapeHtml(e.method ?? '')}</span>
+          <span class="min-w-0 flex-1">
+            <span class="block font-mono text-[10px] uppercase tracking-wider text-zinc-600">${escapeHtml(e.group)}</span>
+            <span class="block truncate text-sm font-medium text-zinc-100">${escapeHtml(e.title)}</span>
+            <span class="mt-0.5 block truncate text-xs text-zinc-500">${escapeHtml(e.detail)}</span>
+          </span>
+          <kbd class="${i === active ? 'inline-flex' : 'hidden'} size-6 flex-shrink-0 items-center justify-center rounded-md bg-brand font-mono text-xs text-ink">↵</kbd>
+        </a>`,
+        )
+        .join('')
+    }
+
+    const filter = () => {
+      const q = norm(input.value)
+      matches = !q
+        ? INDICE
+        : INDICE.filter(
+            (e) =>
+              norm(e.title).includes(q) ||
+              norm(e.detail).includes(q) ||
+              norm(e.group).includes(q) ||
+              norm(e.method).includes(q),
+          )
+      active = 0
+      paint()
+    }
+
+    const open = () => {
+      if (isOpen) return
+      isOpen = true
+      // Se guarda quién tenía el glow para devolvérselo al close: si no, close
+      // el buscador manda el glow al principio del documento y quien navega con
+      // teclado pierde el lugar.
+      lastFocus = document.activeElement
+      overlay.classList.add('is-open')
+      document.body.style.overflow = 'hidden'
+      input.value = ''
+      filter()
+      requestAnimationFrame(() => input.focus())
+    }
+
+    const close = () => {
+      if (!isOpen) return
+      isOpen = false
+      overlay.classList.remove('is-open')
+      document.body.style.overflow = ''
+      lastFocus?.focus?.()
+    }
+
+    const move = (tick) => {
+      if (!matches.length) return
+      active = (active + tick + matches.length) % matches.length
+      paint()
+      list.querySelector(`[data-i="${active}"]`)?.scrollIntoView({ block: 'nearest' })
+    }
+
+    // Ir a un anchor de la MISMA página no dispara navegación si el hash ya es
+    // ése, así que se scrollea a mano en vez de confiar en `location.hash`.
+    const goTo = (e) => {
+      close()
+      const target = document.getElementById(e.id)
+      if (!target) return
+      history.replaceState(null, '', `#${e.id}`)
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+
+    document.getElementById('docs-search')?.addEventListener('click', open)
+    document.getElementById('docs-search-mobile')?.addEventListener('click', open)
+
+    document.addEventListener('keydown', (ev) => {
+      const t = ev.target
+      const escribiendo =
+        t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)
+
+      if (isOpen && ev.key === 'Escape') {
+        ev.preventDefault()
+        close()
+        return
+      }
+      if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === 'k') {
+        ev.preventDefault()
+        isOpen ? close() : open()
+        return
+      }
+      if (ev.key === '/' && !escribiendo && !isOpen) {
+        ev.preventDefault()
+        open()
+      }
+    })
+
+    input.addEventListener('input', filter)
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'ArrowDown') {
+        ev.preventDefault()
+        move(1)
+      } else if (ev.key === 'ArrowUp') {
+        ev.preventDefault()
+        move(-1)
+      } else if (ev.key === 'Enter') {
+        ev.preventDefault()
+        if (matches[active]) goTo(matches[active])
+      }
+    })
+
+    for (const el of overlay.querySelectorAll('[data-search-close]')) {
+      el.addEventListener('click', close)
+    }
+
+    list.addEventListener('click', (ev) => {
+      const a = ev.target.closest('[data-res]')
+      if (!a) return
+      ev.preventDefault()
+      goTo(matches[Number(a.dataset.i)])
+    })
+
+    list.addEventListener('mousemove', (ev) => {
+      const a = ev.target.closest('[data-res]')
+      if (!a) return
+      const i = Number(a.dataset.i)
+      if (i !== active) {
+        active = i
+        paint()
+      }
+    })
+  })()
+</script>

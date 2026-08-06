@@ -1,0 +1,126 @@
+---
+import { DOCS_GROUPS } from '../data/docs-nav.ts'
+
+const methodClass: Record<string, string> = {
+  GET: 'text-[var(--color-live)]',
+  POST: 'text-sky-400',
+  DELETE: 'text-rose-400',
+}
+---
+
+{/* Fuera de pantalla en móvil y fija desde `lg`. El `aria-label` la distingue
+    del nav principal: en una página con dos `<nav>`, un lector de pantalla
+    necesita poder decir cuál es cuál. */}
+<aside
+  id="sidebar"
+  class="fixed bottom-0 left-0 top-14 z-40 w-64 -translate-x-full overflow-y-auto border-r border-line bg-ink transition-transform duration-200 lg:w-60 lg:translate-x-0"
+>
+  <nav class="p-5" aria-label="Secciones de la documentación">
+    {
+      DOCS_GROUPS.map((g) => (
+        <div class="mb-7">
+          <p class="mb-2.5 font-mono text-[10px] uppercase tracking-[0.15em] text-zinc-600">
+            {g.group}
+          </p>
+          <div class="space-y-0.5">
+            {g.entries.map((e) => (
+              <a
+                href={`#${e.id}`}
+                data-sidebar-link
+                data-id={e.id}
+                class="sidebar-link flex items-center rounded-lg border-l-2 border-transparent px-3 py-2 text-[13px] text-zinc-500 transition-colors hover:bg-white/[0.03] hover:text-zinc-100"
+              >
+                {e.method && (
+                  <span
+                    class:list={[
+                      'mr-2 inline-flex w-9 flex-shrink-0 items-center font-mono text-[9px] font-semibold',
+                      methodClass[e.method],
+                    ]}
+                  >
+                    {e.method}
+                  </span>
+                )}
+                <span class="truncate">{e.title}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      ))
+    }
+  </nav>
+</aside>
+
+<div id="sidebar-overlay" class="fixed inset-0 z-30 hidden bg-black/50 lg:hidden"></div>
+
+<script is:inline>
+  ;(() => {
+    const sidebar = document.getElementById('sidebar')
+    const overlay = document.getElementById('sidebar-overlay')
+    const toggle = document.getElementById('sidebar-toggle')
+    if (!sidebar || !overlay) return
+
+    const open = () => {
+      sidebar.classList.remove('-translate-x-full')
+      overlay.classList.remove('hidden')
+    }
+    const close = () => {
+      sidebar.classList.add('-translate-x-full')
+      overlay.classList.add('hidden')
+    }
+
+    toggle?.addEventListener('click', () =>
+      sidebar.classList.contains('-translate-x-full') ? open() : close(),
+    )
+    overlay.addEventListener('click', close)
+
+    // En móvil el panel tapa el contenido, así que tocar un enlace tiene que
+    // cerrarlo: si no, saltas al anchor y sigues mirando la sidebar.
+    for (const a of sidebar.querySelectorAll('a')) {
+      a.addEventListener('click', () => {
+        if (matchMedia('(max-width: 63.999rem)').matches) close()
+      })
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !sidebar.classList.contains('-translate-x-full')) close()
+    })
+
+    // ── Qué sección se está leyendo ──
+    // Se marca la última header que cruzó el borde superior, no «la que se ve»:
+    // con varias sections cortas en pantalla a la vez, «la que se ve» parpadea
+    // entre dos mientras haces scroll.
+    const links = new Map(
+      [...sidebar.querySelectorAll('[data-sidebar-link]')].map((a) => [a.dataset.id, a]),
+    )
+    const targets = [...document.querySelectorAll('[data-docs-section]')]
+    if (!targets.length) return
+
+    let current = null
+    const mark = () => {
+      const limit = 96 // debajo del nav fijo
+      let seen = targets[0]
+      for (const s of targets) {
+        if (s.getBoundingClientRect().top <= limit) seen = s
+        else break
+      }
+      if (seen.id === current) return
+      links.get(current)?.classList.remove('active')
+      current = seen.id
+      const a = links.get(current)
+      if (a) {
+        a.classList.add('active')
+        // Solo si quedó fuera de vista: un `scrollIntoView` incondicional
+        // pelearía con el scroll del usuario dentro de la propia sidebar.
+        const box = a.getBoundingClientRect()
+        const panel = sidebar.getBoundingClientRect()
+        if (box.top < panel.top + 8 || box.bottom > panel.bottom - 8) {
+          a.scrollIntoView({ block: 'nearest' })
+        }
+      }
+    }
+
+    mark()
+    addEventListener('scroll', mark, { passive: true })
+    addEventListener('resize', mark, { passive: true })
+  })()
+</script>

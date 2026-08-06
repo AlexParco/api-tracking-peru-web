@@ -1,0 +1,642 @@
+---
+import Base from '../layouts/Base.astro'
+import DocsNav from '../components/DocsNav.astro'
+import DocsSidebar from '../components/DocsSidebar.astro'
+import Footer from '../components/Footer.astro'
+import CodeBlock from '../components/CodeBlock.astro'
+import {
+  ENDPOINTS,
+  PUBLISHED_CARRIERS,
+  LEVELS,
+  JOURNEY,
+  DETOURS,
+  FORK_NOTE,
+  EVENTS,
+  WEBHOOK_DECISIONS,
+  WEBHOOK_EXAMPLE,
+  WEBHOOK_SIGNATURE,
+  ERRORS,
+  ERROR_NOTES,
+  type Level,
+} from '../data/api.ts'
+import { EXPECTED_IDS } from '../data/docs-nav.ts'
+import { PLANS } from '../data/plans.ts'
+
+/* La página se arma entera desde `api.ts`. No hay una segunda copia de los
+   endpoints ni de los states: si el API cambia se toca un archivo y la portada
+   y la documentación se corrigen juntas. */
+
+const methodClass: Record<string, string> = {
+  GET: 'text-[var(--color-live)]',
+  POST: 'text-sky-400',
+  DELETE: 'text-rose-400',
+}
+
+const withTracking = PUBLISHED_CARRIERS.filter((c) => c.tracking.status === 'ok')
+const subscribable = PUBLISHED_CARRIERS.filter((c) => c.subscribable)
+
+const listNames = (cs: typeof PUBLISHED_CARRIERS) =>
+  cs.length < 2
+    ? cs.map((c) => c.name).join('')
+    : `${cs
+        .slice(0, -1)
+        .map((c) => c.name)
+        .join(', ')} y ${cs[cs.length - 1].name}`
+
+/*
+ * Las anclas que esta página escribe de verdad.
+ *
+ * La sidebar y el buscador enlazan a `docs-nav.ts`. Un enlace a un `id` que
+ * nadie renderiza NO falla: hace scroll a ninguna parte, y la página parece rota
+ * sin que nada lo reporte. Las dos listas se comparan en build, así que la
+ * discrepancia es un build rojo y no un enlace muerto en producción.
+ */
+const RENDERED_IDS = [
+  'empezar',
+  'autenticacion',
+  'primer-llamado',
+  'convenciones',
+  ...ENDPOINTS.map((e) => `ep-${e.id}`),
+  'estados',
+  'desvios',
+  'carriers',
+  'webhooks-como',
+  'webhooks-eventos',
+  'webhooks-firma',
+  'webhooks-entrega',
+  'webhooks-reglas',
+  'errores',
+  'limites',
+]
+
+{
+  const escritos = new Set(RENDERED_IDS)
+  const sinAncla = [...EXPECTED_IDS].filter((id) => !escritos.has(id))
+  const sinEntrada = RENDERED_IDS.filter((id) => !EXPECTED_IDS.has(id))
+  if (sinAncla.length || sinEntrada.length) {
+    throw new Error(
+      'La navegación de /docs y las anclas de la página no coinciden.' +
+        (sinAncla.length ? ` Enlazadas sin anchor: ${sinAncla.join(', ')}.` : '') +
+        (sinEntrada.length ? ` Con anchor y sin enlace: ${sinEntrada.join(', ')}.` : ''),
+    )
+  }
+}
+
+const ERROR_SHAPE = `{
+  "error": {
+    "code": "carrier_ambiguous",
+    "message": "varios carriers reconocen ese identificador (olva, urbano); indica ?carrier=",
+    "request_id": "01KZ4TVKTZD72KE2RSZWT407YH",
+    "candidates": ["olva", "urbano"]
+  }
+}`
+
+/* `APIReference` es el tipo exacto de schema.org para documentación de un API —
+   es una subclase de `TechArticle`—. Decirle al buscador qué clase de página es
+   la vuelve elegible para el resultado enriquecido de documentación técnica. */
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'APIReference',
+  name: 'Documentación del API de rastreo de couriers peruanos',
+  inLanguage: 'es-PE',
+  programmingModel: 'REST',
+  about: { '@type': 'Service', name: 'API Tracking Perú' },
+  publisher: { '@type': 'Organization', name: 'API Tracking Perú' },
+  url: 'https://tracking-peru.com/docs',
+}
+
+const AUTH_CURL = `curl -H "X-API-Key: $API_KEY" \\
+  "https://api.tracking-peru.com/v1/carriers"`
+
+const GAPS = [
+  {
+    t: 'Cuánto cupo te queda',
+    d: 'Ya sabes qué pasa al pasarte del tope (429 quota_exceeded), pero no hay todavía una cabecera que te diga cuánto llevas consumido antes de llegar. Por ahora, lleva la cuenta por tu lado.',
+  },
+  {
+    t: 'Los parámetros completos por endpoint',
+    d: 'Se ven los que aparecen en los ejemplos —carrier, number, ubigeo, page, per_page—. La tabla exhaustiva de query params, con tipos y obligatoriedad, falta.',
+  },
+  {
+    t: 'El vocabulario completo de cada courier',
+    d: 'Los once estados canónicos están cerrados, pero el mapeo desde los códigos de cada courier no cubre el 100 % de los suyos: de Cruz del Sur y Urbano vimos pocos envíos. Lo que no reconocemos llega como unknown con su literal, y el API lleva la cuenta de esos casos para mapearlos por frecuencia.',
+  },
+]
+---
+
+<Base
+  title="Documentación del API de rastreo de couriers peruanos"
+  jsonLd={jsonLd}
+  description="Referencia del API de rastreo y agencias de couriers peruanos: endpoints, estados canónicos, webhooks firmados y el nivel de verificación por carrier."
+>
+  <DocsNav />
+  <DocsSidebar />
+
+  {/* `pt-14` por la barra fija y `lg:pl-60` por la sidebar: las dos están fuera
+      del flujo, así que el contenido tiene que reservarles el lugar a mano. */}
+  <main id="contenido" class="pt-14 lg:pl-60">
+    <div class="mx-auto max-w-3xl px-6 py-14 lg:px-10">
+      <!-- ── Empezar ── -->
+      <section id="empezar" data-docs-section class="scroll-mt-20">
+        <p class="font-mono text-xs text-brand">Referencia</p>
+        <h1 class="mt-3 text-balance font-display text-4xl font-semibold tracking-tight text-zinc-50">
+          Documentación del API
+        </h1>
+        <p class="mt-5 text-pretty text-lg leading-relaxed text-zinc-400">
+          Rastreo de envíos y catálogo de agencias de couriers peruanos detrás de un solo
+          contrato REST. Todo lo de esta página sale de respuestas reales del servicio: los
+          ejemplos están recortados para que entren en pantalla, nunca inventados.
+        </p>
+        <p class="mt-4 text-pretty text-sm leading-relaxed text-zinc-500">
+          Hoy {withTracking.length} de {PUBLISHED_CARRIERS.length} couriers rastrean
+          ({listNames(withTracking)}) y {PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok').length}{' '}
+          publican catálogo de agencias. El estado real, carrier por carrier, lo publica el
+          propio API en <code class="font-mono text-zinc-300">GET /v1/carriers</code>.
+        </p>
+      </section>
+
+      <!-- ── Autenticación ── -->
+      <section id="autenticacion" data-docs-section class="mt-16 scroll-mt-20">
+        <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
+          Autenticación
+        </h2>
+        <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+          Toda llamada lleva tu key en la cabecera{' '}
+          <code class="font-mono text-zinc-300">X-API-Key</code>. Cada key va con un plan
+          —<a href="/#precios" class="text-brand/80 underline-offset-2 hover:underline">Free,
+          Básico, Pro o a medida</a>—. La del plan Free se emite sola desde la web; las de pago,
+          a pedido.
+        </p>
+        <div class="mt-5">
+          <CodeBlock title="GET /v1/carriers" code={AUTH_CURL} tone="brand" />
+        </div>
+        <p class="mt-3 text-pretty text-xs leading-relaxed text-zinc-600">
+          La key identifica y contabiliza: no la pongas en un cliente que se descargue al
+          navegador o a una app, porque ahí queda publicada y la gasta cualquiera. Va del
+          lado de tu servidor.
+        </p>
+
+        {/* Los cupos salen de `plans.ts`, la misma fuente que la página de
+            precios. Repetirlos a mano aquí sería garantizar que un día digan un
+            número distinto del que se cobra. */}
+        <h3 class="mt-8 text-sm font-medium text-zinc-300">Cupos por plan</h3>
+        <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">
+          Tu key trae el cupo del plan con el que se emitió. El límite por minuto es un
+          guardarraíl contra ráfagas, no una cuota mensual: ningún plan tiene tope de
+          consultas al mes salvo en el plan Free, que tiene tope. El límite por minuto es un
+          guardarraíl contra ráfagas, no una cuota. La key se entrega en la misma respuesta
+          del alta.
+        </p>
+        <div class="mt-4 overflow-x-auto">
+          <table class="w-full min-w-[26rem] border-collapse text-left text-sm md:min-w-0">
+            <thead>
+              <tr class="border-b border-line text-xs text-zinc-500">
+                <th scope="col" class="py-2.5 pr-4 font-normal">Plan</th>
+                <th scope="col" class="py-2.5 pr-4 font-normal">Requests / minuto</th>
+                <th scope="col" class="py-2.5 pr-4 font-normal">Webhooks activos</th>
+                <th scope="col" class="py-2.5 font-normal">Consultas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                PLANS.map((p) => (
+                  <tr class="row border-b border-line/60">
+                    <td class="py-3 pr-4 text-zinc-100">{p.name}</td>
+                    <td class="py-3 pr-4 font-mono tabular-nums text-zinc-300">
+                      {p.rpm ?? <span class="text-xs text-zinc-500">negociado</span>}
+                    </td>
+                    <td class="py-3 pr-4 font-mono tabular-nums text-zinc-300">
+                      {p.webhooksLabel ?? p.webhooks ?? (
+                        <span class="text-xs text-zinc-500">negociado</span>
+                      )}
+                    </td>
+                    <td class="py-3 text-zinc-400">{p.queries}</td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── Primer llamado ── -->
+      <section id="primer-llamado" data-docs-section class="mt-16 scroll-mt-20">
+        <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
+          Tu primer llamado
+        </h2>
+        <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+          <code class="font-mono text-zinc-300">GET /v1/carriers</code> es el endpoint de
+          descubrimiento y conviene que sea la primera llamada que escribas: dice qué
+          couriers hay, qué puede cada uno y cuánta evidencia respalda cada integración. Tu
+          código puede leer ese estado en vez de confiar en esta página — que es exactamente
+          lo que recomendamos, porque el API se entera antes.
+        </p>
+      </section>
+
+      <!-- ── Convenciones ── -->
+      <section id="convenciones" data-docs-section class="mt-16 scroll-mt-20">
+        <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
+          Convenciones
+        </h2>
+        <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+          Cinco reglas que valen para todas las respuestas. Ninguna es cosmética: cambian
+          cómo escribes el cliente.
+        </p>
+
+        <dl class="mt-6 space-y-6">
+          <div>
+            <dt class="font-mono text-sm text-zinc-200">Todo en inglés, snake_case</dt>
+            <dd class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-500">
+              Nombres de campo y valores. Alguien que no habla español tiene que poder
+              parsear el contrato, y tiene que ser el mismo para los cinco couriers.
+            </dd>
+          </div>
+          <div>
+            <dt class="font-mono text-sm text-zinc-200">La zona horaria va explícita</dt>
+            <dd class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-500">
+              Cada fecha de un evento lleva su desplazamiento
+              (<code class="text-zinc-400">-05:00</code>). Ningún courier lo manda: lo
+              ponemos nosotros, porque una fecha sin zona es una fecha que cada cliente
+              interpreta distinto.
+            </dd>
+          </div>
+          <div>
+            <dt class="font-mono text-sm text-zinc-200">El literal del courier siempre viaja</dt>
+            <dd class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-500">
+              Junto al estado canónico va{' '}
+              <code class="text-zinc-400">status_raw</code> con la palabra exacta que
+              devolvió el courier. Normalizar no debería significar perder el dato original:
+              si nuestro mapeo te parece mal, tienes con qué discutirlo.
+            </dd>
+          </div>
+          <div>
+            <dt class="font-mono text-sm text-zinc-200">
+              unknown es un valor posible, y tu código tiene que aceptarlo
+            </dt>
+            <dd class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-500">
+              El vocabulario de estados de un courier no está mapeado al 100 %, y uno puede
+              devolver mañana un código que nunca vimos. En ese caso el estado llega como{' '}
+              <code class="text-zinc-400">unknown</code> con el literal original en{' '}
+              <code class="text-zinc-400">status_raw</code> — no aproximado al canónico más
+              parecido. Un <code class="text-zinc-400">switch</code> sin rama por defecto se
+              va a romper ahí, y es el único lugar donde lo va a hacer.
+            </dd>
+          </div>
+          <div>
+            <dt class="font-mono text-sm text-zinc-200">
+              Los documentos de identidad no salen nunca
+            </dt>
+            <dd class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-500">
+              Varios couriers exponen el DNI de quien recibió en endpoints públicos. Ningún
+              carrier lo reenvía —<code class="text-zinc-400">provides.party_documents</code>{' '}
+              es <code class="text-zinc-400">false</code> en los cinco— y donde el crudo lo
+              traía se limpia antes de servirse, así que pedirlo con{' '}
+              <code class="text-zinc-400">include=raw</code> tampoco lo trae.{' '}
+              <strong class="font-medium text-zinc-300">
+                Los nombres de remitente y destinatario sí llegan
+              </strong>{' '}
+              en los couriers que ya los publicaban. Consulta{' '}
+              <code class="text-zinc-400">provides.parties</code> en{' '}
+              <code class="text-zinc-400">GET /v1/carriers</code> antes de asumir, y trátalos
+              como datos personales.
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <!-- ── Endpoints ── -->
+      <div class="mt-20 border-t border-line pt-10">
+        <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
+          Endpoints
+        </h2>
+        <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+          Los {ENDPOINTS.length} que expone el servicio, con una respuesta real de cada uno.
+        </p>
+      </div>
+
+      {
+        ENDPOINTS.map((e) => (
+          <section id={`ep-${e.id}`} data-docs-section class="mt-14 scroll-mt-20">
+            <h3 class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span class:list={['font-mono text-xs font-semibold', methodClass[e.method]]}>
+                {e.method}
+              </span>
+              <code class="font-mono text-base text-zinc-50">{e.path}</code>
+            </h3>
+            <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">{e.summary}</p>
+
+            {e.note && (
+              <p class="mt-3 border-l-2 border-line pl-4 text-pretty text-sm leading-relaxed text-zinc-500">
+                {e.note}
+              </p>
+            )}
+
+            <div class="mt-5 space-y-4">
+              {e.request && <CodeBlock title={e.request.title} code={e.request.code} />}
+              <CodeBlock title={e.response.title} code={e.response.code} tone="brand" />
+            </div>
+          </section>
+        ))
+      }
+
+      <!-- ── Estados canónicos ── -->
+      <section id="estados" data-docs-section class="mt-20 scroll-mt-20 border-t border-line pt-10">
+        <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
+          Estados canónicos
+        </h2>
+        <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+          Un vocabulario, no cinco. Este es el camino que recorre un envío que llega bien,
+          en orden. Los cuatro estados que se salen de él están{' '}
+          <a href="#desvios" class="text-brand/80 underline-offset-2 hover:underline">
+            justo abajo
+          </a>.
+        </p>
+
+        <ol class="mt-6 space-y-4">
+          {
+            JOURNEY.map((h, i) => (
+              <li class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span class="w-5 shrink-0 font-mono text-xs text-zinc-700">{i + 1}</span>
+                <span class="flex flex-wrap items-baseline gap-x-2">
+                  {h.states.map((s, j) => (
+                    <>
+                      {j > 0 && <span class="font-mono text-xs text-zinc-600">o</span>}
+                      <code class="font-mono text-sm text-zinc-100">{s}</code>
+                    </>
+                  ))}
+                </span>
+                <span class="min-w-0 flex-1 text-pretty text-sm leading-relaxed text-zinc-500">
+                  {h.title}
+                </span>
+              </li>
+            ))
+          }
+        </ol>
+        <p class="mt-6 text-pretty text-sm leading-relaxed text-zinc-600">{FORK_NOTE}</p>
+      </section>
+
+      <!-- ── Desvíos ── -->
+      <section id="desvios" data-docs-section class="mt-16 scroll-mt-20">
+        <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
+          Los que se salen del camino
+        </h2>
+        <dl class="mt-5 space-y-3">
+          {
+            DETOURS.map((d) => (
+              <div class="flex flex-wrap items-baseline gap-x-3">
+                <dt class="font-mono text-sm text-zinc-100">{d.status}</dt>
+                <dd class="min-w-0 flex-1 text-pretty text-sm leading-relaxed text-zinc-500">
+                  {d.note}
+                </dd>
+              </div>
+            ))
+          }
+        </dl>
+      </section>
+
+      <!-- ── Carriers ── -->
+      <section id="carriers" data-docs-section class="mt-16 scroll-mt-20">
+        <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
+          Carriers y su nivel de verificación
+        </h2>
+        <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+          Ninguno de estos APIs es oficial: cada adaptador se construyó leyendo cómo funciona
+          el courier, así que la calidad de la evidencia varía. Cada carrier publica la suya
+          en <code class="font-mono text-zinc-300">verified.level</code>, para que distingas
+          «implementado» de «probado contra el sistema real».
+        </p>
+
+        <dl class="mt-6 grid gap-3 sm:grid-cols-2">
+          {
+            (Object.entries(LEVELS) as [Level, (typeof LEVELS)[Level]][]).map(([clave, n]) => (
+              <div class="rounded-xl border border-line bg-ink-soft p-4">
+                <dt class="font-mono text-xs text-zinc-500">{clave}</dt>
+                <dd>
+                  <p class="mt-1.5 text-sm font-medium text-zinc-100">{n.label}</p>
+                  <p class="mt-1 text-pretty text-sm leading-relaxed text-zinc-500">{n.detail}</p>
+                </dd>
+              </div>
+            ))
+          }
+        </dl>
+
+        <div class="mt-8 overflow-x-auto">
+          <table class="w-full min-w-[32rem] border-collapse text-left text-sm md:min-w-0">
+            <thead>
+              <tr class="border-b border-line text-xs text-zinc-500">
+                <th scope="col" class="py-2.5 pr-4 font-normal">Carrier</th>
+                <th scope="col" class="py-2.5 pr-4 font-normal">level</th>
+                <th scope="col" class="py-2.5 pr-4 font-normal">Rastreo</th>
+                <th scope="col" class="py-2.5 font-normal">Agencias</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                PUBLISHED_CARRIERS.map((c) => (
+                  <tr class="row border-b border-line/60">
+                    <td class="py-3 pr-4">
+                      <code class="font-mono text-zinc-100">{c.id}</code>
+                      <span class="mt-0.5 block text-xs text-zinc-600">{c.name}</span>
+                    </td>
+                    <td class="py-3 pr-4 font-mono text-xs text-zinc-400">{c.level}</td>
+                    <td class="py-3 pr-4">
+                      {c.tracking.status === 'ok' ? (
+                        <span class="text-[var(--color-live)]">operativo</span>
+                      ) : c.tracking.status === 'pendiente' ? (
+                        <span class="text-[var(--color-partial)]">pendiente</span>
+                      ) : (
+                        <span class="text-zinc-600">no</span>
+                      )}
+                    </td>
+                    <td class="py-3 text-zinc-500">
+                      {c.agencies.total !== null ? (
+                        <span class="tabular-nums text-zinc-300">{c.agencies.total}</span>
+                      ) : (
+                        <span class="text-zinc-600">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── Webhooks ── -->
+      <section
+        id="webhooks-como"
+        data-docs-section
+        class="mt-20 scroll-mt-20 border-t border-line pt-10"
+      >
+        <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">Webhooks</h2>
+        <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+          Suscribes un envío y te avisamos cuando cambia de estado, en vez de que preguntes.
+          Hoy se puede suscribir un envío de {listNames(subscribable)}; el alta de cualquier
+          otro devuelve un error explícito en el POST, con el motivo — no te dejamos crear
+          una suscripción que nunca iba a entregar nada.
+        </p>
+      </section>
+
+      <section id="webhooks-eventos" data-docs-section class="mt-14 scroll-mt-20">
+        <h3 class="font-display text-lg font-semibold tracking-tight text-zinc-100">
+          Tipos de evento
+        </h3>
+        <dl class="mt-4 space-y-3">
+          {
+            EVENTS.map((e) => (
+              <div>
+                <dt class="font-mono text-sm text-zinc-100">{e.name}</dt>
+                <dd class="mt-1 text-pretty text-sm leading-relaxed text-zinc-500">{e.when}</dd>
+              </div>
+            ))
+          }
+        </dl>
+      </section>
+
+      <section id="webhooks-firma" data-docs-section class="mt-14 scroll-mt-20">
+        <h3 class="font-display text-lg font-semibold tracking-tight text-zinc-100">
+          Verificar la firma
+        </h3>
+        <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">
+          Cada entrega va firmada con el secreto que te devolvemos una sola vez al registrar
+          el endpoint. Compara usando una función de tiempo constante y sobre el{' '}
+          <strong class="font-medium text-zinc-200">cuerpo crudo</strong>: si lo parseas y lo
+          vuelves a serializar antes de firmar, la firma no va a coincidir.
+        </p>
+        <div class="mt-4">
+          <CodeBlock title="X-Webhook-Signature" code={WEBHOOK_SIGNATURE} />
+        </div>
+      </section>
+
+      <section id="webhooks-entrega" data-docs-section class="mt-14 scroll-mt-20">
+        <h3 class="font-display text-lg font-semibold tracking-tight text-zinc-100">
+          Una entrega
+        </h3>
+        <div class="mt-4">
+          <CodeBlock title="POST a tu endpoint" code={WEBHOOK_EXAMPLE} tone="brand" />
+        </div>
+      </section>
+
+      <section id="webhooks-reglas" data-docs-section class="mt-14 scroll-mt-20">
+        <h3 class="font-display text-lg font-semibold tracking-tight text-zinc-100">
+          Antes de escribir el receptor
+        </h3>
+        <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">
+          Estas no son features: son decisiones que cambian tu código.
+        </p>
+        <dl class="mt-5 space-y-5">
+          {
+            WEBHOOK_DECISIONS.map((d) => (
+              <div>
+                <dt class="text-sm font-medium text-zinc-200">{d.title}</dt>
+                <dd class="mt-1 text-pretty text-sm leading-relaxed text-zinc-500">{d.detail}</dd>
+              </div>
+            ))
+          }
+        </dl>
+      </section>
+
+      <!-- ── Errores ── -->
+      <section id="errores" data-docs-section class="mt-20 scroll-mt-20 border-t border-line pt-10">
+        <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">Errores</h2>
+        <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+          Todos tienen la misma forma: un <code class="font-mono text-zinc-300">code</code>{' '}
+          estable, un <code class="font-mono text-zinc-300">message</code> en castellano y un{' '}
+          <code class="font-mono text-zinc-300">request_id</code> para cuando nos escribas.
+          Ramifica por el <code class="font-mono text-zinc-300">code</code>, nunca por el texto:
+          el mensaje se puede reescribir, el código no.
+        </p>
+
+        <div class="mt-5">
+          <CodeBlock title="la forma de un error" code={ERROR_SHAPE} />
+        </div>
+
+        <div class="mt-6 overflow-x-auto">
+          <table class="w-full min-w-[34rem] border-collapse text-left text-sm md:min-w-0">
+            <thead>
+              <tr class="border-b border-line text-xs text-zinc-500">
+                <th scope="col" class="py-2.5 pr-4 font-normal">HTTP</th>
+                <th scope="col" class="py-2.5 pr-4 font-normal">code</th>
+                <th scope="col" class="py-2.5 font-normal">Cuándo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                ERRORS.map((e) => (
+                  <tr class="row border-b border-line/60">
+                    <td class="py-3 pr-4 font-mono tabular-nums text-zinc-400">{e.http}</td>
+                    <td class="py-3 pr-4 font-mono text-zinc-100">{e.code}</td>
+                    <td class="py-3 text-pretty text-zinc-500">{e.when}</td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+
+        {/* Lo que la tabla no puede decir en una celda, y que ahorra bugs. */}
+        <ul class="mt-6 space-y-3">
+          {
+            ERROR_NOTES.map((n) => (
+              <li class="flex gap-3 text-sm leading-relaxed text-zinc-400">
+                <span class="mt-1.5 size-1.5 shrink-0 rounded-full bg-brand" aria-hidden="true" />
+                <span class="text-pretty">{n}</span>
+              </li>
+            ))
+          }
+        </ul>
+
+        <div class="mt-6 rounded-xl border border-line bg-ink-soft p-5">
+          <p class="text-sm font-medium text-zinc-200">Lo que falla no gasta cuota</p>
+          <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-500">
+            El tope mensual cuenta{' '}
+            <strong class="font-medium text-zinc-300">solo respuestas 2xx</strong>. Un courier que
+            todavía no rastrea, un envío que no existe o una falla nuestra no te descuentan nada.
+            Vale igual para todos los carriers. Las suscripciones a webhooks tampoco entran: se
+            miden aparte, por cuántas tienes activas a la vez.
+          </p>
+        </div>
+      </section>
+
+      {/* ── Lo que falta ──
+          Va adentro de la documentación y no en un pie de página. Una referencia
+          que no dice dónde termina obliga a descubrirlo con un request fallido
+          en producción; el resto del sitio se vende publicando cuánto sabe, y
+          sería raro que la página técnica fuera la única que disimula. */}
+      <section id="limites" data-docs-section class="mt-20 scroll-mt-20 border-t border-line pt-10">
+        <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
+          Lo que esta página todavía no dice
+        </h2>
+        <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+          Preferimos listar los huecos a que los encuentres con un request fallido.
+        </p>
+        <ul class="mt-6 space-y-4">
+          {
+            GAPS.map((x) => (
+              <li class="border-l-2 border-line pl-4">
+                <p class="text-sm font-medium text-zinc-200">{x.t}</p>
+                <p class="mt-1 text-pretty text-sm leading-relaxed text-zinc-500">{x.d}</p>
+              </li>
+            ))
+          }
+        </ul>
+
+        <p class="mt-8 text-pretty text-sm leading-relaxed text-zinc-500">
+          Los errores{' '}
+          <a href="#errores" class="text-brand/80 underline-offset-2 hover:underline">
+            sí están documentados
+          </a>{' '}
+          — salieron de esta lista cuando dejaron de faltar. Y mientras tanto,{' '}
+          <code class="font-mono text-zinc-300">GET /v1/carriers</code> es la
+          fuente que no envejece: publica el estado real de cada integración y tu código
+          puede leerlo en vez de confiar en este texto.
+        </p>
+      </section>
+    </div>
+
+    {/* Dentro de `main` y no después: afuera quedaría bajo la sidebar fija, que
+        ocupa hasta el borde inferior de la ventana. */}
+    <Footer />
+  </main>
+</Base>

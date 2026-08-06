@@ -1,0 +1,83 @@
+---
+import DocsSearch from './DocsSearch.astro'
+import Logo from './Logo.astro'
+---
+
+{/* Fija, no pegajosa: la sidebar se ancla a `top-14` y el contenido reserva ese
+    alto. Con una barra que participa del flujo, las tres cosas se corren. */}
+<header class="fixed inset-x-0 top-0 z-50 h-14 border-b border-line bg-ink/85 backdrop-blur">
+  <div class="flex h-full items-center justify-between gap-3 px-4 sm:px-6">
+    <div class="flex min-w-0 items-center gap-2 sm:gap-4">
+      <button
+        id="sidebar-toggle"
+        type="button"
+        aria-label="Abrir el menú de secciones"
+        aria-controls="sidebar"
+        class="-ml-2 rounded-lg p-2.5 text-zinc-300 transition-colors hover:bg-white/[0.05] lg:hidden"
+      >
+        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"></path>
+        </svg>
+      </button>
+
+      <a href="/" class="flex min-w-0 items-center gap-2.5 font-semibold tracking-tight text-zinc-100">
+        <span class="grid size-6 flex-shrink-0 place-items-center rounded-md bg-brand text-ink">
+          <Logo size={15} />
+        </span>
+        <span class="truncate">API Tracking <span class="text-zinc-500">Perú</span></span>
+        <span class="flex-shrink-0 rounded-md bg-brand/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-brand">
+          docs
+        </span>
+      </a>
+    </div>
+
+    {/* Un `<button>` y no un `<input>`: no busca en línea, abre el paleta. Un
+        campo que al tipear abre otro campo pierde la primera tecla. */}
+    <div class="mx-8 hidden max-w-md flex-1 sm:flex">
+      <div class="relative w-full">
+        <svg
+          class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-600"
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"></path>
+        </svg>
+        <button
+          id="docs-search"
+          type="button"
+          class="w-full cursor-pointer rounded-xl border border-line bg-ink-soft py-2.5 pl-10 pr-20 text-left text-sm text-zinc-500 transition-colors hover:border-brand/30 hover:text-zinc-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/50"
+        >
+          Buscar endpoints…
+        </button>
+        <span class="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 md:inline-flex">
+          <kbd class="inline-flex items-center rounded border border-line px-1.5 py-0.5 font-mono text-[10px] text-zinc-600">
+            ⌘K
+          </kbd>
+        </span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-1 sm:gap-5">
+      <button
+        id="docs-search-mobile"
+        type="button"
+        aria-label="Buscar en la documentación"
+        class="-mr-1 rounded-lg p-2.5 text-zinc-300 transition-colors hover:bg-white/[0.05] sm:hidden"
+      >
+        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"></path>
+        </svg>
+      </button>
+      <a href="/" class="hidden text-sm text-zinc-400 transition-colors hover:text-zinc-100 sm:inline">
+        Inicio
+      </a>
+      <a
+        href="/#empezar"
+        class="rounded-lg bg-zinc-100 px-3.5 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-white"
+      >
+        Pedir acceso
+      </a>
+    </div>
+  </div>
+</header>
+
+<DocsSearch />
