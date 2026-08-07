@@ -72,6 +72,31 @@ const og = new URL('/og.png', ORIGEN)
 
     {jsonLd && <script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />}
 
+    {/* Microsoft Clarity — mapas de calor y repetición de sesión.
+        Sólo en producción: `import.meta.env.PROD` es false en `astro dev`, así
+        que las sesiones de desarrollo no ensucian las métricas con recargas y
+        pruebas. Astro lo evalúa al compilar, o sea que en el build de desarrollo
+        el `<script>` ni siquiera existe.
+
+        `is:inline` para que Astro no lo procese ni lo empaquete: el sitio no
+        envía bundles, y éste tiene que quedar tal cual lo publica Clarity.
+
+        Es el ÚNICO tercero del sitio. Si algún día se agrega un CSP al nginx,
+        necesita `script-src https://www.clarity.ms` y `connect-src` hacia
+        `https://*.clarity.ms`, o deja de reportar en silencio. */}
+    {
+      import.meta.env.PROD && (
+        <script
+          is:inline
+          set:html={`(function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xyelirog6s");`}
+        />
+      )
+    }
+
     {/* Se decide ANTES de pintar, y por eso va en el <head> y no al final: si
         el estado inicial de las animaciones se aplicara después del primer
         pintado, el contenido se vería y recién ahí se escondería para entrar.

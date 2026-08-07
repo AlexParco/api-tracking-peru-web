@@ -19,9 +19,19 @@ const curl = `$ curl -H "X-API-Key: ..." \\
   <div class="aura absolute inset-0 -z-20" aria-hidden="true"></div>
 
   <div class="mx-auto max-w-6xl px-6 pb-20 pt-20 md:pt-28">
-    <p class="mb-5 flex items-center gap-2 font-mono text-xs text-zinc-500" data-reveal>
-      <span class="pulse size-1.5 rounded-full bg-brand text-brand"></span>
-      Couriers de Perú · un solo API
+    {/* La insignia de beta va ACÁ y no en la sección de precios.
+        Estar en beta es una condición del producto entero —cambia qué esperar de
+        él—, no una nota al pie de una tabla de planes: enterarse recién después
+        de tres pantallas de scroll es enterarse tarde. En precios queda sólo su
+        consecuencia, que el precio que tomes ahora te queda fijo. */}
+    <p class="mb-5 flex flex-wrap items-center gap-x-2.5 gap-y-2 font-mono text-xs text-zinc-500" data-reveal>
+      <span class="rounded-full border border-brand/30 bg-brand/[0.06] px-2 py-0.5 text-[11px] font-semibold text-brand">
+        beta
+      </span>
+      <span class="flex items-center gap-2">
+        <span class="pulse size-1.5 rounded-full bg-brand text-brand"></span>
+        Couriers de Perú · un solo API
+      </span>
     </p>
 
     <h1

@@ -23,6 +23,17 @@
  * El RPM NO es el gancho: es un guardarraíl anti-ráfaga. Sube un poco en Pro por
  * margen, pero nadie compra por eso, y la página lo dice así.
  *
+ * ── Ninguno va marcado como recomendado ──
+ *
+ * Hubo un `featured` que destacaba al Pro con insignia, borde teñido y botón
+ * relleno. Se quitó entero, no se puso en `false`: un campo que nadie usa es
+ * una invitación a volver a encenderlo sin recordar por qué se apagó.
+ *
+ * El motivo: recomendar un plan sin saber el volumen de quien lee es un
+ * empujón, no un consejo. Lo que separa un nivel de otro es cuántos envíos
+ * tiene vigilados a la vez, y eso lo sabe el cliente. Las cuatro tarjetas se
+ * ven igual y la comparación queda a la vista.
+ *
  * ── Free es permanente, y no es caridad ──
  *
  * Reemplaza al trial de 4 días. Un trial que vence empuja al usuario afuera justo
@@ -49,7 +60,6 @@ export interface Plan {
   queries: string
   support: string
   summary: string
-  featured?: boolean
   /** El gratuito: no vence y no se cobra. */
   free?: boolean
 }
@@ -88,7 +98,6 @@ export const PLANS: Plan[] = [
     queries: 'sin tope',
     support: 'prioritario',
     summary: 'Volumen alto y respuesta rápida cuando algo se rompe.',
-    featured: true,
   },
   {
     id: 'custom',

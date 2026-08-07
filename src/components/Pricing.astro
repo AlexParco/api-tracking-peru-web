@@ -36,43 +36,42 @@ const withCatalog = PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok')
         termine, la promesa deja de ser cierta y hay que sacarla de la página.
         Atado a la bandera es cambiar un booleano; escrito a mano es acordarse
         de que esta línea existe. */}
+    {/* Sin la insignia «beta»: esa ahora vive en el hero, que es donde se ve
+        antes de scrollear tres pantallas. Acá queda sólo la consecuencia sobre
+        el precio, que es lo que le importa a quien está mirando planes. */}
     {
       BETA.priceLock && (
-        <p
-          class="mt-8 flex flex-wrap items-baseline gap-x-2 text-sm text-zinc-400"
-          data-reveal
-          style="--step: 2"
-        >
-          <span class="rounded-full border border-brand/30 px-2 py-0.5 font-mono text-[11px] text-brand">
-            beta
-          </span>
-          <span class="text-pretty">
-            El precio que tomes ahora te queda fijo, también cuando salgamos de beta.
-          </span>
+        <p class="mt-8 text-pretty text-sm text-zinc-400" data-reveal style="--step: 2">
+          El precio que tomes ahora te queda fijo, también cuando salgamos de beta.
         </p>
       )
     }
 
-    <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    {/* La grilla usa mas ancho que el texto de arriba. El titulo y el parrafo
+        se leen mejor en una medida corta; cuatro tarjetas, no. */}
+    <div class="mt-4 grid gap-4 md:grid-cols-2 xl:-mx-16 xl:grid-cols-4 2xl:-mx-24">
       {
         PLANS.map((p, i) => {
           const saving = annualSaving(p)
+          /* Las cuatro tarjetas se ven IGUAL. No hay plan destacado: ni insignia
+             «recomendado», ni borde teñido, ni botón relleno — las tres cosas
+             señalaban al Pro.
+
+             Recomendar un plan sin saber el volumen de quien lee es un empujón,
+             no un consejo: el medidor es cuántos envíos tiene vigilados a la
+             vez, y eso lo sabe él. La tabla ya dice qué trae cada uno.
+
+             El comentario va ACÁ y no dentro del `return`: ahí sería un segundo
+             hermano junto al `<div>` y el compilador corta con «Expected `,` or
+             `)`». */
           return (
             <div
-              class:list={[
-                'card flex flex-col rounded-2xl border p-6',
-                p.featured ? 'border-brand/35 bg-brand/[0.03]' : 'border-line bg-ink-soft',
-              ]}
+              class="card flex flex-col rounded-2xl border border-line bg-ink-soft p-6"
               data-reveal
               style={`--step: ${i}`}
             >
               <div class="flex items-baseline justify-between gap-3">
                 <h3 class="font-display text-lg font-semibold text-zinc-50">{p.name}</h3>
-                {p.featured && (
-                  <span class="rounded-full border border-brand/30 px-2 py-0.5 font-mono text-[10px] text-brand">
-                    recomendado
-                  </span>
-                )}
               </div>
 
               {/* Los dos precios a la vista, sin conmutador mensual/anual. Ese
@@ -118,8 +117,19 @@ const withCatalog = PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok')
               </p>
 
               {/* Las cuatro filas van en el mismo orden y con la misma altura en
-                  las tres tarjetas, así que se comparan en horizontal sin una
-                  tabla — que en un teléfono habría que scrollear de costado. */}
+                  las cuatro tarjetas, así que se comparan en horizontal sin una
+                  tabla — que en un teléfono habría que scrollear de costado.
+
+                  El valor va DEBAJO de su etiqueta, no al lado. Con cuatro
+                  columnas cada tarjeta tiene unos 230 px utiles, y ahi «hasta
+                  1.000 al mes» enfrentado a «Consultas de rastreo» se partia en
+                  tres lineas: por eso se veian aplastadas. Apilado, cada valor
+                  entra en una sola linea y ademas se lee primero el dato, que es
+                  lo que se compara.
+
+                  `min-h` en la fila para que las cuatro tarjetas mantengan sus
+                  filas a la misma altura aunque un valor sea mas largo que
+                  otro; sin eso, la comparacion en horizontal se pierde. */}
               <dl class="mt-5 divide-y divide-line/70 border-y border-line/70 text-sm">
                 {[
                   ['Webhooks activos', p.webhooksLabel ?? p.webhooks, 'negociado'],
@@ -127,11 +137,17 @@ const withCatalog = PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok')
                   ['Consultas de rastreo', p.queries, null],
                   ['Soporte', p.support, null],
                 ].map(([label, value, fallback]) => (
-                  <div class="flex items-baseline justify-between gap-3 py-2.5">
-                    <dt class="shrink-0 text-zinc-500">{label}</dt>
+                  <div class="flex min-h-[3.5rem] flex-col justify-center py-2.5">
+                    <dt class="text-xs text-zinc-500">{label}</dt>
+                    {/* `leading-6` fijo: sin él la altura de la fila dependía del
+                        tamaño de letra del valor, y la de «negociado» —que va en
+                        `text-xs` a propósito, para restarle peso— medía 57 px
+                        contra 61 de las demás. Cuatro píxeles bastan para que
+                        las filas dejen de alinearse entre tarjetas, que es todo
+                        lo que esta tabla tiene que lograr. */}
                     <dd
                       class:list={[
-                        'text-right font-mono tabular-nums',
+                        'mt-1 font-mono leading-6 tabular-nums',
                         value === null ? 'text-xs text-zinc-500' : 'text-zinc-100',
                       ]}
                     >
@@ -143,12 +159,7 @@ const withCatalog = PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok')
 
               <a
                 href={planLink(p)}
-                class:list={[
-                  'btn mt-6 rounded-lg px-5 py-2.5 text-center font-medium',
-                  p.featured
-                    ? 'bg-brand text-ink hover:bg-white'
-                    : 'border border-line text-zinc-300 hover:border-zinc-600 hover:text-zinc-100',
-                ]}
+                class="btn mt-6 rounded-lg border border-line px-5 py-2.5 text-center font-medium text-zinc-300 hover:border-zinc-600 hover:text-zinc-100"
               >
                 {p.free ? 'Empezar gratis' : p.monthly !== null ? 'Pedir esta key' : 'Conversemos'}
               </a>
@@ -179,30 +190,32 @@ const withCatalog = PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok')
       </div>
 
       <div class="space-y-4">
-        {/* El RPM se explica, no se lista y ya. Un número al lado de un precio se
-            lee como cuota comprada; éste no lo es, y confundirlo hace que alguien
-            pague el plan caro esperando el doble de consultas al mes. */}
-        <div class="rounded-xl border border-line bg-ink-soft p-5">
-          <p class="text-sm font-medium text-zinc-200">El límite por minuto es un guardarraíl</p>
-          <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-500">
-            No es una cuota que compras: está para que un bucle mal escrito no tumbe el
-            servicio para el resto. Nadie sube de plan por el RPM — se sube por cuántos
-            envíos puede vigilar a la vez, que es lo que de verdad se mide.
-          </p>
-        </div>
+        {/* Acá había dos recuadros que se fueron, y por el mismo motivo que la
+            banda de la beta: eran razonamiento NUESTRO puesto delante de alguien
+            que vino a ver precios.
 
-        {/* El estado real del cobro. Va aquí y no en letra chica: alguien que ve
-            tres precios asume que hay un checkout, y todavía no lo hay.
-            Descubrirlo al hacer clic es peor que leerlo antes. */}
-        <div class="rounded-xl border border-partial/25 bg-partial/[0.04] p-5">
-          <p class="font-mono text-xs text-[var(--color-partial)]">cómo se paga hoy</p>
-          <p class="mt-2.5 text-pretty text-sm leading-relaxed text-zinc-400">
-            El pago automático todavía no está montado. Hoy escribes, coordinamos el pago y
-            te emitimos la key el mismo día — sin formulario y sin tarjeta guardada.
-          </p>
-          <p class="mt-2.5 text-pretty text-sm leading-relaxed text-zinc-500">
-            Los botones abren un correo con el plan ya puesto en el asunto. Cuando el link
-            de pago esté, el mismo botón lleva al checkout y la key se emite sola.
+            Uno explicaba que el RPM es un guardarraíl y no una cuota, y remataba
+            con «nadie sube de plan por el RPM» — o sea, cómo elegimos el medidor.
+            Esa es una discusión de producto, y se fue entera. Probé aclararlo
+            en la etiqueta de la fila —«(tope de ráfaga)»— y fue peor: no entra
+            en una columna de cuatro tarjetas y el valor se le encima. Tampoco
+            hacía falta: «Requests por MINUTO» ya dice que no es una cuota
+            mensual; el recuadro no estaba ahí para evitar esa confusión sino
+            para explicar cómo elegimos el medidor.
+
+            El otro contaba que el cobro automático no está montado y qué va a
+            pasar cuando lo esté. La parte útil —que el botón abre un correo y no
+            un checkout— sobrevive abajo en una línea; la hoja de ruta no, porque
+            al cliente no le sirve saber qué nos falta a nosotros. */}
+
+        {/* Qué pasa al hacer clic. Alguien que ve un precio asume que hay un
+            checkout; descubrir el correo después del clic es peor que leerlo
+            antes. Es expectativa, no estado interno. */}
+        <div class="rounded-xl border border-line bg-ink-soft p-5">
+          <p class="text-pretty text-sm leading-relaxed text-zinc-400">
+            Los planes pagos se coordinan por correo: el botón abre uno con el plan en el
+            asunto, y te emitimos la key el mismo día. Sin formulario y sin tarjeta
+            guardada.
           </p>
         </div>
       </div>
