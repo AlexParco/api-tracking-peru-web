@@ -122,18 +122,19 @@ export const CARRIERS: Carrier[] = [
   {
     id: 'shalom',
     name: 'Shalom',
-    level: 'code_derived',
+    level: 'live',
     detection: 'none',
     tracking: {
-      // status ('ok') y level ('code_derived') son campos DISTINTOS: el primero
-      // dice "rastrea en vivo" (verificado 2026-08-05), el segundo, cuánta
-      // evidencia respalda el mapeo del vocabulario (lo publica el API, se espeja).
+      // status ('ok') y level ('live') son campos DISTINTOS: el primero dice
+      // "rastrea en vivo", el segundo cuánta evidencia respalda el mapeo. Subió a
+      // live el 2026-08-07: se capturó rastrea/buscar contra el upstream real (una
+      // guía real → ose_id + 200, una inexistente → 404) y el catálogo en vivo.
       status: 'ok',
       note: 'Operativo, verificado en vivo. Traducir la guía a su identificador interno pasa un desafío anti-bot (reCAPTCHA) con un navegador real.',
     },
     subscribable: true,
     published: true,
-    agencies: { status: 'ok', total: 544, note: 'El catálogo más grande. Requiere credencial.' },
+    agencies: { status: 'ok', total: 546, note: 'El catálogo más grande. Requiere credencial.' },
   },
   {
     id: 'dinsides',
