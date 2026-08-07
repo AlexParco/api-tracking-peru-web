@@ -61,10 +61,14 @@ const og = new URL('/og.png', ORIGEN)
          en vez de 2 y el cuadrado lima de fondo: a 16 px el trazo normal funde
          las tres entradas y el símbolo suelto se pierde contra la pestaña. Es la
          versión para tamaños chicos, no el mismo SVG escalado. -->
-    <link
-      rel="icon"
-      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='5' fill='%23a3e635'/><path d='M3 5c5 0 5 7 9 7M3 12h9M3 19c5 0 5-7 9-7M12 12h9' fill='none' stroke='%2308090b' stroke-width='2.6' stroke-linecap='round'/></svg>"
-    />
+    <!-- El favicon apunta a ARCHIVOS con URL propia, no a un data: URI: Google
+         sólo muestra el ícono del resultado de búsqueda si puede RASTREAR su URL,
+         y un data URI no es rastreable (por eso no salía en los resultados). El
+         SVG es la fuente moderna —Google y los navegadores actuales lo prefieren—
+         y el .ico el fallback clásico (además de la ruta /favicon.ico que Google
+         busca por defecto). El favicon.svg es idéntico al data URI que había acá. -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
     <!-- Safari en la barra de marcadores usa el mask-icon, no el SVG. -->
     <link rel="mask-icon" href="/favicon.svg" color="#a3e635" />
     <!-- iOS al guardar en pantalla de inicio: PNG opaco, sin transparencia. -->
