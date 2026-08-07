@@ -228,7 +228,7 @@ export const ERROR_NOTES: string[] = [
 /** Números medidos en una corrida real del servicio, no estimados. */
 export const METRICS = {
   carriersSurveyed: PUBLISHED_CARRIERS.length,
-  agenciesSynced: 818,
+  agenciesSynced: 1546,
   agenciesWithCredentials: 1525,
   carriersWithCatalog: PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok').length,
 }
