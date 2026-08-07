@@ -57,21 +57,29 @@ const og = new URL('/og.png', ORIGEN)
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={og} />
 
-    <!-- El isotipo, inline como data URI: un archivo menos que pedir. Trazo 2.6
-         en vez de 2 y el cuadrado lima de fondo: a 16 px el trazo normal funde
-         las tres entradas y el símbolo suelto se pierde contra la pestaña. Es la
-         versión para tamaños chicos, no el mismo SVG escalado. -->
-    <!-- El favicon apunta a ARCHIVOS con URL propia, no a un data: URI: Google
+    {/* El favicon apunta a ARCHIVOS con URL propia, no a un data: URI: Google
          sólo muestra el ícono del resultado de búsqueda si puede RASTREAR su URL,
          y un data URI no es rastreable (por eso no salía en los resultados). El
          SVG es la fuente moderna —Google y los navegadores actuales lo prefieren—
          y el .ico el fallback clásico (además de la ruta /favicon.ico que Google
-         busca por defecto). El favicon.svg es idéntico al data URI que había acá. -->
+         busca por defecto). El favicon.svg es idéntico al data URI que había acá.
+
+         OJO CON EL `sizes` DEL .ico. Estaba en `any`, y eso hacía que Chrome
+         eligiera el .ico en vez del SVG: «any» se interpreta como escalable, o
+         sea tan buen candidato como el vectorial, y ante el empate gana el
+         último declarado. Con una medida concreta el SVG queda como la única
+         opción escalable y se lleva la pestaña.
+
+         Eso, sumado a que el .ico era el logotipo de Astro que venía del
+         andamiaje —un PNG de 32×32 con la extensión cambiada, nunca
+         reemplazado—, es por lo que en la pestaña se veía Astro. El .ico ahora
+         lo genera `scripts/favicon.py` desde el mismo isotipo, con 16, 32 y 48
+         adentro. */}
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="icon" href="/favicon.ico" sizes="any" />
-    <!-- Safari en la barra de marcadores usa el mask-icon, no el SVG. -->
+    {/* Safari en la barra de marcadores usa el mask-icon, no el SVG. */}
     <link rel="mask-icon" href="/favicon.svg" color="#a3e635" />
-    <!-- iOS al guardar en pantalla de inicio: PNG opaco, sin transparencia. -->
+    {/* iOS al guardar en pantalla de inicio: PNG opaco, sin transparencia. */}
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
     {jsonLd && <script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />}

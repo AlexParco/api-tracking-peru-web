@@ -156,43 +156,6 @@ const inDocs = Astro.url.pathname.startsWith('/docs')
   </nav>
 </header>
 
-<style>
-  /* Sin el marcador por defecto. `::-webkit-details-marker` es para Safari, que
-     ignora `list-style` en el summary. */
-  .menu > summary {
-    list-style: none;
-  }
-  .menu > summary::-webkit-details-marker {
-    display: none;
-  }
-
-  /* Los dos iconos ocupan la misma celda del grid del summary, así que basta
-     con esconder el que no toca — sin saltos de layout al alternar. */
-  .menu > summary > svg {
-    grid-area: 1 / 1;
-  }
-  .menu:not([open]) > summary > .abierto,
-  .menu[open] > summary > .cerrado {
-    display: none;
-  }
-
-  /* El panel se esconde a mano, sin confiar en que `<details>` lo haga.
-     Chrome moderno oculta el contenido cerrado con `content-visibility: hidden`
-     sobre `::details-content`, y a un hijo `position: absolute` —cuyo bloque
-     contenedor es el `<header>`, no el `<details>`— eso NO lo alcanza: medido
-     cerrado, el panel se seguía pintando, 36×321 px sobre la página.
-     Ser explícito acá cuesta dos líneas y no depende de qué versión de qué
-     navegador implementó cuál parte de la especificación. */
-  .menu:not([open]) .panel {
-    display: none;
-  }
-
-  .menu[open] > summary {
-    border-color: var(--color-zinc-600, #52525b);
-    color: rgb(244 244 245);
-  }
-</style>
-
 <script is:inline>
   ;(() => {
     const menu = document.getElementById('menu')

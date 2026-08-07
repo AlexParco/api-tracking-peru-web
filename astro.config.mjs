@@ -20,11 +20,24 @@ export default defineConfig({
     // El CSS va inline si es más chico que esto. En umbral 0 (por defecto)
     // siempre es un request aparte que bloquea el pintado.
     inlineStylesheets: 'auto',
+    // El directorio de assets se llama `_astro` por defecto, y ese nombre viaja
+    // en la URL de cada hoja de estilo y cada script de todas las páginas. Con
+    // qué herramienta se construyó el sitio no es información del sitio.
+    assets: 'estaticos',
   },
 
-  // Precarga al pasar el cursor. Son dos páginas y una docs pesada: el salto a
-  // /docs se siente instantáneo sin costar nada a quien no va para allá.
-  prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
+  // SIN precarga, y por dos motivos que apuntan igual.
+  //
+  // `prefetch` es la única cosa del sitio que produce un bundle de JavaScript:
+  // 2.485 bytes que se descargan en las ocho páginas y que además son el último
+  // lugar donde aparecía el nombre del framework (`astro:page-load`,
+  // `astroPrefetch`). Y dos comentarios del código —en `Reticle.astro` y en
+  // `Base.astro`— afirmaban que la landing no sirve ni un bundle: con esto
+  // vuelven a ser ciertos en vez de tener que corregirlos.
+  //
+  // Lo que se pierde es que el salto a /docs se sienta instantáneo al pasar el
+  // cursor. Con ocho páginas estáticas, CSS en línea y hosting propio, eso son
+  // unas décimas; si algún día pesa, se vuelve a encender con una línea.
 
   vite: { plugins: [tailwindcss()] },
 })
