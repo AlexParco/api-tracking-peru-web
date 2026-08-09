@@ -107,7 +107,7 @@ const jsonLd = {
   <main id="contenido">
     <div class="mx-auto max-w-4xl px-6 py-16">
       <p class="font-mono text-xs text-zinc-600">
-        <a href="/#cobertura" class="transition-colors hover:text-zinc-300">Couriers</a>
+        <a href="/couriers" class="transition-colors hover:text-zinc-300">Couriers</a>
         <span class="mx-1.5 text-zinc-700">/</span>
         <span class="text-zinc-400">{c.id}</span>
       </p>
@@ -232,7 +232,9 @@ const jsonLd = {
       {/* Enlaces a los otros. Un buscador descubre páginas siguiendo enlaces, y
           además le da al lector la comparación que vino a hacer. */}
       <div class="mt-14 border-t border-line pt-8">
-        <h2 class="text-sm font-medium text-zinc-300">Los otros couriers</h2>
+        <h2 class="text-sm font-medium text-zinc-300">
+          <a href="/couriers" class="transition-colors hover:text-zinc-100">Los otros couriers</a>
+        </h2>
         <ul class="mt-4 flex flex-wrap gap-2">
           {
             PUBLISHED_CARRIERS.filter((o) => o.id !== c.id).map((o) => (

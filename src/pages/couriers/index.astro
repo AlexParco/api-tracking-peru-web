@@ -1,0 +1,151 @@
+---
+import Base from '../../layouts/Base.astro'
+import Nav from '../../components/Nav.astro'
+import Footer from '../../components/Footer.astro'
+import { PUBLISHED_CARRIERS, LEVELS, METRICS } from '../../data/api.ts'
+
+/* El índice de couriers.
+ *
+ * ── Por qué existe ──
+ *
+ * `/couriers` devolvía 404. Nada del sitio enlazaba ahí, pero Googlebot recorta
+ * rutas hacia arriba —si conoce `/couriers/olva`, prueba `/couriers`— y un 404
+ * en una ruta que es el padre de cinco páginas indexables es exactamente lo que
+ * Search Console reporta como «No se ha encontrado».
+ *
+ * ── Y por qué vale la pena aunque no fuera por eso ──
+ *
+ * Las cinco páginas de courier no tenían un padre que las enlazara entre sí más
+ * allá de la lista del pie de cada una. Un índice les da una entrada común, y a
+ * quien busca «api couriers perú» —en plural, sin nombre propio— le responde
+ * algo mejor que la portada, que habla del producto y no del catálogo.
+ *
+ * ── Qué NO hace ──
+ *
+ * No repite lo que ya dice cada página. Acá va lo comparable de un vistazo
+ * —qué rastrea, con cuánta evidencia, cuántas agencias publica— y el detalle
+ * queda donde estaba. Un índice que resume de más compite con sus propias
+ * páginas por la misma búsqueda.
+ */
+
+const title = 'Couriers de Perú con API de rastreo — API Tracking Perú'
+const description = `Los ${PUBLISHED_CARRIERS.length} couriers peruanos que integramos, con el estado real de cada uno: si rastrea, con cuánta evidencia y cuántas agencias publica.`
+
+const conRastreo = PUBLISHED_CARRIERS.filter((c) => c.tracking.status === 'ok').length
+
+/* Datos estructurados: una lista de elementos. Le dice al buscador que esto es
+   un índice de otras páginas y no prosa suelta, que es lo que habilita que
+   muestre las cinco como un grupo. */
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: title,
+  description,
+  isPartOf: { '@type': 'WebSite', name: 'API Tracking Perú', url: 'https://tracking-peru.com' },
+  mainEntity: {
+    '@type': 'ItemList',
+    numberOfItems: PUBLISHED_CARRIERS.length,
+    itemListElement: PUBLISHED_CARRIERS.map((c, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: c.name,
+      url: `https://tracking-peru.com/couriers/${c.id}`,
+    })),
+  },
+}
+---
+
+<Base title={title} description={description} jsonLd={jsonLd}>
+  <Nav />
+
+  <main id="contenido">
+    <div class="mx-auto max-w-4xl px-6 py-16">
+      <p class="font-mono text-xs text-zinc-600">
+        <a href="/" class="transition-colors hover:text-zinc-300">Inicio</a>
+        <span class="mx-1.5 text-zinc-700">/</span>
+        <span class="text-zinc-400">couriers</span>
+      </p>
+
+      <h1 class="mt-4 text-balance font-display text-4xl font-semibold tracking-tight text-zinc-50">
+        Couriers de Perú con API de rastreo
+      </h1>
+
+      <p class="mt-5 text-pretty text-lg leading-relaxed text-zinc-400">
+        Los {PUBLISHED_CARRIERS.length} que integramos, con el estado real de cada uno.
+        {conRastreo === PUBLISHED_CARRIERS.length
+          ? ' Los cinco rastrean envíos en vivo.'
+          : ` ${conRastreo} de ${PUBLISHED_CARRIERS.length} rastrean envíos en vivo.`}
+        {' '}Todos comparten el mismo contrato: un estado canónico, el literal original adjunto
+        y webhooks firmados.
+      </p>
+
+      <ul class="mt-10 grid gap-4">
+        {
+          PUBLISHED_CARRIERS.map((c) => (
+            <li>
+              <a
+                href={`/couriers/${c.id}`}
+                class="group block rounded-2xl border border-line bg-ink-soft p-5 transition-colors hover:border-zinc-600"
+              >
+                <p class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <span class="font-display text-lg font-semibold text-zinc-100 transition-colors group-hover:text-white">
+                    {c.name}
+                  </span>
+                  <span class="font-mono text-xs text-zinc-600">{c.id}</span>
+                </p>
+
+                <p class="mt-3 flex flex-wrap items-baseline gap-x-5 gap-y-1.5 font-mono text-xs">
+                  <span
+                    class:list={[
+                      c.tracking.status === 'ok'
+                        ? 'text-[var(--color-live)]'
+                        : 'text-[var(--color-partial)]',
+                    ]}
+                  >
+                    {c.tracking.status === 'ok' ? 'rastrea envíos' : 'rastreo en curso'}
+                  </span>
+                  <span class="text-zinc-500">
+                    evidencia <span class="text-zinc-300">{c.level}</span>
+                  </span>
+                  <span class="text-zinc-500">
+                    {c.agencies.status === 'ok'
+                      ? `${c.agencies.total} agencias`
+                      : 'no publica agencias'}
+                  </span>
+                </p>
+
+                <p class="mt-2.5 text-pretty text-sm leading-relaxed text-zinc-500">
+                  {LEVELS[c.level].detail}
+                </p>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+
+      <div class="mt-12 rounded-2xl border border-brand/30 bg-brand/[0.04] p-6">
+        <p class="font-display text-lg font-semibold text-zinc-50">Una key para los cinco</p>
+        <p class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-400">
+          Ningún courier queda reservado para el plan caro, y los que se vayan completando entran
+          sin costo extra. {METRICS.agenciesSynced} agencias sincronizadas incluidas.
+        </p>
+        <div class="mt-5 flex flex-wrap gap-3">
+          <a
+            href="/#empezar"
+            class="btn rounded-lg bg-brand px-5 py-2.5 font-medium text-ink hover:bg-white"
+          >
+            Crear mi key gratis
+          </a>
+          <a
+            href="/docs"
+            class="btn rounded-lg border border-line px-5 py-2.5 font-medium text-zinc-300 hover:border-zinc-600 hover:text-zinc-100"
+          >
+            Ver la documentación
+          </a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <Footer />
+</Base>
