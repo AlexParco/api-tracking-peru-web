@@ -10,7 +10,7 @@ import Pricing from '../components/Pricing.astro'
 import CallToAction from '../components/CallToAction.astro'
 import Footer from '../components/Footer.astro'
 import { PUBLISHED_CARRIERS, METRICS } from '../data/api.ts'
-import { PLANS } from '../data/plans.ts'
+import { PLANS, BETA } from '../data/plans.ts'
 
 /* Datos estructurados de la portada: la organización, el sitio y el servicio con
    su lista de precios. Es lo que habilita un resultado enriquecido y lo que le
@@ -46,7 +46,7 @@ const jsonLd = {
       provider: { '@id': 'https://tracking-peru.com/#organizacion' },
       areaServed: { '@type': 'Country', name: 'Perú' },
       description: `Rastreo de envíos y catálogo de agencias de ${PUBLISHED_CARRIERS.length} couriers de Perú detrás de un solo contrato REST, con ${METRICS.agenciesSynced} agencias sincronizadas.`,
-      offers: PLANS.filter((p) => p.monthly !== null).map((p) => ({
+      offers: PLANS.filter((p) => p.monthly !== null && (!BETA.onlyFree || p.free)).map((p) => ({
         '@type': 'Offer',
         name: `Plan ${p.name}`,
         price: p.monthly,

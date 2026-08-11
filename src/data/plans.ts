@@ -152,6 +152,13 @@ export const INCLUDED_IN_ALL: string[] = [
 export const BETA = {
   /** Quien entra ahora conserva el precio de hoy aunque suba después. */
   priceLock: true,
+  /**
+   * En beta se muestra SÓLO el plan gratis; los pagos aparecen al salir. Es una
+   * decisión de presentación: todavía no hay checkout (el cobro se coordina por
+   * correo), así que mostrar precios que no se pueden pagar suma fricción sin
+   * cerrar una venta. Un booleano lo revierte cuando el cobro esté listo.
+   */
+  onlyFree: true,
 }
 
 /**

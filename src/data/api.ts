@@ -226,10 +226,37 @@ export const ERROR_NOTES: string[] = [
   'En un lote (POST /v1/tracking/batch) la respuesta es 200 aunque haya ítems fallidos: el error va por ítem, no en el HTTP.',
 ]
 
+/**
+ * Total de agencias LEÍDO del API en tiempo de build. Antes era un número a mano
+ * (`agenciesSynced: 1546`) que se desincronizaba cada vez que el catálogo cambiaba
+ * —y mentía en el meta description, el JSON-LD y el contador del hero, que es lo
+ * que Google indexa—. Ahora se lee de `/v1/agencies` (endpoint público) en cada
+ * build, con fallback al número congelado si el API no responde durante el build,
+ * para que un build NUNCA falle por un hipo del API.
+ *
+ * Es build-time, no en vivo: el número queda horneado en el HTML estático (que es
+ * lo que necesita el SEO) y se refresca en cada deploy. Suficiente: el catálogo
+ * cambia de a poco.
+ */
+const AGENCIES_SYNCED_FALLBACK = 1564
+
+async function agenciesTotalAtBuild(): Promise<number> {
+  const base = import.meta.env.PUBLIC_API_URL ?? 'https://api.tracking-peru.com'
+  try {
+    const res = await fetch(`${base}/v1/agencies?per_page=1`, { signal: AbortSignal.timeout(8000) })
+    if (!res.ok) return AGENCIES_SYNCED_FALLBACK
+    const data = await res.json()
+    const total = data?.pagination?.total
+    return Number.isInteger(total) && total > 0 ? total : AGENCIES_SYNCED_FALLBACK
+  } catch {
+    return AGENCIES_SYNCED_FALLBACK
+  }
+}
+
 /** Números medidos en una corrida real del servicio, no estimados. */
 export const METRICS = {
   carriersSurveyed: PUBLISHED_CARRIERS.length,
-  agenciesSynced: 1546,
+  agenciesSynced: await agenciesTotalAtBuild(),
   agenciesWithCredentials: 1525,
   carriersWithCatalog: PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok').length,
 }

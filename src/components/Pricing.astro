@@ -5,6 +5,11 @@ import { PUBLISHED_CARRIERS, METRICS } from '../data/api.ts'
 const tracking = PUBLISHED_CARRIERS.filter((c) => c.tracking.status === 'ok').length
 const withCatalog = PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok').length
 
+// En beta se muestra SÓLO el plan gratis (BETA.onlyFree): todavía no hay checkout,
+// así que mostrar precios que no se pueden pagar suma fricción. Un booleano en
+// plans.ts revierte todo esto cuando el cobro esté listo.
+const soloFree = BETA.onlyFree
+const planes = soloFree ? PLANS.filter((p) => p.free) : PLANS
 ---
 
 <section id="precios" class="scroll-mt-20 border-t border-line py-24">
@@ -15,11 +20,21 @@ const withCatalog = PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok')
     >
       Una key, un plan, sin sorpresas
     </h2>
-    <p class="mt-4 max-w-2xl text-pretty leading-relaxed text-zinc-400" data-reveal style="--step: 1">
-      Los cuatro llegan a los mismos endpoints y a los mismos carriers. Lo que cambia es
-      cuántos envíos puedes tener vigilados a la vez —ese es el medidor— y cómo te
-      respondemos cuando algo se rompe.
-    </p>
+    {
+      soloFree ? (
+        <p class="mt-4 max-w-2xl text-pretty leading-relaxed text-zinc-400" data-reveal style="--step: 1">
+          En beta arrancás con el plan gratis: una key al toque, sin tarjeta. Los planes
+          pagos —más envíos vigilados a la vez y soporte prioritario— llegan al salir de
+          la beta.
+        </p>
+      ) : (
+        <p class="mt-4 max-w-2xl text-pretty leading-relaxed text-zinc-400" data-reveal style="--step: 1">
+          Los cuatro llegan a los mismos endpoints y a los mismos carriers. Lo que cambia es
+          cuántos envíos puedes tener vigilados a la vez —ese es el medidor— y cómo te
+          respondemos cuando algo se rompe.
+        </p>
+      )
+    }
 
     {/* Una línea, no un recuadro con tres párrafos.
 
@@ -53,9 +68,18 @@ const withCatalog = PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok')
             beta
           </span>
           <p class="text-pretty text-sm text-zinc-300">
-            Estamos en beta: el precio que tomes ahora{' '}
-            <span class="text-brand/90">te queda fijo para siempre</span>, aunque suba cuando
-            salgamos.
+            {soloFree ? (
+              <>
+                Estamos en beta: hoy está el <span class="text-brand/90">plan gratis</span>. Los
+                planes pagos llegan al salir — y quienes entran ahora fijan su precio.
+              </>
+            ) : (
+              <>
+                Estamos en beta: el precio que tomes ahora{' '}
+                <span class="text-brand/90">te queda fijo para siempre</span>, aunque suba cuando
+                salgamos.
+              </>
+            )}
           </p>
         </div>
       )
@@ -63,9 +87,16 @@ const withCatalog = PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok')
 
     {/* La grilla usa mas ancho que el texto de arriba. El titulo y el parrafo
         se leen mejor en una medida corta; cuatro tarjetas, no. */}
-    <div class="mt-4 grid gap-4 md:grid-cols-2 xl:-mx-16 xl:grid-cols-4 2xl:-mx-24">
+    <div
+      class:list={[
+        'mt-4',
+        soloFree
+          ? 'max-w-sm' // una sola tarjeta: no estirarla a 1/4 de la fila
+          : 'grid gap-4 md:grid-cols-2 xl:-mx-16 xl:grid-cols-4 2xl:-mx-24',
+      ]}
+    >
       {
-        PLANS.map((p, i) => {
+        planes.map((p, i) => {
           const saving = annualSaving(p)
           /* Las cuatro tarjetas se ven IGUAL. No hay plan destacado: ni insignia
              «recomendado», ni borde teñido, ni botón relleno — las tres cosas
@@ -185,7 +216,9 @@ const withCatalog = PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok')
 
     <div class="mt-10 grid gap-8 lg:grid-cols-[1.1fr_1fr]" data-reveal>
       <div>
-        <h3 class="text-sm font-medium text-zinc-300">Los tres incluyen</h3>
+        <h3 class="text-sm font-medium text-zinc-300">
+          {soloFree ? 'El plan gratis incluye' : 'Los tres incluyen'}
+        </h3>
         <ul class="mt-4 space-y-2.5">
           {
             INCLUDED_IN_ALL.map((x) => (
@@ -227,9 +260,9 @@ const withCatalog = PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok')
             antes. Es expectativa, no estado interno. */}
         <div class="rounded-xl border border-line bg-ink-soft p-5">
           <p class="text-pretty text-sm leading-relaxed text-zinc-400">
-            Los planes pagos se coordinan por correo: el botón abre uno con el plan en el
-            asunto, y te emitimos la key el mismo día. Sin formulario y sin tarjeta
-            guardada.
+            {soloFree
+              ? 'Los planes pagos llegan al salir de la beta. Por ahora, el alta del plan gratis es self-serve: dos campos y te emitimos la key al toque, sin tarjeta.'
+              : 'Los planes pagos se coordinan por correo: el botón abre uno con el plan en el asunto, y te emitimos la key el mismo día. Sin formulario y sin tarjeta guardada.'}
           </p>
         </div>
       </div>
