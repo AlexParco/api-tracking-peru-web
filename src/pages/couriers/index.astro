@@ -3,6 +3,7 @@ import Base from '../../layouts/Base.astro'
 import Nav from '../../components/Nav.astro'
 import Footer from '../../components/Footer.astro'
 import { PUBLISHED_CARRIERS, LEVELS, METRICS } from '../../data/api.ts'
+import { BETA } from '../../data/plans.ts'
 
 /* El índice de couriers.
  *
@@ -126,7 +127,9 @@ const jsonLd = {
       <div class="mt-12 rounded-2xl border border-brand/30 bg-brand/[0.04] p-6">
         <p class="font-display text-lg font-semibold text-zinc-50">Una key para los cinco</p>
         <p class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-400">
-          Ningún courier queda reservado para el plan caro, y los que se vayan completando entran
+          {/* En beta no se nombra el «plan caro»: el único plan que existe es el
+              gratis, así que la comparación no tiene con qué comparar. */}
+          {BETA.onlyFree ? 'Ningún courier queda fuera de tu key' : 'Ningún courier queda reservado para el plan caro'}, y los que se vayan completando entran
           sin costo extra. {METRICS.agenciesSynced} agencias sincronizadas incluidas.
         </p>
         <div class="mt-5 flex flex-wrap gap-3">

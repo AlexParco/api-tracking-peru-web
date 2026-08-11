@@ -1,6 +1,6 @@
 ---
 import TrialForm from './TrialForm.astro'
-import { FREE } from '../data/plans.ts'
+import { FREE, BETA } from '../data/plans.ts'
 ---
 
 <section id="empezar" class="scroll-mt-20 border-t border-line py-24">
@@ -17,10 +17,14 @@ import { FREE } from '../data/plans.ts'
           <h2 class="text-balance font-display text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
             Empieza gratis, y no vence
           </h2>
+          {/* «subes de plan cuando quieras» sobra en beta: no hay a qué subir
+              todavía, así que la promesa manda a buscar algo que no está. */}
           <p class="mt-4 text-pretty leading-relaxed text-zinc-400">
             Déjanos tu correo y te emitimos la key en el momento. El plan Free no vence y no
-            pide tarjeta: si tu volumen crece, subes de plan cuando quieras. Y si el courier
-            que te importa está en ámbar, dilo — eso prioriza el orden en que se completan.
+            pide tarjeta
+            {BETA.onlyFree ? '. ' : ': si tu volumen crece, subes de plan cuando quieras. '}
+            Y si el courier que te importa está en ámbar, dilo — eso prioriza el orden en que
+            se completan.
           </p>
 
           {/* Los números de la prueba, aquí y no apretados bajo el botón: la
@@ -60,11 +64,18 @@ import { FREE } from '../data/plans.ts'
               `Ves la key en pantalla apenas la pides, y además te llega por correo.`,
               'Una key gratuita por dirección de correo. Si esa dirección ya tiene la suya, te lo decimos en el momento.',
               `El plan Free no vence: no te cobramos, no se renueva sola y no hay nada que cancelar.`,
-              /* Sólo el precio fijo. Antes decía además cuándo termina la beta
-                 —«que los cinco carriers rastreen en vivo»—, que es un criterio
-                 interno nuestro: al cliente no le cambia nada y lo obliga a
-                 llevar la cuenta de nuestra hoja de ruta. */
-              `Mientras dure la beta, el precio que tomes ahora te queda fijo.`,
+              /* La viñeta del precio fijo se cae mientras `onlyFree` esté puesto:
+                 prometer que «el precio que tomes ahora te queda fijo» obliga a
+                 hablar de precios que todavía no se pueden pagar. En su lugar va
+                 lo que sí es cierto hoy —todo el API entra en la key gratis—.
+
+                 Antes la línea decía además cuándo termina la beta —«que los
+                 cinco carriers rastreen en vivo»—, que es un criterio interno
+                 nuestro: al cliente no le cambia nada y lo obliga a llevar la
+                 cuenta de nuestra hoja de ruta. */
+              BETA.onlyFree
+                ? `Durante la beta la key gratis trae todo el API: todos los carriers, todos los endpoints y webhooks firmados.`
+                : `Mientras dure la beta, el precio que tomes ahora te queda fijo.`,
             ].map((x) => (
               <li class="flex gap-3 text-sm leading-relaxed text-zinc-400">
                 <span class="mt-1.5 size-1.5 shrink-0 rounded-full bg-brand" aria-hidden="true" />
@@ -77,17 +88,22 @@ import { FREE } from '../data/plans.ts'
 
         {/* El formulario y no un botón de correo: pedir la prueba es la acción
             más barata de la página y no debería costar abrir un cliente de mail.
-            Para lo demás —un plan pago, un volumen raro— sigue el correo, que
-            ahí sí hace falta contar más de lo que entra en dos campos. */}
+            Para lo demás —un volumen raro, un requisito propio— sigue el correo,
+            que ahí sí hace falta contar más de lo que entra en dos campos. */}
         <div class="rounded-xl border border-line bg-ink p-6">
           <TrialForm />
 
 
 
-          {/* Debajo del formulario: primero la acción gratis, después la
-              alternativa paga. */}
+          {/* Debajo del formulario: primero la acción gratis, después el canal
+              para lo que no entra en dos campos. En beta esa puerta NO se anuncia
+              como «un plan pago» —no hay ninguno que vender todavía—, sino por lo
+              que de verdad la justifica: un volumen o un requisito fuera de lo
+              que cubre la key gratis. */}
           <div class="mt-6 border-t border-line pt-5">
-            <p class="text-sm text-zinc-500">¿Un plan pago o algo a medida?</p>
+            <p class="text-sm text-zinc-500">
+              {BETA.onlyFree ? '¿Un volumen alto o algo a medida?' : '¿Un plan pago o algo a medida?'}
+            </p>
             <a
               href="mailto:hola@tracking-peru.com?subject=Acceso%20al%20API"
               class="mt-1 block font-mono text-sm text-brand/80 underline-offset-2 hover:underline"

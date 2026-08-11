@@ -23,9 +23,7 @@ const planes = soloFree ? PLANS.filter((p) => p.free) : PLANS
     {
       soloFree ? (
         <p class="mt-4 max-w-2xl text-pretty leading-relaxed text-zinc-400" data-reveal style="--step: 1">
-          En beta arrancás con el plan gratis: una key al toque, sin tarjeta. Los planes
-          pagos —más envíos vigilados a la vez y soporte prioritario— llegan al salir de
-          la beta.
+          Un solo plan mientras dure la beta: gratis, sin tarjeta y sin vencimiento.
         </p>
       ) : (
         <p class="mt-4 max-w-2xl text-pretty leading-relaxed text-zinc-400" data-reveal style="--step: 1">
@@ -45,20 +43,24 @@ const planes = soloFree ? PLANS.filter((p) => p.free) : PLANS
         es donde alguien la busca cuando le importa—.
 
         De todo eso, lo único que le cambia algo a quien está mirando precios es
-        que el suyo queda fijo. Eso es lo que queda.
+        qué obtiene hoy. Eso es lo que queda.
 
-        Va condicionado a `BETA.priceLock` y no escrito a secas: cuando la beta
+        Va condicionado a una bandera y no escrito a secas: cuando la beta
         termine, la promesa deja de ser cierta y hay que sacarla de la página.
         Atado a la bandera es cambiar un booleano; escrito a mano es acordarse
         de que esta línea existe. */}
     {/* Reencuadre de beta en los precios: el badge «beta» de primera aparición
         vive en el hero, pero acá —en el punto de decisión, con los números a la
         vista— se REFUERZA con un callout, no una línea gris que el precio grande
-        se come. Es lo que convierte el precio de barrera en incentivo: hoy es
-        gratis y lo que fijes te queda para siempre. Condicionado a `BETA.priceLock`:
-        cuando la beta termine, es cambiar un booleano y el callout desaparece. */}
+        se come.
+
+        Mientras `onlyFree` esté puesto, el callout NO habla de planes pagos ni de
+        precio fijo: en beta lo único que hay es el plan gratis, y prometer que
+        «tu precio queda fijo» obliga a hablar de un precio que todavía no se
+        puede pagar. Al salir de la beta vuelve el price-lock, que es la promesa
+        que sí le cambia algo a quien elige entre planes. */}
     {
-      BETA.priceLock && (
+      (soloFree || BETA.priceLock) && (
         <div
           class="mt-8 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-brand/25 bg-brand/[0.05] px-4 py-3"
           data-reveal
@@ -70,8 +72,8 @@ const planes = soloFree ? PLANS.filter((p) => p.free) : PLANS
           <p class="text-pretty text-sm text-zinc-300">
             {soloFree ? (
               <>
-                Estamos en beta: hoy está el <span class="text-brand/90">plan gratis</span>. Los
-                planes pagos llegan al salir — y quienes entran ahora fijan su precio.
+                Estamos en beta: el <span class="text-brand/90">plan gratis</span> trae todos los
+                carriers y todos los endpoints — la key se emite al toque.
               </>
             ) : (
               <>
@@ -91,7 +93,7 @@ const planes = soloFree ? PLANS.filter((p) => p.free) : PLANS
       class:list={[
         'mt-4',
         soloFree
-          ? 'max-w-sm' // una sola tarjeta: no estirarla a 1/4 de la fila
+          ? 'mx-auto max-w-sm' // una sola tarjeta: ni estirada a 1/4 de la fila ni pegada al borde
           : 'grid gap-4 md:grid-cols-2 xl:-mx-16 xl:grid-cols-4 2xl:-mx-24',
       ]}
     >
@@ -214,7 +216,16 @@ const planes = soloFree ? PLANS.filter((p) => p.free) : PLANS
       }
     </div>
 
-    <div class="mt-10 grid gap-8 lg:grid-cols-[1.1fr_1fr]" data-reveal>
+    {/* En beta la segunda columna se queda vacía —el recuadro que la ocupaba era
+        del flujo de planes pagos—, así que el bloque deja de ser una grilla de
+        dos y se centra sobre el mismo eje que la tarjeta. */}
+    <div
+      class:list={[
+        'mt-10',
+        soloFree ? 'mx-auto max-w-xl' : 'grid gap-8 lg:grid-cols-[1.1fr_1fr]',
+      ]}
+      data-reveal
+    >
       <div>
         <h3 class="text-sm font-medium text-zinc-300">
           {soloFree ? 'El plan gratis incluye' : 'Los tres incluyen'}
@@ -231,11 +242,20 @@ const planes = soloFree ? PLANS.filter((p) => p.free) : PLANS
         </ul>
         <p class="mt-4 max-w-xl text-pretty text-xs leading-relaxed text-zinc-600">
           Hoy eso son {tracking} couriers con rastreo operativo y {withCatalog} catálogos de
-          agencias ({METRICS.agenciesSynced} puntos sincronizados). Los que faltan entran a
-          tu key sin que pagues de nuevo.
+          agencias ({METRICS.agenciesSynced} puntos sincronizados).{' '}
+          {/* «sin que pagues de nuevo» da por hecho que ya pagaste una vez, y en
+              beta nadie paga nada: la key gratis no tiene con qué comparar. */}
+          {soloFree
+            ? 'Los que faltan entran a tu key sin que tengas que hacer nada.'
+            : 'Los que faltan entran a tu key sin que pagues de nuevo.'}
         </p>
       </div>
 
+      {/* El recuadro sólo existe para los planes pagos: dice que el botón abre un
+          correo y no un checkout. En beta no hay botón de pago que aclarar —el
+          alta gratis ya es self-serve— y el texto terminaba repitiendo lo que el
+          callout de beta y la tarjeta ya dicen. */}
+      {!soloFree && (
       <div class="space-y-4">
         {/* Acá había dos recuadros que se fueron, y por el mismo motivo que la
             banda de la beta: eran razonamiento NUESTRO puesto delante de alguien
@@ -260,12 +280,12 @@ const planes = soloFree ? PLANS.filter((p) => p.free) : PLANS
             antes. Es expectativa, no estado interno. */}
         <div class="rounded-xl border border-line bg-ink-soft p-5">
           <p class="text-pretty text-sm leading-relaxed text-zinc-400">
-            {soloFree
-              ? 'Los planes pagos llegan al salir de la beta. Por ahora, el alta del plan gratis es self-serve: dos campos y te emitimos la key al toque, sin tarjeta.'
-              : 'Los planes pagos se coordinan por correo: el botón abre uno con el plan en el asunto, y te emitimos la key el mismo día. Sin formulario y sin tarjeta guardada.'}
+            Los planes pagos se coordinan por correo: el botón abre uno con el plan en el
+            asunto, y te emitimos la key el mismo día. Sin formulario y sin tarjeta guardada.
           </p>
         </div>
       </div>
+      )}
     </div>
   </div>
 </section>

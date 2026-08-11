@@ -113,15 +113,6 @@ export const PLANS: Plan[] = [
   },
 ]
 
-/** Lo que trae cualquier key. Lo que cambia entre niveles es el cupo, no esto. */
-export const INCLUDED_IN_ALL: string[] = [
-  'Todos los carriers — ninguno queda reservado para el plan caro',
-  'Todos los endpoints: rastreo, agencias y cobertura por ubigeo',
-  'Webhooks firmados con HMAC, con reintentos y deduplicación',
-  'Cada carrier con su nivel de evidencia publicado',
-  'Los carriers que se vayan completando, sin costo extra',
-]
-
 /**
  * La beta, mientras el producto no está terminado.
  *
@@ -160,6 +151,24 @@ export const BETA = {
    */
   onlyFree: true,
 }
+
+/**
+ * Lo que trae cualquier key. Lo que cambia entre niveles es el cupo, no esto.
+ *
+ * Va DESPUÉS de `BETA` porque la primera viñeta depende de la bandera: con
+ * `onlyFree` puesto no hay «plan caro» que nombrar —el único plan es el gratis—
+ * y mencionarlo obliga a hablar de algo que todavía no se puede comprar. Al
+ * salir de la beta vuelve la redacción que compara, que ahí sí es el argumento.
+ */
+export const INCLUDED_IN_ALL: string[] = [
+  BETA.onlyFree
+    ? 'Todos los carriers — ninguno queda fuera de tu key'
+    : 'Todos los carriers — ninguno queda reservado para el plan caro',
+  'Todos los endpoints: rastreo, agencias y cobertura por ubigeo',
+  'Webhooks firmados con HMAC, con reintentos y deduplicación',
+  'Cada carrier con su nivel de evidencia publicado',
+  'Los carriers que se vayan completando, sin costo extra',
+]
 
 /**
  * El ahorro de pagar por año, calculado y no escrito. Un «2 meses gratis» a mano
