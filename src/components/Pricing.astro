@@ -36,14 +36,28 @@ const withCatalog = PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok')
         termine, la promesa deja de ser cierta y hay que sacarla de la página.
         Atado a la bandera es cambiar un booleano; escrito a mano es acordarse
         de que esta línea existe. */}
-    {/* Sin la insignia «beta»: esa ahora vive en el hero, que es donde se ve
-        antes de scrollear tres pantallas. Acá queda sólo la consecuencia sobre
-        el precio, que es lo que le importa a quien está mirando planes. */}
+    {/* Reencuadre de beta en los precios: el badge «beta» de primera aparición
+        vive en el hero, pero acá —en el punto de decisión, con los números a la
+        vista— se REFUERZA con un callout, no una línea gris que el precio grande
+        se come. Es lo que convierte el precio de barrera en incentivo: hoy es
+        gratis y lo que fijes te queda para siempre. Condicionado a `BETA.priceLock`:
+        cuando la beta termine, es cambiar un booleano y el callout desaparece. */}
     {
       BETA.priceLock && (
-        <p class="mt-8 text-pretty text-sm text-zinc-400" data-reveal style="--step: 2">
-          El precio que tomes ahora te queda fijo, también cuando salgamos de beta.
-        </p>
+        <div
+          class="mt-8 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-brand/25 bg-brand/[0.05] px-4 py-3"
+          data-reveal
+          style="--step: 2"
+        >
+          <span class="rounded-full border border-brand/30 bg-brand/[0.06] px-2 py-0.5 font-mono text-[11px] font-semibold text-brand">
+            beta
+          </span>
+          <p class="text-pretty text-sm text-zinc-300">
+            Estamos en beta: el precio que tomes ahora{' '}
+            <span class="text-brand/90">te queda fijo para siempre</span>, aunque suba cuando
+            salgamos.
+          </p>
+        </div>
       )
     }
 
