@@ -27,9 +27,29 @@ import { FREE } from '../data/plans.ts'
    producción sin que nadie se entere hasta probarlo. */
 const ENDPOINT = import.meta.env.PUBLIC_TRIAL_ENDPOINT || 'https://api.tracking-peru.com/free'
 const MAIL = 'hola@tracking-peru.com'
+
+/* CAPTCHA de Cloudflare Turnstile. La SITE KEY es pública (viaja en el HTML, es
+   su lugar); la SECRET vive en el backend. Sin `PUBLIC_TURNSTILE_SITE_KEY` el
+   widget no se renderiza y el alta funciona como antes: la protección se enciende
+   cuando el operador crea el widget en Cloudflare y carga las dos llaves. El
+   backend hace el chequeo espejo (si tiene secret, exige token). */
+const TURNSTILE_SITE_KEY = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || ''
 ---
 
-<form id="trial-form" method="post" novalidate data-endpoint={ENDPOINT} data-mail={MAIL}>
+{
+  TURNSTILE_SITE_KEY && (
+    <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+  )
+}
+
+<form
+  id="trial-form"
+  method="post"
+  novalidate
+  data-endpoint={ENDPOINT}
+  data-mail={MAIL}
+  data-sitekey={TURNSTILE_SITE_KEY}
+>
   <div class="grid gap-4">
     <div>
       {/* El nombre no lleva `required` y la etiqueta lo dice con la palabra.
@@ -73,6 +93,22 @@ const MAIL = 'hola@tracking-peru.com'
       </p>
     </div>
   </div>
+
+  {/* El CAPTCHA. `interaction-only`: invisible para el usuario real y sólo pide
+      interacción si Cloudflare sospecha — cero fricción para el humano, muro para
+      el bot. Turnstile inyecta un input oculto `cf-turnstile-response` en el form
+      con el token, que el submit manda al backend. Sólo se renderiza si hay
+      site key (ver frontmatter). */}
+  {
+    TURNSTILE_SITE_KEY && (
+      <div
+        class="cf-turnstile mt-5"
+        data-sitekey={TURNSTILE_SITE_KEY}
+        data-theme="dark"
+        data-appearance="interaction-only"
+      />
+    )
+  }
 
   <div class="mt-5 flex flex-wrap items-center gap-3">
     {/* Sale DESHABILITADO y lo habilita el script.
@@ -147,6 +183,7 @@ const MAIL = 'hola@tracking-peru.com'
     const copy = document.getElementById('trial-copy')
     const endpoint = form.dataset.endpoint
     const mail = form.dataset.mail
+    const siteKey = form.dataset.sitekey // vacío = sin CAPTCHA configurado
 
     // Hay JavaScript: recién ahora el botón puede hacer algo.
     button.disabled = false
@@ -207,13 +244,25 @@ const MAIL = 'hola@tracking-peru.com'
       }
       clean()
 
+      // CAPTCHA: si hay widget, el token lo inyecta Turnstile en un input oculto.
+      // Con `interaction-only` el usuario real ni lo ve (el token sale solo); si
+      // está vacío es que Cloudflare pidió un desafío que falta completar.
+      let token = ''
+      if (siteKey) {
+        token = form.querySelector('[name="cf-turnstile-response"]')?.value || ''
+        if (!token) {
+          say('Completá la verificación anti-bot que aparece y volvé a intentar.', false)
+          return
+        }
+      }
+
       button.disabled = true
       say('Enviando…', true)
       try {
         const r = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: value, name: name.value.trim() }),
+          body: JSON.stringify({ email: value, name: name.value.trim(), turnstile_token: token }),
           // Sin tope, una respuesta que nunca llega deja el botón bloqueado y
           // «Enviando…» para siempre: el visitante no puede reintentar ni sabe
           // que algo falló. Quince segundos son de sobra para un alta que sólo
@@ -251,6 +300,14 @@ const MAIL = 'hola@tracking-peru.com'
             ? `Vuelve a probar en ${espera < 60 ? plural(espera, 'segundo', 'segundos') : plural(Math.ceil(espera / 60), 'minuto', 'minutos')}.`
             : 'Espera un momento y vuelve a probar.'
           say(`Demasiados intentos desde tu conexión. ${cuanto}`, false)
+          return
+        }
+        // El backend rechazó el CAPTCHA (token vencido, o el widget lo marcó como
+        // sospechoso). Se resetea el widget para que el próximo intento pida uno
+        // fresco, y se avisa sin culpar al usuario.
+        if (r.status === 403) {
+          window.turnstile?.reset()
+          say('No pudimos verificar que no seas un bot. Recargá la página y volvé a intentar.', false)
           return
         }
 
@@ -302,6 +359,10 @@ const MAIL = 'hola@tracking-peru.com'
         )
       } finally {
         button.disabled = false
+        // El token de Turnstile es de un solo uso (el backend lo consumió al
+        // verificar): se resetea para que un nuevo intento —p.ej. tras un 409—
+        // salga con uno fresco en vez de reusar uno ya gastado.
+        if (siteKey) window.turnstile?.reset()
       }
     })
   })()
