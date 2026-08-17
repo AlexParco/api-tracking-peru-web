@@ -18,6 +18,13 @@ COPY . .
 # deploy local como en CI.
 ARG PUBLIC_API_URL=https://api.tracking-peru.com
 ENV PUBLIC_API_URL=$PUBLIC_API_URL
+# PUBLIC_TURNSTILE_SITE_KEY: la site key del CAPTCHA de Cloudflare en el alta
+# gratis. Es PÚBLICA por diseño (viaja en el HTML, es su lugar), así que vive acá
+# como default y no como secret — el mismo Dockerfile activa el widget en local y
+# en CI. La SECRET va en el backend (TURNSTILE_SECRET). Con esta seteada, el
+# widget se renderiza; sin ella, el alta funciona sin CAPTCHA.
+ARG PUBLIC_TURNSTILE_SITE_KEY=0x4AAAAAAETKJDOCmZGZxLoj
+ENV PUBLIC_TURNSTILE_SITE_KEY=$PUBLIC_TURNSTILE_SITE_KEY
 RUN pnpm build
 
 # --- runtime: nginx sirve el estático ---
