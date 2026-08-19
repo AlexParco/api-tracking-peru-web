@@ -274,6 +274,7 @@ export const TRACKING_EXAMPLE = `{
       "seq": 0,
       "status": "registered",
       "status_raw": "RECEPCION",
+      "carrier_code": "0",
       "description": "SU ENVÍO FUÉ RECEPCIONADO EN NUESTRA SEDE",
       "occurred_at": "2023-07-01T07:54:06-05:00",
       "time_precision": "second",
@@ -361,7 +362,7 @@ export const ENDPOINTS: Endpoint[] = [
     method: 'GET',
     path: '/v1/tracking',
     summary: 'Rastreo unificado por número de guía.',
-    note: 'El literal del courier viaja siempre en status_raw: normalizar no debería significar perder el dato original.',
+    note: 'Cada evento trae los tres: status (canónico), status_raw (el literal del courier) y carrier_code (su código, si hay) — normalizar no significa perder el dato original. Y para saber si un envío TERMINÓ usá los bools terminal/delivered, no el nombre: available_for_pickup no es entrega, y una devolución también es terminal.',
     response: { title: '200 OK · application/json', code: TRACKING_EXAMPLE },
   },
   {
@@ -589,7 +590,7 @@ export const WEBHOOK_DECISIONS: { title: string; detail: string }[] = [
   {
     title: 'Reintentos con id de evento estable',
     detail:
-      'Hasta 3 intentos por entrega (10 s de timeout, backoff de 500 ms). Si fallan, la marca de agua no avanza y el próximo poll reintenta el mismo cambio con el mismo id. Deduplica por X-Webhook-Event-Id.',
+      'Hasta 3 intentos por entrega (10 s de timeout, backoff de 500 ms). Si fallan, la marca de agua no avanza y el próximo poll reintenta el mismo cambio con el mismo id. Deduplicá por X-Webhook-Event-Id. Y la firma lleva un timestamp (t=<unix>) DENTRO de lo firmado: verificá que sea reciente para rechazar reenvíos viejos (anti-replay).',
   },
   {
     title: 'Cadencia atada al TTL del cache',
