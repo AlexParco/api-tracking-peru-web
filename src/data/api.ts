@@ -62,6 +62,14 @@ export interface Carrier {
    * nunca de `CARRIERS`, o la página diría siete y mostraría cinco.
    */
   published: boolean
+  /**
+   * Si el carrier exige un segundo factor (código de orden) además del número de
+   * guía. Espeja `requires_code` de GET /v1/carriers. Shalom es el único hoy: el
+   * código prueba que el envío es tuyo, y sin él el rastreo responde 422. Cuando
+   * es true, el ejemplo `curl` de la página suma `&code=` para que copiar y pegar
+   * no falle, y se muestra una nota que lo explica.
+   */
+  requiresCode?: boolean
   agencies: { status: Status; total: number | null; note: string }
 }
 
@@ -130,10 +138,11 @@ export const CARRIERS: Carrier[] = [
       // live el 2026-08-07: se capturó rastrea/buscar contra el upstream real (una
       // guía real → ose_id + 200, una inexistente → 404) y el catálogo en vivo.
       status: 'ok',
-      note: 'Operativo, verificado en vivo. Traducir la guía a su identificador interno pasa un desafío anti-bot (reCAPTCHA) con un navegador real.',
+      note: 'Operativo, verificado en vivo. Exige el código de orden además del número de guía (2º factor). Traducir la guía a su identificador interno pasa un desafío anti-bot (reCAPTCHA) con un navegador real.',
     },
     subscribable: true,
     published: true,
+    requiresCode: true,
     agencies: { status: 'ok', total: 546, note: 'El catálogo más grande. Requiere credencial.' },
   },
   {
@@ -362,7 +371,7 @@ export const ENDPOINTS: Endpoint[] = [
     method: 'GET',
     path: '/v1/tracking',
     summary: 'Rastreo unificado por número de guía.',
-    note: 'Cada evento trae los tres: status (canónico), status_raw (el literal del courier) y carrier_code (su código, si hay) — normalizar no significa perder el dato original. Y para saber si un envío TERMINÓ usá los bools terminal/delivered, no el nombre: available_for_pickup no es entrega, y una devolución también es terminal.',
+    note: 'Cada evento trae los tres: status (canónico), status_raw (el literal del courier) y carrier_code (su código, si hay) — normalizar no significa perder el dato original. Y para saber si un envío TERMINÓ usá los bools terminal/delivered, no el nombre: available_for_pickup no es entrega, y una devolución también es terminal. Segundo factor: algunos carriers piden además el código de orden — pasalo como &code=<código>. Es OBLIGATORIO en los que declaran requires_code en GET /v1/carriers (hoy Shalom: sin él responde 422) y se ignora en el resto.',
     response: { title: '200 OK · application/json', code: TRACKING_EXAMPLE },
   },
   {
@@ -514,13 +523,13 @@ export const ENDPOINTS: Endpoint[] = [
     method: 'POST',
     path: '/v1/tracking/subscriptions',
     summary: 'Suscribe un envío: te avisamos cuando cambie de estado.',
-    note: 'carrier es OBLIGATORIO: no hay detección automática. Un rastreo mal detectado se ve en la respuesta; una suscripción mal detectada no la mira nadie durante semanas.',
+    note: 'carrier es OBLIGATORIO: no hay detección automática. Un rastreo mal detectado se ve en la respuesta; una suscripción mal detectada no la mira nadie durante semanas. El code es el 2º factor (código de orden): obligatorio para los carriers con requires_code como Shalom, opcional para el resto.',
     request: {
       title: 'request',
       code: `{
   "carrier": "marvisur",
   "number": "V001-0000001",
-  "code": "opcional-2do-factor"
+  "code": "2º factor — requerido si el carrier declara requires_code"
 }`,
     },
     response: {

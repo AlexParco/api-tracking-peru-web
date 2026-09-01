@@ -51,7 +51,13 @@ const detectionNote: Record<string, string> = {
    formato de guía de cada courier lo publica `GET /v1/carriers` y no lo tenemos
    acá. Inventarlo sería peor que omitirlo: alguien lo copia, le rebota y culpa
    al API. */
-const curl = `$ curl -H "X-API-Key: $API_KEY" \\
+// Los carriers con `requiresCode` (Shalom hoy) exigen un 2º factor: el ejemplo
+// suma `&code=` o copiar-y-pegar responde 422. Se arma por dato, no a mano, así
+// que sale solo para el carrier que lo necesita y no envejece.
+const curl = c.requiresCode
+  ? `$ curl -H "X-API-Key: $API_KEY" \\
+    "https://api.tracking-peru.com/v1/tracking?carrier=${c.id}&number=TU-NUMERO-DE-GUIA&code=TU-CODIGO-DE-ORDEN"`
+  : `$ curl -H "X-API-Key: $API_KEY" \\
     "https://api.tracking-peru.com/v1/tracking?carrier=${c.id}&number=TU-NUMERO-DE-GUIA"`
 
 /*
@@ -171,11 +177,21 @@ const jsonLd = {
             <div class="mt-4">
               <CodeBlock title={`GET /v1/tracking · ${c.id}`} code={curl} tone="brand" />
             </div>
+            {c.requiresCode && (
+              <p class="mt-3 text-pretty text-xs leading-relaxed text-amber-500/90">
+                <strong class="font-semibold text-amber-400">{c.name} pide un segundo factor:</strong>{' '}
+                además del número de guía, el <code class="font-mono">code</code> (código de orden) que
+                figura en el comprobante del envío. Es credencial —prueba que el envío es tuyo—, y sin él
+                el rastreo responde <code class="font-mono">422</code>.
+              </p>
+            )}
             <p class="mt-3 text-pretty text-xs leading-relaxed text-zinc-600">
               El formato exacto de guía de {c.name} lo publica{' '}
               <code class="font-mono text-zinc-400">GET /v1/carriers</code> en{' '}
-              <code class="font-mono text-zinc-400">id_format</code>, junto con un ejemplo
-              real. No lo escribimos acá para que no envejezca en dos lugares.
+              <code class="font-mono text-zinc-400">id_format</code>
+              {c.requiresCode && (
+                <> y <code class="font-mono text-zinc-400">requires_code</code></>
+              )}, junto con un ejemplo real. No lo escribimos acá para que no envejezca en dos lugares.
             </p>
           </div>
         )
