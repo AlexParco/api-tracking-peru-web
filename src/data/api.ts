@@ -82,7 +82,7 @@ export const CARRIERS: Carrier[] = [
     tracking: { status: 'ok', note: 'Operativo. Timeline completo con fecha y hora por evento.' },
     subscribable: true,
     published: true,
-    agencies: { status: 'ok', total: 190, note: 'Con geolocalización y horarios.' },
+    agencies: { status: 'ok', total: 193, note: 'Con geolocalización y horarios.' },
   },
   {
     id: 'olva',
@@ -97,7 +97,7 @@ export const CARRIERS: Carrier[] = [
     published: true,
     agencies: {
       status: 'ok',
-      total: 417,
+      total: 431,
       note: 'El catálogo más completo: ubigeo INEI en el 100 % y horarios por día.',
     },
   },
@@ -112,7 +112,7 @@ export const CARRIERS: Carrier[] = [
     },
     subscribable: true,
     published: true,
-    agencies: { status: 'ok', total: 211, note: 'Con geolocalización, horarios y servicios por punto.' },
+    agencies: { status: 'ok', total: 259, note: 'Con geolocalización, horarios y servicios por punto.' },
   },
   {
     id: 'cruzdelsur',
@@ -125,7 +125,7 @@ export const CARRIERS: Carrier[] = [
     },
     subscribable: true,
     published: true,
-    agencies: { status: 'ok', total: 163, note: 'Requiere credencial para sincronizar.' },
+    agencies: { status: 'ok', total: 168, note: 'Requiere credencial para sincronizar.' },
   },
   {
     id: 'shalom',
@@ -143,7 +143,7 @@ export const CARRIERS: Carrier[] = [
     subscribable: true,
     published: true,
     requiresCode: true,
-    agencies: { status: 'ok', total: 546, note: 'El catálogo más grande. Requiere credencial.' },
+    agencies: { status: 'ok', total: 552, note: 'El catálogo más grande. Requiere credencial.' },
   },
   {
     id: 'dinsides',
@@ -236,36 +236,52 @@ export const ERROR_NOTES: string[] = [
 ]
 
 /**
- * Total de agencias LEÍDO del API en tiempo de build. Antes era un número a mano
- * (`agenciesSynced: 1546`) que se desincronizaba cada vez que el catálogo cambiaba
- * —y mentía en el meta description, el JSON-LD y el contador del hero, que es lo
- * que Google indexa—. Ahora se lee de `/v1/agencies` (endpoint público) en cada
- * build, con fallback al número congelado si el API no responde durante el build,
- * para que un build NUNCA falle por un hipo del API.
+ * Totales de agencias LEÍDOS del API en tiempo de build. Antes eran números a
+ * mano (`agenciesSynced: 1546`, y uno por carrier en CARRIERS) que había que
+ * actualizar a mano cada vez que el catálogo crecía —y mientras tanto mentían en
+ * el meta description, el JSON-LD, el contador del hero y las páginas por courier,
+ * que es lo que Google indexa—. Ahora TODOS (el total y el de cada carrier) salen
+ * de `/v1/agencies` (endpoint público) en cada build. El número hardcodeado —acá
+ * abajo y en CARRIERS[].agencies.total— quedó como FALLBACK: solo se usa si el API
+ * no responde durante el build, para que un build NUNCA falle por un hipo del API.
  *
  * Es build-time, no en vivo: el número queda horneado en el HTML estático (que es
  * lo que necesita el SEO) y se refresca en cada deploy. Suficiente: el catálogo
- * cambia de a poco.
+ * cambia de a poco. Y ya no hay nada que mantener a mano.
  */
 const AGENCIES_SYNCED_FALLBACK = 1564
 
-async function agenciesTotalAtBuild(): Promise<number> {
+// agenciesTotal lee pagination.total de /v1/agencies para una query dada (todo el
+// catálogo con `per_page=1`, o uno solo con `carrier=X&per_page=1`). Devuelve el
+// fallback ante cualquier problema —API caído, !ok, total no entero— y NUNCA tira:
+// un build no debe romperse porque el API tuvo un hipo.
+async function agenciesTotal(query: string, fallback: number): Promise<number> {
   const base = import.meta.env.PUBLIC_API_URL ?? 'https://api.tracking-peru.com'
   try {
-    const res = await fetch(`${base}/v1/agencies?per_page=1`, { signal: AbortSignal.timeout(8000) })
-    if (!res.ok) return AGENCIES_SYNCED_FALLBACK
+    const res = await fetch(`${base}/v1/agencies?${query}`, { signal: AbortSignal.timeout(8000) })
+    if (!res.ok) return fallback
     const data = await res.json()
     const total = data?.pagination?.total
-    return Number.isInteger(total) && total > 0 ? total : AGENCIES_SYNCED_FALLBACK
+    return Number.isInteger(total) && total > 0 ? total : fallback
   } catch {
-    return AGENCIES_SYNCED_FALLBACK
+    return fallback
   }
 }
+
+// Refresca el total de cada carrier CON catálogo en build. El número en
+// CARRIERS[].agencies.total pasa a ser el fallback; el bueno se hornea acá. Se
+// muta en el lugar: como es top-level await, cualquier página que importe CARRIERS
+// ya ve el valor fresco. Los carriers sin catálogo (status != 'ok') quedan en null.
+await Promise.all(
+  CARRIERS.filter((c) => c.agencies.status === 'ok').map(async (c) => {
+    c.agencies.total = await agenciesTotal(`carrier=${c.id}&per_page=1`, c.agencies.total ?? 0)
+  }),
+)
 
 /** Números medidos en una corrida real del servicio, no estimados. */
 export const METRICS = {
   carriersSurveyed: PUBLISHED_CARRIERS.length,
-  agenciesSynced: await agenciesTotalAtBuild(),
+  agenciesSynced: await agenciesTotal('per_page=1', AGENCIES_SYNCED_FALLBACK),
   agenciesWithCredentials: 1525,
   carriersWithCatalog: PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok').length,
 }
