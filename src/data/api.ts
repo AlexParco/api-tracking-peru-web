@@ -42,10 +42,9 @@ export interface Carrier {
    * Si HOY se puede dar de alta una suscripción de webhook para este carrier.
    *
    * NO se drift de `rastreo.status`, aunque hasta agosto de 2026 coincidieran:
-   * el alta consulta el rastreo REAL, y un carrier puede rastrear sin estar
-   * suscribible. Shalom es el caso — rastrea, pero necesita el sidecar de
-   * reCAPTCHA arriba. Derivar uno del otro hacía que completar un rastreo
-   * anunciara solo una suscripción que rebota.
+   * el alta consulta el rastreo REAL, y un carrier PODRÍA rastrear sin estar
+   * suscribible. Derivar uno del otro haría que completar un rastreo anunciara
+   * una suscripción que en realidad rebota.
    */
   subscribable: boolean
   /**
@@ -91,7 +90,7 @@ export const CARRIERS: Carrier[] = [
     detection: 'weak',
     tracking: {
       status: 'ok',
-      note: 'Operativo, verificado en vivo con una guía real. El timeline pasa un desafío anti-bot (Cloudflare) con un navegador real. Algunos estados intermedios todavía se están mapeando.',
+      note: 'Operativo, verificado en vivo con una guía real. Algunos estados intermedios todavía se están mapeando.',
     },
     subscribable: true,
     published: true,
@@ -138,7 +137,7 @@ export const CARRIERS: Carrier[] = [
       // live el 2026-08-07: se capturó rastrea/buscar contra el upstream real (una
       // guía real → ose_id + 200, una inexistente → 404) y el catálogo en vivo.
       status: 'ok',
-      note: 'Operativo, verificado en vivo. Exige el código de orden además del número de guía (2º factor). Traducir la guía a su identificador interno pasa un desafío anti-bot (reCAPTCHA) con un navegador real.',
+      note: 'Operativo, verificado en vivo. Exige el código de orden además del número de guía (2º factor).',
     },
     subscribable: true,
     published: true,

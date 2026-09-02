@@ -17,8 +17,8 @@
  *
  * Lo que separa un nivel de otro es cuántos envíos puedes tener vigilados a la
  * vez. Es la única métrica que alinea lo que le cuesta al servicio con lo que le
- * sirve al cliente: cada suscripción hace que un poller consulte sola, y en los
- * carriers con desafío anti-bot cada consulta cuesta de verdad.
+ * sirve al cliente: cada suscripción hace que un poller consulte sola, y en
+ * algunos carriers cada consulta cuesta de verdad.
  *
  * El RPM NO es el gancho: es un guardarraíl anti-ráfaga. Sube un poco en Pro por
  * margen, pero nadie compra por eso, y la página lo dice así.
