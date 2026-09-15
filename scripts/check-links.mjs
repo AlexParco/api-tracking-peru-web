@@ -99,7 +99,11 @@ for (const { desde, href } of links) {
   // Externos, correos, teléfonos y data URIs: fuera de alcance a propósito.
   if (/^(https?:|mailto:|tel:|data:|\/\/)/i.test(href)) continue
 
-  const [rutaCruda, ancla] = href.split('#')
+  /* La query no cambia de página: `/login?notice=x` es `/login`. Sin quitarla,
+     las variantes de la maqueta del panel se reportaban como páginas que no
+     existen. */
+  const [rutaConQuery, ancla] = href.split('#')
+  const rutaCruda = rutaConQuery.split('?')[0]
   // `href="#algo"` es un ancla en la misma página.
   const ruta = rutaCruda === '' ? desde : rutaCruda.replace(/\/$/, '') || '/'
 
