@@ -1,0 +1,117 @@
+---
+import PanelLayout from '../../components/panel/PanelLayout.astro'
+import PanelCard from '../../components/panel/PanelCard.astro'
+
+/* Plan y consumo.
+ *
+ * `/account/me` trae el plan y dos números: `uso_mes` y `tope_mes`, los mismos
+ * que viajan en las cabeceras `X-Quota-*`. `tope_mes = 0` significa SIN TOPE, y
+ * ahí no se dibuja una barra vacía: se dice.
+ *
+ * La comparación de planes NO se arma acá con `plans.ts`: esos precios están
+ * desactualizados contra la escalera nueva del backend, y publicar un precio
+ * viejo en el panel de un cliente es peor que no publicarlo. Se enlaza a la
+ * página de precios, que es donde vive esa tabla.
+ */
+---
+
+<PanelLayout title="Plan y consumo" heading="Plan y consumo" description="Tu plan actual y cuántas consultas llevas este mes contra el tope.">
+  <a slot="actions" href="/#precios" class="btn btn-secondary px-4 py-2.5 text-sm font-medium">Ver los planes</a>
+
+  <div class="grid gap-6 xl:grid-cols-5">
+    <PanelCard title="Plan actual" class="xl:col-span-2">
+      <p class="font-display text-5xl font-semibold capitalize tracking-[-0.04em] text-zinc-50" data-campo="plan">···</p>
+      <p class="mt-4 text-pretty text-sm leading-relaxed text-zinc-400">
+        Todos los planes llegan a los mismos endpoints y a los mismos carriers. Lo que cambia es el
+        cupo y cómo te respondemos cuando algo se rompe.
+      </p>
+      <div class="mt-6 flex flex-wrap items-center gap-3 border-t border-line pt-5">
+        <a href="/#precios" class="btn btn-primary px-4 py-2.5 text-sm font-medium">Comparar planes</a>
+        <a href="mailto:hola@tracking-peru.com?subject=Cambiar%20de%20plan" class="text-sm text-zinc-400 underline-offset-4 hover:text-zinc-50 hover:underline">
+          Escríbenos para cambiar
+        </a>
+      </div>
+    </PanelCard>
+
+    <PanelCard title="Consumo del mes" class="xl:col-span-3">
+      {/* Con tope: el número grande, la barra y lo que queda. */}
+      <div data-estado="con-tope" hidden>
+        <p class="flex flex-wrap items-baseline gap-x-3">
+          <span class="font-display text-7xl font-semibold tabular-nums tracking-[-0.05em] text-zinc-50" data-campo="uso"></span>
+          <span class="font-mono text-xl text-zinc-500">de <span data-campo="tope"></span> consultas</span>
+        </p>
+        <div class="mt-6 h-4 border border-zinc-50" role="meter" aria-label="Consultas usadas este mes" data-medidor>
+          <div class="h-full bg-[#a3e635]" data-campo-barra="uso" style="width:0%"></div>
+        </div>
+        <div class="mt-2 flex justify-between font-mono text-xs text-zinc-500">
+          <span>0</span><span><span data-campo="pct"></span> % usado</span><span data-campo="tope-fin"></span>
+        </div>
+        <dl class="mt-6 grid gap-4 border-t border-line pt-5 sm:grid-cols-2">
+          <div>
+            <dt class="eyebrow text-zinc-600">Te quedan</dt>
+            <dd class="mt-1 font-mono text-lg text-zinc-50"><span data-campo="restantes"></span> consultas</dd>
+          </div>
+          <div>
+            <dt class="eyebrow text-zinc-600">Se reinicia</dt>
+            <dd class="mt-1 text-sm text-zinc-300">el primer día de cada mes</dd>
+          </div>
+        </dl>
+        <p class="mt-5 bg-ink-soft px-4 py-3 text-pretty text-sm leading-relaxed text-zinc-400">
+          Al llegar al tope, las consultas responden <code class="font-mono text-zinc-200">429 quota_exceeded</code>
+          hasta el mes siguiente. Las suscripciones de webhook no cuentan para este tope: se miden por
+          envíos vigilados a la vez.
+        </p>
+      </div>
+
+      {/* Sin tope: no hay barra que llenar, y decirlo es la información. */}
+      <div data-estado="sin-tope" hidden>
+        <p class="flex flex-wrap items-baseline gap-3">
+          <span class="font-display text-7xl font-semibold tabular-nums tracking-[-0.05em] text-zinc-50" data-campo="uso"></span>
+          <span class="chip-lime eyebrow px-2 py-1 font-semibold">sin tope</span>
+        </p>
+        <p class="mt-4 text-zinc-400">Consultas hechas este mes. Tu plan no las limita.</p>
+      </div>
+
+      <p data-estado="cargando" class="py-6 text-zinc-500">Cargando tu consumo…</p>
+    </PanelCard>
+  </div>
+
+  <PanelCard title="Dónde ver el cupo desde tu código">
+    <p class="text-pretty text-sm leading-relaxed text-zinc-400">
+      No hace falta entrar acá para saber cómo vas: cada respuesta del API trae las cabeceras
+      <code class="font-mono text-zinc-200">X-Quota-Limit</code>,
+      <code class="font-mono text-zinc-200">X-Quota-Remaining</code> y
+      <code class="font-mono text-zinc-200">X-Quota-Reset</code> — los mismos números de esta pantalla.
+      <a href="/docs#limites" class="text-zinc-50 underline underline-offset-4">Ver límites en la documentación →</a>
+    </p>
+  </PanelCard>
+</PanelLayout>
+
+<script is:inline>
+  ;(() => {
+    const tp = window.tp
+    if (!tp) return
+
+    tp.cuenta.then((c) => {
+      if (!c) return
+      tp.pintar('plan', c.plan)
+      tp.pintar('uso', tp.miles(c.uso_mes))
+
+      if (c.tope_mes > 0) {
+        const pct = Math.min(100, Math.round((c.uso_mes / c.tope_mes) * 100))
+        tp.pintar('tope', tp.miles(c.tope_mes))
+        tp.pintar('tope-fin', tp.miles(c.tope_mes))
+        tp.pintar('pct', String(pct))
+        tp.pintar('restantes', tp.miles(Math.max(0, c.tope_mes - c.uso_mes)))
+        const medidor = document.querySelector('[data-medidor]')
+        medidor.setAttribute('aria-valuemin', '0')
+        medidor.setAttribute('aria-valuemax', String(c.tope_mes))
+        medidor.setAttribute('aria-valuenow', String(c.uso_mes))
+        medidor.querySelector('[data-campo-barra="uso"]').style.width = `${Math.max(pct, 1)}%`
+        tp.estado('con-tope')
+      } else {
+        tp.estado('sin-tope')
+      }
+    })
+  })()
+</script>

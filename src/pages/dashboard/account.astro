@@ -1,0 +1,77 @@
+---
+import PanelLayout from '../../components/panel/PanelLayout.astro'
+import PanelCard from '../../components/panel/PanelCard.astro'
+
+/* Cuenta y sesiones.
+ *
+ * El correo es la identidad: no hay contraseña que cambiar. Lo que sí hay es la
+ * sesión —dura 7 días y que venza es normal— y la salida.
+ *
+ * NO hay botón de «cerrar todas las sesiones»: el API no expone ese endpoint.
+ * Lo que sí cierra todas es rotar la key, así que eso es lo que se ofrece, con
+ * su consecuencia escrita. Un botón que no puede cumplir lo que dice es peor
+ * que no tenerlo.
+ */
+---
+
+<PanelLayout title="Cuenta y sesiones" heading="Cuenta y sesiones" description="Con qué correo entras, cuánto dura tu sesión y cómo cerrarla.">
+  <div class="grid gap-6 xl:grid-cols-2">
+    <PanelCard title="Identidad">
+      <p class="eyebrow text-zinc-600">Correo de la cuenta</p>
+      <p class="mt-2 break-all font-display text-3xl font-semibold tracking-tight text-zinc-50" data-campo="email">···</p>
+      <p class="mt-4 text-pretty text-sm leading-relaxed text-zinc-400">
+        Es la identidad de tu cuenta: entras con un enlace que llega a este correo, sin contraseña.
+        Los avisos de tu key y de tu cupo también llegan ahí.
+      </p>
+      <p class="mt-4 text-pretty text-sm leading-relaxed text-zinc-500">
+        ¿Necesitas cambiarlo? Escríbenos desde el correo actual a{' '}
+        <a href="mailto:hola@tracking-peru.com?subject=Cambiar%20el%20correo%20de%20mi%20cuenta" class="text-zinc-50 underline underline-offset-4">hola@tracking-peru.com</a>:
+        cambiar el correo transfiere el control de la cuenta, así que no se hace con un clic.
+      </p>
+    </PanelCard>
+
+    <PanelCard title="Esta sesión">
+      <dl class="grid gap-5 sm:grid-cols-2">
+        <div>
+          <dt class="eyebrow text-zinc-600">Dura</dt>
+          <dd class="mt-1.5 font-mono text-zinc-50">7 días</dd>
+        </div>
+        <div>
+          <dt class="eyebrow text-zinc-600">Entraste con</dt>
+          <dd class="mt-1.5 font-mono text-zinc-50">un enlace de un solo uso</dd>
+        </div>
+      </dl>
+      <p class="mt-5 text-pretty text-sm leading-relaxed text-zinc-400">
+        Cuando vence te pedimos un enlace nuevo. Es normal, no un error. Para generar una key nueva
+        además hace falta que hayas entrado hace menos de 10 minutos.
+      </p>
+      <button type="button" data-logout class="btn btn-secondary mt-5 px-5 py-2.5 text-sm font-medium">Salir de esta sesión</button>
+    </PanelCard>
+  </div>
+
+  {/* La salida de emergencia real: rotar la key. Es lo único que hoy cierra
+      todas las sesiones, así que se ofrece eso y no un botón que no existe. */}
+  <PanelCard title="Si crees que alguien más entró">
+    <div class="grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
+      <p class="text-pretty text-sm leading-relaxed text-zinc-400">
+        Generar una key nueva <strong class="font-semibold text-zinc-200">cierra todas las sesiones</strong>, en este y
+        en cualquier otro dispositivo, y deja sin efecto la key anterior. Es la forma de recuperar el
+        control de la cuenta si entraste desde una computadora prestada.
+      </p>
+      <a href="/dashboard/key" class="btn shrink-0 border border-line px-4 py-2.5 text-center text-sm font-medium text-zinc-300 hover:border-zinc-50 hover:text-zinc-50">
+        Ir a mi API key
+      </a>
+    </div>
+  </PanelCard>
+
+  <PanelCard title="Soporte">
+    <div class="grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
+      <p class="text-pretty text-sm leading-relaxed text-zinc-400">
+        Escríbenos desde el correo de tu cuenta a <span class="font-mono text-zinc-200">hola@tracking-peru.com</span>.
+        Si es un error del API, incluye el ID de request que ves en
+        <a href="/dashboard/errors" class="text-zinc-50 underline underline-offset-4">Mis errores</a>.
+      </p>
+      <a href="mailto:hola@tracking-peru.com?subject=Soporte%20del%20panel" class="btn btn-secondary px-5 py-2.5 text-center text-sm font-medium">Escribirnos</a>
+    </div>
+  </PanelCard>
+</PanelLayout>

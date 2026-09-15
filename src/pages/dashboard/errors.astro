@@ -1,0 +1,220 @@
+---
+import PanelLayout from '../../components/panel/PanelLayout.astro'
+import PanelCard from '../../components/panel/PanelCard.astro'
+
+/* Mis errores: la pantalla más valiosa del panel.
+ *
+ * Convierte un «no me anda» en «ah, me faltaba tal cosa» sin que nadie escriba
+ * un correo. Existe por un caso real: un cliente tuvo una sesión con 92 % de
+ * errores de formato y no volvió nunca — el dato ya estaba guardado, lo que
+ * faltaba era dejárselo ver.
+ *
+ * Sale de `GET /account/errors?limit=` (máx 100 del lado del API). El MENSAJE es
+ * el protagonista: ya viene en castellano y dice qué hacer. Los repetidos se
+ * agrupan por código, porque repetido casi siempre significa mal configurado.
+ *
+ * OJO con los nombres de los campos: esa struct del backend no lleva tags JSON,
+ * así que las claves llegan capitalizadas (`RequestID`, `Timestamp`, `Status`…).
+ */
+---
+
+<PanelLayout title="Errores" heading="Mis errores" description="Lo que te respondió el API cuando algo salió mal, agrupado por tipo y con el ID de request para soporte.">
+  <a slot="actions" href="/docs#errores" class="btn btn-secondary px-4 py-2.5 text-sm font-medium">Catálogo de errores</a>
+
+  <p data-estado="cargando" class="border border-line bg-ink px-5 py-8 text-center text-zinc-400">Cargando tus errores…</p>
+
+  {/* Vacío: se celebra, no se deja gris. */}
+  <div data-estado="vacio" hidden class="on-lime border border-line px-6 py-14 text-center">
+    <p class="font-display text-5xl font-bold tracking-[-0.04em]">✓</p>
+    <p class="mt-3 font-display text-3xl font-bold tracking-[-0.03em]">No tuviste errores. Todo en orden.</p>
+    <p class="mt-2 text-zinc-400">Tus llamadas están llegando bien. Si algo falla, aparece aquí con qué hacer.</p>
+  </div>
+
+  <div data-estado="lista" hidden class="space-y-6">
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div class="border border-line bg-ink p-5">
+        <p class="eyebrow text-zinc-500">Errores recientes</p>
+        <p class="mt-3 font-display text-4xl font-semibold tabular-nums tracking-tight text-zinc-50" data-campo="total"></p>
+        <p class="mt-2 font-mono text-xs text-zinc-500"><span data-campo="tipos"></span> tipos distintos</p>
+      </div>
+      <div class="border border-line bg-ink p-5 xl:col-span-2">
+        <p class="eyebrow text-zinc-500">Por status HTTP</p>
+        <ul class="mt-4 space-y-2.5" data-por-status></ul>
+      </div>
+      <div class="border border-[var(--color-partial)] bg-ink p-5" data-mas-repetido hidden>
+        <p class="eyebrow text-[var(--color-partial)]">El que más se repite</p>
+        <p class="mt-3 font-mono text-sm font-semibold text-zinc-50" data-campo="top-code"></p>
+        <p class="mt-1 font-display text-4xl font-semibold tabular-nums tracking-tight text-zinc-50">×<span data-campo="top-veces"></span></p>
+        <p class="mt-2 text-xs text-zinc-500">Repetido casi siempre es configuración.</p>
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-3 border border-line bg-ink p-4 lg:flex-row lg:items-center lg:justify-between">
+      <div class="flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo de error" data-filtros></div>
+      <label class="flex min-w-0 items-center border border-line lg:w-80">
+        <span class="eyebrow border-r border-line px-3 py-2.5 text-zinc-500">ID</span>
+        <input type="search" data-search-id placeholder="Buscar un ID de request…" class="min-w-0 flex-1 bg-transparent px-3 py-2 font-mono text-sm text-zinc-50 placeholder:text-zinc-600 focus:outline-none" />
+      </label>
+    </div>
+
+    <p data-sin-coincidencias hidden class="border border-line bg-ink px-5 py-8 text-center text-zinc-400">
+      Ningún error coincide. Revisa que el ID esté completo; está en la cabecera
+      <code class="font-mono text-zinc-200">X-Request-ID</code> de la respuesta.
+    </p>
+
+    <ul class="space-y-4" data-grupos></ul>
+  </div>
+
+  <PanelCard title="¿No entiendes un error?">
+    <div class="grid gap-5 md:grid-cols-2">
+      <p class="text-pretty text-sm leading-relaxed text-zinc-400">
+        Cada código tiene su explicación en el catálogo de la documentación, con el status HTTP y cuándo aparece.
+        <a href="/docs#errores" class="text-zinc-50 underline underline-offset-4">Ver el catálogo →</a>
+      </p>
+      <p class="text-pretty text-sm leading-relaxed text-zinc-400">
+        Si sigue sin cerrar, escríbenos a <a href="mailto:hola@tracking-peru.com" class="text-zinc-50 underline underline-offset-4">hola@tracking-peru.com</a>
+        con el ID de request: con él encontramos la llamada exacta.
+      </p>
+    </div>
+  </PanelCard>
+</PanelLayout>
+
+<script is:inline>
+  ;(() => {
+    const tp = window.tp
+    if (!tp) return
+
+    const esc = (s) =>
+      String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
+
+    let grupos = []
+    let filtro = ''
+
+    const pintarGrupos = () => {
+      const q = document.querySelector('[data-search-id]').value.trim().toLowerCase()
+      let visibles = 0
+      const html = grupos
+        .map((g) => {
+          if (filtro && g.code !== filtro) return ''
+          const ocurrencias = q ? g.items.filter((e) => String(e.RequestID).toLowerCase().includes(q)) : g.items
+          if (!ocurrencias.length) return ''
+          visibles++
+          const repetido = g.items.length >= 10
+          return `<li class="border bg-ink ${repetido ? 'border-[var(--color-partial)]' : 'border-line'}">
+            ${
+              repetido
+                ? `<p class="eyebrow flex flex-wrap items-center justify-between gap-2 bg-[var(--color-partial)] px-5 py-2 font-semibold text-ink">
+                     <span>Te pasó ${g.items.length} veces</span><span>Probablemente algo está mal configurado</span>
+                   </p>`
+                : ''
+            }
+            <div class="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_12rem]">
+              <div class="min-w-0">
+                <p class="text-pretty text-xl font-medium leading-snug text-zinc-50">${esc(g.mensaje)}</p>
+                <dl class="mt-4 flex flex-wrap gap-x-6 gap-y-2 font-mono text-xs">
+                  <div class="flex gap-2"><dt class="text-zinc-600">status</dt><dd class="text-zinc-200">${esc(g.status)}</dd></div>
+                  <div class="flex gap-2"><dt class="text-zinc-600">código</dt><dd class="text-zinc-200">${esc(g.code)}</dd></div>
+                  <div class="flex min-w-0 gap-2"><dt class="text-zinc-600">endpoint</dt><dd class="break-all text-zinc-200">${esc(g.endpoint)}</dd></div>
+                </dl>
+              </div>
+              <div class="flex items-center gap-4 border-t border-line pt-4 lg:flex-col lg:items-end lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0 lg:text-right">
+                <p>
+                  <span class="font-display text-5xl font-semibold tabular-nums tracking-tight text-zinc-50">${g.items.length}</span>
+                  <span class="ml-1 text-sm text-zinc-500">${g.items.length === 1 ? 'vez' : 'veces'}</span>
+                </p>
+                <p class="eyebrow text-zinc-600">última ${esc(tp.fechaHora(g.items[0].Timestamp) ?? '')}</p>
+              </div>
+            </div>
+            <div class="border-t border-line">
+              <p class="eyebrow flex justify-between bg-ink-soft px-5 py-2 text-zinc-500">
+                <span>Ocurrencias</span><span class="hidden sm:inline">Mándanos el ID si nos escribes</span>
+              </p>
+              <ul class="divide-y divide-line">
+                ${ocurrencias
+                  .slice(0, 10)
+                  .map(
+                    (e) => `<li class="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 px-5 py-3 sm:grid-cols-[9.5rem_1fr_auto]">
+                      <span class="font-mono text-xs text-zinc-400">${esc(tp.fechaHora(e.Timestamp) ?? '')}</span>
+                      <code class="col-span-2 row-start-2 min-w-0 break-all font-mono text-xs text-zinc-300 sm:col-span-1 sm:row-start-auto">${esc(e.RequestID)}</code>
+                      <button type="button" data-copy="${esc(e.RequestID)}" class="eyebrow row-start-1 border border-line px-2 py-1 text-zinc-400 hover:border-zinc-50 hover:text-zinc-50 sm:row-start-auto">Copiar ID</button>
+                    </li>`,
+                  )
+                  .join('')}
+              </ul>
+            </div>
+          </li>`
+        })
+        .join('')
+
+      document.querySelector('[data-grupos]').innerHTML = html
+      document.querySelector('[data-sin-coincidencias]').hidden = visibles > 0
+    }
+
+    tp.cargar(() => tp.errores(100), tp.falla).then((data) => {
+      if (!data) return
+      const items = data.errors ?? []
+      if (!items.length) return tp.estado('vacio')
+
+      // Agrupado por código (o por status si el error no trae código).
+      const mapa = new Map()
+      for (const e of items) {
+        const code = e.ErrorCode || `http_${e.Status}`
+        if (!mapa.has(code)) {
+          mapa.set(code, { code, status: e.Status, endpoint: e.Endpoint, mensaje: e.Message || code, items: [] })
+        }
+        mapa.get(code).items.push(e)
+      }
+      grupos = [...mapa.values()].sort((a, b) => b.items.length - a.items.length)
+
+      tp.pintar('total', String(items.length))
+      tp.pintar('tipos', String(grupos.length))
+
+      const badge = document.querySelector('[data-badge-errores]')
+      if (badge) {
+        badge.textContent = String(items.length)
+        badge.hidden = false
+      }
+
+      // Por status HTTP.
+      const porStatus = new Map()
+      for (const e of items) porStatus.set(e.Status, (porStatus.get(e.Status) ?? 0) + 1)
+      document.querySelector('[data-por-status]').innerHTML = [...porStatus.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(
+          ([status, n]) => `<li class="grid grid-cols-[3rem_1fr_2.5rem] items-center gap-3 font-mono text-xs">
+            <span class="text-zinc-300">${esc(status)}</span>
+            <span class="h-2.5 bg-ink-soft"><span class="block h-full bg-zinc-50" style="width:${Math.max(3, (n / items.length) * 100)}%"></span></span>
+            <span class="text-right tabular-nums text-zinc-400">${n}</span>
+          </li>`,
+        )
+        .join('')
+
+      if (grupos[0].items.length >= 10) {
+        tp.pintar('top-code', grupos[0].code)
+        tp.pintar('top-veces', String(grupos[0].items.length))
+        document.querySelector('[data-mas-repetido]').hidden = false
+      }
+
+      // Filtros: salen de los códigos que de verdad ocurrieron.
+      document.querySelector('[data-filtros]').innerHTML = [
+        `<button type="button" data-filtro="" aria-pressed="true" class="border border-line px-3 py-1.5 font-mono text-xs text-zinc-400 hover:border-zinc-50 aria-pressed:border-zinc-50 aria-pressed:bg-zinc-50 aria-pressed:text-ink">todos · ${items.length}</button>`,
+        ...grupos.map(
+          (g) =>
+            `<button type="button" data-filtro="${esc(g.code)}" aria-pressed="false" class="border border-line px-3 py-1.5 font-mono text-xs text-zinc-400 hover:border-zinc-50 aria-pressed:border-zinc-50 aria-pressed:bg-zinc-50 aria-pressed:text-ink">${esc(g.code)} · ${g.items.length}</button>`,
+        ),
+      ].join('')
+
+      tp.estado('lista')
+      pintarGrupos()
+    })
+
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-filtro]')
+      if (!b) return
+      filtro = b.dataset.filtro
+      document.querySelectorAll('[data-filtro]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)))
+      pintarGrupos()
+    })
+    document.querySelector('[data-search-id]').addEventListener('input', pintarGrupos)
+  })()
+</script>

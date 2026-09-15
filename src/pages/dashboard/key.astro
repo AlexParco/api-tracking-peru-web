@@ -1,0 +1,236 @@
+---
+import PanelLayout from '../../components/panel/PanelLayout.astro'
+import PanelCard from '../../components/panel/PanelCard.astro'
+import CodeBlock from '../../components/CodeBlock.astro'
+
+/* La API key.
+ *
+ * La key NO se puede mostrar: el API la guarda cifrada y ni nosotros podemos
+ * leerla. La pantalla lo asume de entrada —es su tema, no un error— y muestra lo
+ * que sí se sabe: si está activa, cuándo se creó y cuándo se usó por última vez.
+ *
+ * Rotar es la acción más destructiva del panel: deja sin servicio a la
+ * integración hasta que el cliente cambie la key, exige sesión fresca (<10 min)
+ * y CIERRA TODAS LAS SESIONES. Por eso el flujo entero está explicado ANTES de
+ * apretar el botón, y la clave nueva —que se ve una sola vez— vive en un diálogo
+ * que no se puede descartar por accidente.
+ */
+const curl = `curl -H "X-API-Key: $API_KEY" \\
+  "https://api.tracking-peru.com/v1/carriers"`
+
+const pasos = [
+  ['Tu key actual deja de funcionar al instante', 'Toda llamada con ella empieza a responder 401. Si la tienes puesta en algún sistema, vas a tener que reemplazarla ahí.'],
+  ['Puede que te pidamos volver a entrar', 'Si entraste hace más de 10 minutos, primero te mandamos un enlace nuevo. Es para que nadie con una sesión olvidada pueda rotarte la key.'],
+  ['La key nueva se muestra una sola vez', 'Cópiala antes de cerrar el aviso: el API no la vuelve a mostrar y nosotros no podemos leerla.'],
+  ['Se cierran todas tus sesiones', 'Si rotaste porque sospechas que alguien entró, ninguna sesión vieja queda viva. Vuelves a entrar con un enlace.'],
+]
+---
+
+<PanelLayout title="API key" heading="API key" description="Tu key de acceso al API. Por seguridad no se puede ver: si la perdiste, genera una nueva.">
+  <button slot="actions" type="button" data-rotate class="btn btn-primary px-5 py-2.5 text-sm font-medium">Generar una key nueva</button>
+
+  <div data-alerta="inactiva" hidden class="border-l-4 border-[var(--color-partial)] bg-ink px-5 py-4">
+    <p class="eyebrow text-[var(--color-partial)]">Key inactiva</p>
+    <p class="mt-1 font-medium text-zinc-50">Toda llamada con tu key responde 401.</p>
+    <p class="mt-1 text-sm text-zinc-400">Genera una nueva para volver a usar el API.</p>
+  </div>
+
+  <div class="grid gap-6 xl:grid-cols-5">
+    <PanelCard title="Tu key" class="xl:col-span-3">
+      <div class="flex items-center gap-3 border border-zinc-50 px-4 py-4">
+        <span class="min-w-0 truncate font-mono text-xl tracking-[0.25em] text-zinc-600" aria-hidden="true">•••••••••••••••••••••••</span>
+        <span class="eyebrow ml-auto shrink-0 border border-line px-2 py-1 text-zinc-500">cifrada</span>
+      </div>
+      <p class="mt-4 text-pretty leading-relaxed text-zinc-300">
+        No podemos mostrártela: el API la guarda cifrada y <strong class="font-semibold text-zinc-50">ni nosotros podemos leerla</strong>.
+        Sólo se ve completa en el momento en que se genera.
+      </p>
+
+      <dl class="mt-6 grid border-t border-line sm:grid-cols-3">
+        <div class="border-b border-line py-4 sm:border-b-0 sm:border-r sm:pr-4">
+          <dt class="eyebrow text-zinc-600">Estado</dt>
+          <dd class="mt-1.5 font-mono" data-campo="estado">···</dd>
+        </div>
+        <div class="border-b border-line py-4 sm:border-b-0 sm:border-r sm:px-4">
+          <dt class="eyebrow text-zinc-600">Creada</dt>
+          <dd class="mt-1.5 font-mono text-zinc-200" data-campo="creada">···</dd>
+        </div>
+        <div class="py-4 sm:px-4">
+          <dt class="eyebrow text-zinc-600">Último uso</dt>
+          <dd class="mt-1.5 font-mono text-zinc-200" data-campo="ultimo-uso">···</dd>
+        </div>
+      </dl>
+
+      <div data-alerta="sin-usar" hidden class="mt-2 bg-ink-soft px-5 py-4">
+        <p class="font-medium text-zinc-50">Tu key todavía no hizo ninguna llamada.</p>
+        <p class="mt-1 text-sm text-zinc-400">Si la integración no arrancó, el primer llamado toma dos minutos.</p>
+        <a href="/docs#primer-llamado" class="btn btn-primary mt-3 inline-block px-4 py-2.5 text-sm font-medium">Ver el primer llamado →</a>
+      </div>
+    </PanelCard>
+
+    <PanelCard title="Cómo se usa" class="xl:col-span-2">
+      <p class="text-sm leading-relaxed text-zinc-400">
+        Va en la cabecera <code class="font-mono text-zinc-200">X-API-Key</code> de cada llamada. Nunca en la URL
+        ni en código que corra en el navegador: ahí queda publicada.
+      </p>
+      <div class="mt-4">
+        <CodeBlock title="GET /v1/carriers" code={curl} lang="bash" tone="brand" />
+      </div>
+      <a href="/docs#autenticacion" class="mt-4 inline-block text-sm text-zinc-400 underline-offset-4 hover:text-zinc-50 hover:underline">Autenticación en la documentación →</a>
+    </PanelCard>
+  </div>
+
+  <PanelCard title="Antes de generar una key nueva" meta="qué va a pasar">
+    <ol class="grid gap-px border border-line bg-line md:grid-cols-2 xl:grid-cols-4">
+      {
+        pasos.map(([t, d], i) => (
+          <li class="bg-ink p-5">
+            <span class:list={['inline-grid h-6 min-w-8 place-items-center px-1.5 font-mono text-xs font-semibold', i === 0 ? 'bg-[var(--color-partial)] text-ink' : 'bg-zinc-50 text-ink']}>
+              {String(i + 1).padStart(2, '0')}
+            </span>
+            <p class="mt-4 font-medium leading-snug text-zinc-50">{t}</p>
+            <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">{d}</p>
+          </li>
+        ))
+      }
+    </ol>
+    <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-sm text-zinc-500">¿La perdiste o sospechas que se filtró? Es exactamente para eso.</p>
+      <button type="button" data-rotate class="btn btn-secondary px-5 py-2.5 text-sm font-medium">Generar una key nueva</button>
+    </div>
+  </PanelCard>
+
+  {/* ═══ Diálogos del flujo ═══ */}
+  <dialog id="dlg-rotate" aria-labelledby="dlg-rotate-title" class="detalle w-[min(32rem,calc(100vw-2rem))] border border-zinc-50 bg-ink p-0 text-zinc-300 backdrop:bg-black/60">
+    <p class="eyebrow flex justify-between bg-[var(--color-partial)] px-5 py-2 font-semibold text-ink"><span>Acción destructiva</span><span>paso 1 de 2</span></p>
+    <div class="p-5">
+      <p id="dlg-rotate-title" class="font-display text-2xl font-semibold tracking-tight text-zinc-50">¿Generar una key nueva?</p>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-300">
+        Tu key actual <strong class="font-semibold text-zinc-50">dejará de funcionar al instante</strong>. Si la tienes
+        puesta en algún sistema, vas a tener que reemplazarla ahí.
+      </p>
+      <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">Además se cierran todas tus sesiones, incluida ésta.</p>
+      <label class="mt-5 flex items-start gap-3 text-sm text-zinc-200">
+        <input type="checkbox" data-rotate-ack class="mt-0.5 size-4 shrink-0 accent-[#a3e635]" />
+        Entiendo que mi key actual deja de funcionar.
+      </label>
+      <p data-rotate-error hidden role="alert" class="mt-4 border border-[var(--color-partial)] px-3 py-2 text-sm text-zinc-300"></p>
+    </div>
+    <div class="flex flex-col-reverse gap-2 border-t border-line p-4 sm:flex-row sm:justify-end">
+      <button type="button" data-close class="btn btn-quiet px-4 py-2.5 text-sm font-medium">Cancelar</button>
+      <button type="button" data-rotate-confirm disabled class="btn btn-primary px-5 py-2.5 text-sm font-medium">Generar key nueva</button>
+    </div>
+  </dialog>
+
+  {/* El 403 del API cuando la sesión ya no es fresca. */}
+  <dialog id="dlg-reauth" aria-labelledby="dlg-reauth-title" class="detalle w-[min(30rem,calc(100vw-2rem))] border border-zinc-50 bg-ink p-0 text-zinc-300 backdrop:bg-black/60">
+    <p class="eyebrow bg-zinc-50 px-5 py-2 font-semibold text-ink">Por seguridad</p>
+    <div class="p-5">
+      <p id="dlg-reauth-title" class="text-pretty font-display text-2xl font-semibold leading-snug tracking-tight text-zinc-50">
+        Vuelve a entrar con un enlace nuevo antes de generar una key nueva.
+      </p>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Entraste hace más de 10 minutos. Te mandamos un enlace al correo de tu cuenta, lo abres y generas la key desde aquí.
+      </p>
+    </div>
+    <div class="flex flex-col-reverse gap-2 border-t border-line p-4 sm:flex-row sm:justify-end">
+      <button type="button" data-close class="btn btn-quiet px-4 py-2.5 text-sm font-medium">Ahora no</button>
+      <a href="/login?notice=reauthenticate" class="btn btn-primary px-5 py-2.5 text-center text-sm font-medium">Enviarme un enlace</a>
+    </div>
+  </dialog>
+
+  {/* No se descarta con Escape ni tocando afuera: la key se ve UNA vez. */}
+  <dialog id="dlg-secret" data-sticky aria-labelledby="dlg-secret-title" class="detalle w-[min(34rem,calc(100vw-2rem))] border border-zinc-50 bg-ink p-0 text-zinc-300 backdrop:bg-black/70">
+    <p class="eyebrow flex justify-between bg-[#a3e635] px-5 py-2 font-semibold text-[#08090b]"><span id="dlg-secret-title">Tu key nueva</span><span>paso 2 de 2</span></p>
+    <div class="p-5" data-copy-target>
+      <p class="font-display text-xl font-semibold tracking-tight text-zinc-50">Guárdala ahora: por seguridad no la volvemos a mostrar.</p>
+      <div class="mt-4 border border-zinc-50">
+        <code class="block break-all px-4 py-4 font-mono text-base text-zinc-50" data-valor></code>
+        <button type="button" data-copy class="btn btn-primary block w-full border-x-0 border-b-0 px-4 py-3 text-sm font-medium">Copiar key</button>
+      </div>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400" data-campo="aviso-key"></p>
+      <label class="mt-5 flex items-start gap-3 text-sm text-zinc-200">
+        <input type="checkbox" data-secret-ack class="mt-0.5 size-4 shrink-0 accent-[#a3e635]" />
+        Ya la guardé en un lugar seguro.
+      </label>
+    </div>
+    <div class="border-t border-line p-4">
+      <button type="button" data-secret-done disabled class="btn btn-secondary w-full px-5 py-3 text-sm font-medium">Listo, volver a entrar</button>
+      <p class="mt-2 text-center text-xs text-zinc-500">Se habilita cuando la copies o confirmes que la guardaste.</p>
+    </div>
+  </dialog>
+</PanelLayout>
+
+<script is:inline>
+  ;(() => {
+    const tp = window.tp
+    if (!tp) return
+
+    tp.cuenta.then((c) => {
+      if (!c) return
+      const estado = document.querySelector('[data-campo="estado"]')
+      estado.textContent = c.key_enabled ? '● activa' : '○ inactiva'
+      estado.classList.add(c.key_enabled ? 'text-[var(--color-live)]' : 'text-[var(--color-partial)]')
+      tp.pintar('creada', tp.fecha(c.key_created_at) ?? '—')
+      tp.pintar('ultimo-uso', tp.fechaHora(c.key_last_used_at) ?? 'nunca usada')
+      if (!c.key_enabled) document.querySelector('[data-alerta="inactiva"]').hidden = false
+      if (c.key_enabled && !c.key_last_used_at) document.querySelector('[data-alerta="sin-usar"]').hidden = false
+    })
+
+    const dlgRotate = document.getElementById('dlg-rotate')
+    const dlgReauth = document.getElementById('dlg-reauth')
+    const dlgSecret = document.getElementById('dlg-secret')
+    const ack = dlgRotate.querySelector('[data-rotate-ack]')
+    const confirmar = dlgRotate.querySelector('[data-rotate-confirm]')
+    const errorBox = dlgRotate.querySelector('[data-rotate-error]')
+    const done = dlgSecret.querySelector('[data-secret-done]')
+
+    document.querySelectorAll('[data-rotate]').forEach((b) =>
+      b.addEventListener('click', () => {
+        ack.checked = false
+        confirmar.disabled = true
+        errorBox.hidden = true
+        dlgRotate.showModal()
+      }),
+    )
+    ack.addEventListener('change', () => (confirmar.disabled = !ack.checked))
+
+    confirmar.addEventListener('click', async () => {
+      confirmar.disabled = true
+      confirmar.textContent = 'Generando…'
+      try {
+        const r = await tp.rotarKey()
+        dlgRotate.close()
+        dlgSecret.querySelector('[data-valor]').textContent = r.api_key
+        tp.pintar('aviso-key', r.aviso ?? '')
+        dlgSecret.querySelector('[data-secret-ack]').checked = false
+        done.disabled = true
+        dlgSecret.showModal()
+      } catch (e) {
+        if (e instanceof tp.ApiError && e.status === 403) {
+          // Sesión válida pero vieja: hace falta un enlace nuevo.
+          dlgRotate.close()
+          dlgReauth.showModal()
+        } else if (e instanceof tp.ApiError && e.status === 401) {
+          tp.salirA('expired-session')
+        } else {
+          errorBox.textContent =
+            e instanceof tp.ApiError ? `${e.message}${e.requestId ? ` (referencia ${e.requestId})` : ''}` : 'No pudimos conectarnos con el API.'
+          errorBox.hidden = false
+        }
+      } finally {
+        confirmar.textContent = 'Generar key nueva'
+        confirmar.disabled = !ack.checked
+      }
+    })
+
+    dlgSecret.addEventListener('cancel', (e) => e.preventDefault())
+    dlgSecret.querySelector('[data-copy]').addEventListener('click', () => {
+      // El copiado lo hace el layout; acá sólo se habilita el cierre.
+      done.disabled = false
+    })
+    dlgSecret.querySelector('[data-secret-ack]').addEventListener('change', (e) => (done.disabled = !e.target.checked))
+    // Rotar ya cerró la sesión del lado del API: el aterrizaje es el login.
+    done.addEventListener('click', () => tp.salirA('key-rotated'))
+  })()
+</script>

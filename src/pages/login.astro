@@ -1,0 +1,15 @@
+---
+import Base from '../layouts/Base.astro'
+import Nav from '../components/Nav.astro'
+import Footer from '../components/Footer.astro'
+import LoginScreen from '../components/LoginScreen.astro'
+
+/* La ruta que enlazan la barra y el pie. La misma pantalla se sirve en
+   /dashboard/login, que es adonde redirige el API cuando el enlace no sirve. */
+---
+
+<Base title="Entrar — API Tracking Perú" description="Entra a tu panel con un enlace que te llega por correo." noindex>
+  <Nav />
+  <LoginScreen />
+  <Footer />
+</Base>

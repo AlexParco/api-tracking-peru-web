@@ -1,0 +1,289 @@
+---
+import Base from '../../layouts/Base.astro'
+import Logo from '../Logo.astro'
+import ThemeToggle from '../ThemeToggle.astro'
+import AccountClient from './AccountClient.astro'
+
+/* El armazón del panel de cliente, ya contra el API real (`/account/*`).
+ *
+ * Un panel admin y no una página larga: barra superior con la cuenta, barra
+ * lateral con las secciones, y cada sección en su propia página. Se entra poco
+ * —una vez al mes o menos—, así que la barra lateral hace de mapa.
+ *
+ * ── Por qué el contenido se pinta con JavaScript ──
+ *
+ * El sitio es estático: el HTML es el mismo para todos, así que los datos de UNA
+ * cuenta no pueden venir horneados. Cada pantalla se sirve con su esqueleto y el
+ * script la llena con lo que responde el API usando la cookie de sesión. Es la
+ * única parte del sitio que no funciona sin JavaScript, y lo dice.
+ *
+ * `/account/me` se pide UNA sola vez por carga y se comparte con las páginas en
+ * `window.tp.cuenta`: si cada tarjeta la pidiera por su cuenta, entrar al panel
+ * serían cinco llamadas iguales.
+ */
+interface Props {
+  title: string
+  heading: string
+  description: string
+}
+
+const { title, heading, description } = Astro.props
+const path = Astro.url.pathname.replace(/\/$/, '')
+
+/* Sólo las secciones que el API sabe contestar hoy: `/account/me` y
+   `/account/errors`. Envíos vigilados y webhook NO están —sus endpoints viven
+   bajo `/v1` y se consumen con la API key, no con la cookie del panel—, así que
+   no figuran: una sección vacía que no puede llenarse nunca es una promesa. */
+const groups = [
+  {
+    label: 'General',
+    items: [{ href: '/dashboard', label: 'Resumen', icon: '◧' }],
+  },
+  {
+    label: 'Integración',
+    items: [
+      { href: '/dashboard/key', label: 'API key', icon: '⚿' },
+      { href: '/dashboard/errors', label: 'Errores', icon: '!', badge: true },
+    ],
+  },
+  {
+    label: 'Cuenta',
+    items: [
+      { href: '/dashboard/plan', label: 'Plan y consumo', icon: '▤' },
+      { href: '/dashboard/account', label: 'Cuenta y sesiones', icon: '◯' },
+    ],
+  },
+]
+const current = groups.flatMap((g) => g.items).find((i) => i.href === path)
+---
+
+<Base title={`${title} — Panel · API Tracking Perú`} description={description} noindex>
+  <AccountClient />
+
+  <header class="sticky top-0 z-40 bg-ink-soft/85 backdrop-blur">
+    <div class="mx-auto flex h-14 max-w-[90rem] items-stretch border-x border-b border-line bg-ink">
+      <a href="/" class="flex items-center gap-2.5 border-r border-line px-4 font-semibold tracking-tight text-zinc-50 sm:px-5 lg:w-60">
+        <span class="chip-lime grid size-7 shrink-0 place-items-center"><Logo size={16} /></span>
+        <span class="hidden sm:inline">API Tracking <span class="text-zinc-500">Perú</span></span>
+      </a>
+      <span class="eyebrow hidden items-center border-r border-line px-4 text-zinc-500 md:flex">Panel de cliente</span>
+
+      <div class="ml-auto flex items-stretch">
+        <a href="/docs" class="eyebrow hidden items-center border-l border-line px-4 text-zinc-500 hover:bg-[var(--hover-soft)] hover:text-zinc-50 md:flex">
+          Docs
+        </a>
+        <div class="flex items-center border-l border-line px-4">
+          <ThemeToggle />
+        </div>
+        <a
+          href="/dashboard/account"
+          class="hidden min-w-0 items-center gap-2.5 border-l border-line px-4 text-sm text-zinc-300 hover:bg-[var(--hover-soft)] hover:text-zinc-50 sm:flex"
+        >
+          <span class="grid size-7 shrink-0 place-items-center bg-zinc-50 font-mono text-xs font-semibold text-ink" data-campo="inicial" aria-hidden="true">·</span>
+          <span class="max-w-[14rem] truncate" data-campo="email">···</span>
+        </a>
+        <button type="button" data-logout class="eyebrow flex items-center border-l border-line px-4 text-zinc-500 hover:bg-zinc-50 hover:text-ink">
+          Salir
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="mx-auto max-w-[90rem] border-x border-line lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+    <nav aria-label="Secciones del panel" class="border-b border-line bg-ink lg:border-b-0 lg:border-r">
+      {/* Teléfono: un desplegable con el nombre de la sección actual, que es lo
+          único que hace falta saber ahí. */}
+      <details class="menu group lg:hidden">
+        <summary class="flex cursor-pointer items-center justify-between px-5 py-3.5">
+          <span class="flex items-center gap-3">
+            <span class="eyebrow text-zinc-600">Sección</span>
+            <span class="font-medium text-zinc-50">{current?.label}</span>
+          </span>
+          <span class="font-mono text-zinc-500 transition-transform group-open:rotate-180" aria-hidden="true">▾</span>
+        </summary>
+        <div class="panel border-t border-line pb-3">
+          {
+            groups.map((g) => (
+              <div class="pt-3">
+                <p class="eyebrow px-5 pb-1 text-zinc-600">{g.label}</p>
+                {g.items.map((i) => (
+                  <a
+                    href={i.href}
+                    aria-current={i.href === path ? 'page' : undefined}
+                    class="flex items-center gap-3 px-5 py-2.5 text-sm text-zinc-300 aria-[current=page]:bg-zinc-50 aria-[current=page]:text-ink"
+                  >
+                    <span class="w-4 text-center font-mono" aria-hidden="true">{i.icon}</span>
+                    {i.label}
+                  </a>
+                ))}
+              </div>
+            ))
+          }
+        </div>
+      </details>
+
+      <div class="sticky top-14 hidden max-h-[calc(100dvh-3.5rem)] flex-col overflow-y-auto lg:flex">
+        {
+          groups.map((g) => (
+            <div class="border-b border-line py-4">
+              <p class="eyebrow px-5 pb-2 text-zinc-600">{g.label}</p>
+              {g.items.map((i) => (
+                <a
+                  href={i.href}
+                  aria-current={i.href === path ? 'page' : undefined}
+                  class="group relative flex items-center gap-3 px-5 py-2.5 text-sm text-zinc-400 transition-colors hover:bg-[var(--hover-soft)] hover:text-zinc-50 aria-[current=page]:bg-ink-soft aria-[current=page]:font-medium aria-[current=page]:text-zinc-50"
+                >
+                  <span class="absolute inset-y-0 left-0 w-1 bg-[#a3e635] opacity-0 group-aria-[current=page]:opacity-100" aria-hidden="true" />
+                  <span class="w-4 text-center font-mono text-zinc-500 group-aria-[current=page]:text-zinc-50" aria-hidden="true">{i.icon}</span>
+                  <span class="flex-1">{i.label}</span>
+                  {i.badge && <span class="bg-zinc-50 px-1.5 font-mono text-[11px] text-ink" data-badge-errores hidden></span>}
+                </a>
+              ))}
+            </div>
+          ))
+        }
+
+        <div class="mt-auto border-t border-line p-5">
+          <p class="eyebrow text-zinc-600">Tu plan</p>
+          <p class="mt-1 flex items-center justify-between gap-2">
+            <span class="font-display text-lg font-semibold capitalize text-zinc-50" data-campo="plan">···</span>
+            <a href="/dashboard/plan" class="text-xs text-zinc-500 underline-offset-4 hover:text-zinc-50 hover:underline">Ver</a>
+          </p>
+          <div class="mt-3" data-consumo hidden>
+            <div class="h-1.5 border border-line">
+              <div class="h-full bg-[#a3e635]" data-campo-barra="uso" style="width:0%"></div>
+            </div>
+            <p class="mt-1.5 font-mono text-[11px] text-zinc-500" data-campo="uso-corto"></p>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <main id="contenido" class="min-w-0 bg-ink-soft">
+      <header class="border-b border-line bg-ink px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
+        <p class="eyebrow text-zinc-500">
+          <a href="/dashboard" class="hover:text-zinc-50">Panel</a>
+          <span class="mx-1.5 text-zinc-700">/</span>
+          <span class="text-zinc-300">{current?.label ?? heading}</span>
+        </p>
+        <div class="mt-4 flex flex-wrap items-end justify-between gap-5">
+          <div class="min-w-0">
+            <h1 class="text-balance font-display text-4xl font-semibold tracking-[-0.04em] text-zinc-50 md:text-5xl">{heading}</h1>
+            <p class="mt-2 max-w-2xl text-pretty leading-relaxed text-zinc-400">{description}</p>
+          </div>
+          <div class="flex flex-wrap gap-3">
+            <slot name="actions" />
+          </div>
+        </div>
+      </header>
+
+      {/* El panel es lo único del sitio que no funciona sin JavaScript: los datos
+          son de una cuenta y el HTML es estático e igual para todos. */}
+      <noscript>
+        <p class="border-b border-[var(--color-partial)] bg-ink px-5 py-4 text-sm text-zinc-300 sm:px-8 lg:px-10">
+          Tu panel necesita JavaScript para leer los datos de tu cuenta. Si no puedes activarlo,
+          escríbenos a <a href="mailto:hola@tracking-peru.com" class="text-zinc-50 underline underline-offset-4">hola@tracking-peru.com</a>.
+        </p>
+      </noscript>
+
+      {/* Un fallo de red no puede parecer una cuenta vacía. */}
+      <p data-panel-error hidden role="alert" class="border-b border-[var(--color-partial)] bg-ink px-5 py-4 text-sm text-zinc-300 sm:px-8 lg:px-10">
+        <span class="eyebrow mr-2 text-[var(--color-partial)]">Sin datos</span>
+        <span data-panel-error-msg></span>
+        <button type="button" data-reintentar class="ml-2 text-zinc-50 underline underline-offset-4">Reintentar</button>
+      </p>
+
+      <div class="space-y-6 px-5 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
+        <slot />
+      </div>
+
+      <footer class="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-ink px-5 py-5 text-xs text-zinc-500 sm:px-8 lg:px-10">
+        <span>¿Algo no cuadra? Escríbenos a <a href="mailto:hola@tracking-peru.com" class="text-zinc-300 underline-offset-4 hover:underline">hola@tracking-peru.com</a> con tu ID de request.</span>
+        <a href="/docs" class="text-zinc-400 underline-offset-4 hover:text-zinc-50 hover:underline">Documentación →</a>
+      </footer>
+    </main>
+  </div>
+
+  <script is:inline>
+    ;(() => {
+      const tp = window.tp
+      if (!tp) return
+
+      const aviso = document.querySelector('[data-panel-error]')
+      const fallar = (e) => {
+        aviso.querySelector('[data-panel-error-msg]').textContent =
+          e instanceof tp.ApiError
+            ? `${e.message}${e.requestId ? ` (referencia ${e.requestId})` : ''}`
+            : 'No pudimos conectarnos con el API.'
+        aviso.hidden = false
+      }
+      document.querySelector('[data-reintentar]').addEventListener('click', () => location.reload())
+
+      /* UNA sola llamada a /account/me por carga, compartida con las páginas.
+         Se guarda la promesa y no el resultado: una página que corra antes de
+         que termine espera la misma, no dispara otra. */
+      tp.cuenta = tp.cargar(() => tp.me(), fallar)
+      tp.falla = fallar
+
+      tp.cuenta.then((c) => {
+        if (!c) return
+        tp.pintar('email', c.email)
+        tp.pintar('inicial', (c.email || '·')[0].toUpperCase())
+        tp.pintar('plan', c.plan)
+
+        // `tope_mes = 0` significa sin tope: ahí no hay barra que llenar.
+        if (c.tope_mes > 0) {
+          const pct = Math.min(100, Math.round((c.uso_mes / c.tope_mes) * 100))
+          const caja = document.querySelector('[data-consumo]')
+          if (caja) {
+            caja.hidden = false
+            caja.querySelector('[data-campo-barra="uso"]').style.width = `${Math.max(pct, 1)}%`
+          }
+          tp.pintar('uso-corto', `${tp.miles(c.uso_mes)} / ${tp.miles(c.tope_mes)} consultas`)
+        } else {
+          tp.pintar('uso-corto', `${tp.miles(c.uso_mes)} consultas · sin tope`)
+          const caja = document.querySelector('[data-consumo]')
+          if (caja) caja.hidden = false
+          const barra = document.querySelector('[data-campo-barra="uso"]')
+          if (barra) barra.parentElement.hidden = true
+        }
+      })
+
+      // Salir: se avisa al API para que la sesión muera del lado del servidor, y
+      // se sale igual si la llamada falla — del lado del usuario, «salí»
+      // significa que salió.
+      document.querySelectorAll('[data-logout]').forEach((b) =>
+        b.addEventListener('click', async () => {
+          try {
+            await tp.logout()
+          } catch {}
+          tp.salirA('logout')
+        }),
+      )
+
+      // Los diálogos de las páginas: cerrar con botón y tocando afuera, salvo los
+      // que no se pueden descartar (`data-sticky`).
+      document.querySelectorAll('dialog').forEach((d) => {
+        d.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => d.close()))
+        if (!d.hasAttribute('data-sticky')) d.addEventListener('click', (e) => e.target === d && d.close())
+      })
+      document.querySelectorAll('[data-open-dialog]').forEach((b) =>
+        b.addEventListener('click', () => document.getElementById(b.dataset.openDialog)?.showModal()),
+      )
+
+      // Copiar, para los IDs de request y la key nueva.
+      document.addEventListener('click', async (e) => {
+        const b = e.target.closest('[data-copy]')
+        if (!b) return
+        const antes = b.textContent
+        try {
+          await navigator.clipboard.writeText(b.dataset.copy || b.closest('[data-copy-target]')?.querySelector('[data-valor]')?.textContent || '')
+          b.textContent = 'Copiado ✓'
+        } catch {
+          b.textContent = 'Cópialo a mano'
+        }
+        setTimeout(() => (b.textContent = antes), 1800)
+      })
+    })()
+  </script>
+</Base>

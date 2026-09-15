@@ -1,0 +1,155 @@
+---
+import AccountClient from './panel/AccountClient.astro'
+import MagicLinkForm from './MagicLinkForm.astro'
+
+/* La pantalla de entrar al panel.
+ *
+ * Vive en un componente y no en la página porque se sirve en DOS rutas:
+ * `/login` (la que enlazan la barra y el pie) y `/dashboard/login`, que es
+ * adonde el API manda cuando el enlace del correo ya se usó o venció —su
+ * redirect se arma como `DASHBOARD_URL + "/login?error=invalid_link"`—. Dos
+ * copias de esta pantalla serían dos que un día dicen cosas distintas.
+ *
+ * No hay pantalla de registro: la cuenta nace del alta de la key gratis
+ * (`POST /free`), así que quien no tiene cuenta va al formulario de la portada.
+ *
+ * Además del formulario, ésta es la pantalla de ATERRIZAJE de todo lo que saca
+ * al visitante del panel: un enlace vencido, la sesión de 7 días que terminó, la
+ * key recién rotada. Ninguno puede parecer una falla del sistema: vencer es
+ * normal y rotar es un éxito.
+ */
+const notices = [
+  {
+    id: 'invalid-link',
+    tone: 'warn',
+    kicker: 'Enlace no válido',
+    title: 'Ese enlace ya se usó o venció. Pide uno nuevo.',
+    body: 'Los enlaces sirven una sola vez y duran 15 minutos. Pasa si ya hiciste clic antes o abriste un correo viejo.',
+  },
+  {
+    id: 'expired-session',
+    tone: 'neutral',
+    kicker: 'Sesión vencida',
+    title: 'Tu sesión venció, pide un enlace nuevo.',
+    body: 'Las sesiones duran 7 días. Es normal: escribe tu correo y vuelves a entrar.',
+  },
+  {
+    id: 'reauthenticate',
+    tone: 'neutral',
+    kicker: 'Por seguridad',
+    title: 'Vuelve a entrar con un enlace nuevo antes de generar una key nueva.',
+    body: 'Generar una key pide una sesión reciente (menos de 10 minutos). Con el enlace nuevo vuelves al panel y puedes generarla.',
+  },
+  {
+    id: 'key-rotated',
+    tone: 'ok',
+    kicker: 'Key nueva activa',
+    title: 'Listo, tu key nueva está activa. Vuelve a entrar cuando quieras.',
+    body: 'Rotar cierra todas las sesiones a propósito: si lo hiciste porque sospechabas algo, ninguna sesión vieja queda viva.',
+  },
+  {
+    id: 'logout',
+    tone: 'neutral',
+    kicker: 'Sesión cerrada',
+    title: 'Saliste de tu cuenta en este dispositivo.',
+    body: '',
+  },
+  {
+    id: 'all-sessions-closed',
+    tone: 'ok',
+    kicker: 'Sesiones cerradas',
+    title: 'Cerramos tu sesión en todos los dispositivos.',
+    body: 'Para volver a entrar en cualquiera de ellos hace falta un enlace nuevo.',
+  },
+]
+
+const toneClass: Record<string, string> = {
+  warn: 'border-[var(--color-partial)]',
+  neutral: 'border-zinc-50',
+  ok: 'border-zinc-50',
+}
+const kickerClass: Record<string, string> = {
+  warn: 'text-[var(--color-partial)]',
+  neutral: 'text-zinc-500',
+  ok: 'chip-lime px-1.5 py-0.5',
+}
+---
+
+<AccountClient />
+
+<main id="contenido" class="mx-auto max-w-7xl border-x border-line bg-ink">
+  <div class="grid lg:min-h-[calc(100dvh-10rem)] lg:grid-cols-12">
+    <div class="flex flex-col justify-center px-5 py-12 sm:px-8 md:py-20 lg:col-span-6 lg:px-12">
+      <div class="w-full max-w-md">
+        {
+          notices.map((n) => (
+            <div
+              data-notice={n.id}
+              hidden
+              role="status"
+              class:list={['mb-10 border-l-4 bg-ink-soft px-5 py-4', toneClass[n.tone]]}
+            >
+              <p class:list={['eyebrow inline-block font-semibold', kickerClass[n.tone]]}>{n.kicker}</p>
+              <p class="mt-2 text-pretty font-medium leading-snug text-zinc-50">{n.title}</p>
+              {n.body && <p class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-400">{n.body}</p>}
+            </div>
+          ))
+        }
+
+        <p class="eyebrow flex items-center gap-3 text-zinc-500">
+          <span class="inline-grid h-6 min-w-8 place-items-center bg-zinc-50 px-1.5 font-semibold text-ink">→</span>
+          Mi cuenta
+        </p>
+        <h1 class="mt-6 text-balance font-display text-5xl font-semibold leading-[0.98] tracking-[-0.045em] text-zinc-50">
+          Entra a tu panel
+        </h1>
+        <p class="mt-4 text-pretty leading-relaxed text-zinc-400">
+          Escribe el correo con el que pediste tu key y te mandamos un enlace para entrar.
+          Sin contraseñas que recordar.
+        </p>
+
+        <div class="mt-10">
+          <MagicLinkForm />
+        </div>
+
+        <p class="mt-10 border-t border-line pt-6 text-sm text-zinc-500">
+          ¿Todavía no tienes cuenta? Nace con tu key gratis.{' '}
+          <a href="/#empezar" class="font-medium text-zinc-50 underline-offset-4 hover:underline">Pídela →</a>
+        </p>
+      </div>
+    </div>
+
+    <aside class="on-dark border-t border-line px-5 py-12 sm:px-8 lg:col-span-6 lg:border-l lg:border-t-0 lg:px-12 lg:py-20">
+      <p class="eyebrow text-zinc-500">En tu panel</p>
+      <ul class="mt-8 border-t border-line">
+        {
+          [
+            ['Tu key', 'Cuándo se creó, cuándo se usó por última vez, y generar una nueva si la perdiste.'],
+            ['Tus errores', 'Qué te respondió el API y qué hacer, sin tener que escribirnos.'],
+            ['Tu consumo', 'Las consultas del mes contra el tope de tu plan.'],
+          ].map(([k, v], i) => (
+            <li class="grid grid-cols-[3rem_1fr] gap-4 border-b border-line py-5">
+              <span class="eyebrow pt-1.5 text-zinc-600">{String(i + 1).padStart(2, '0')}</span>
+              <span>
+                <span class="block font-display text-2xl font-semibold tracking-tight text-zinc-50">{k}</span>
+                <span class="mt-1 block text-pretty text-sm leading-relaxed text-zinc-400">{v}</span>
+              </span>
+            </li>
+          ))
+        }
+      </ul>
+    </aside>
+  </div>
+</main>
+
+<script is:inline>
+  ;(() => {
+    const params = new URLSearchParams(location.search)
+    /* Dos fuentes para el mismo aviso: `?notice=` lo pone el propio panel al
+       salir, y `?error=invalid_link` lo pone el API cuando el enlace del correo
+       ya no sirve. Es su contrato de redirect y no se puede cambiar desde acá. */
+    const id = params.get('error') === 'invalid_link' ? 'invalid-link' : params.get('notice')
+    const el = id && document.querySelector(`[data-notice="${CSS.escape(id)}"]`)
+    if (el) el.hidden = false
+  })()
+</script>

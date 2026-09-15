@@ -1,0 +1,38 @@
+---
+/* La tarjeta del panel: un casillero con su rótulo arriba y, opcionalmente, un
+   enlace o acción a la derecha. Todas las pantallas del panel se arman con
+   esto, así el espaciado y los bordes no se reparten a ojo página por página. */
+interface Props {
+  title: string
+  /** Texto chico al lado del título (un conteo, un estado). */
+  meta?: string
+  href?: string
+  hrefLabel?: string
+  class?: string
+  id?: string
+  /** Sin relleno interno: para tablas y listas que llegan al borde. */
+  flush?: boolean
+}
+
+const { title, meta, href, hrefLabel, class: className, id, flush = false } = Astro.props
+---
+
+<section id={id} class:list={['min-w-0 scroll-mt-32 border border-line bg-ink', className]}>
+  <header class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-line px-5 py-3.5">
+    <h2 class="eyebrow flex items-center gap-2 font-semibold text-zinc-50">
+      {title}
+      {meta && <span class="font-normal text-zinc-500">· {meta}</span>}
+    </h2>
+    <slot name="head" />
+    {
+      href && (
+        <a href={href} class="text-sm text-zinc-400 underline-offset-4 hover:text-zinc-50 hover:underline">
+          {hrefLabel} →
+        </a>
+      )
+    }
+  </header>
+  <div class:list={[!flush && 'p-5 sm:p-6']}>
+    <slot />
+  </div>
+</section>

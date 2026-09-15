@@ -1,0 +1,183 @@
+---
+/* El formulario de acceso por enlace mágico.
+ *
+ * Sin contraseñas: el correo es la credencial. Manda `POST /account/magic-link`
+ * al API y ese endpoint responde **202 siempre** que el pedido esté bien formado,
+ * exista o no la cuenta. Por eso el mensaje de esta pantalla es SIEMPRE el mismo:
+ * cualquier diferencia convertiría el formulario en un oráculo para averiguar qué
+ * correos son clientes.
+ *
+ * El único caso que el API sí distingue es el 429 (pediste demasiados enlaces),
+ * porque quien llega ahí ya tiene el correo en la mano o está abusando.
+ *
+ * CAPTCHA invisible: el mismo Turnstile `interaction-only` del alta gratis, sólo
+ * si hay site key en el build. El backend hace el chequeo espejo.
+ */
+const TURNSTILE_SITE_KEY = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || ''
+const SENT_MESSAGE = 'Si ese correo tiene una cuenta, le llega el enlace de acceso.'
+---
+
+{
+  TURNSTILE_SITE_KEY && (
+    <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+  )
+}
+
+<form id="magic-form" novalidate data-sitekey={TURNSTILE_SITE_KEY}>
+  <div class="grid gap-5" data-step="form">
+    <div>
+      <label for="magic-email" class="eyebrow block text-zinc-500">Correo electrónico</label>
+      <input
+        id="magic-email"
+        name="email"
+        type="email"
+        required
+        autocomplete="email"
+        inputmode="email"
+        aria-describedby="magic-email-error magic-help"
+        class="mt-2 w-full border border-zinc-50 bg-ink px-4 py-3.5 text-lg text-zinc-50 focus:outline-none focus:ring-2 focus:ring-brand/40 aria-invalid:border-[var(--color-partial)]"
+      />
+      <p id="magic-email-error" class="mt-2 text-sm text-[var(--color-partial)]" aria-live="polite" hidden></p>
+    </div>
+
+    {
+      TURNSTILE_SITE_KEY && (
+        <div class="cf-turnstile" data-sitekey={TURNSTILE_SITE_KEY} data-appearance="interaction-only" />
+      )
+    }
+
+    {/* Sale deshabilitado y lo habilita el script: sin JavaScript no hay a dónde
+        enviarlo, y un botón que no puede funcionar no debería poder apretarse. */}
+    <button type="submit" disabled class="btn btn-primary w-full px-5 py-3.5 font-medium">
+      Enviarme el enlace
+    </button>
+
+    <p id="magic-help" class="text-center text-sm text-zinc-500">
+      Sin contraseña. El enlace vence en 15 minutos y sirve una sola vez.
+    </p>
+
+    {/* Los fallos no reemplazan al formulario: quien los ve tiene que poder
+        reintentar ahí mismo. */}
+    <p data-error hidden role="alert" class="border border-[var(--color-partial)] px-4 py-3 text-sm leading-relaxed text-zinc-300">
+      <span class="eyebrow block text-[var(--color-partial)]" data-error-kicker></span>
+      <span data-error-body></span>
+    </p>
+  </div>
+
+  <div data-step="sent" hidden tabindex="-1" class="focus:outline-none">
+    <div class="border border-zinc-50">
+      <p class="eyebrow flex items-center justify-between bg-zinc-50 px-4 py-2 text-ink">
+        <span class="font-semibold">Revisa tu correo</span>
+        <span>vence en 15 min</span>
+      </p>
+      <div class="px-5 py-6">
+        <p class="text-pretty font-display text-2xl font-semibold leading-snug tracking-tight text-zinc-50">
+          {SENT_MESSAGE}
+        </p>
+        <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+          Lo mandamos a <span class="break-all font-mono text-zinc-200" data-sent-email></span>. Ábrelo
+          en este teléfono o computadora; sirve una sola vez. Si no aparece, mira en spam.
+        </p>
+      </div>
+    </div>
+    <button type="button" data-restart class="mt-4 text-sm text-zinc-500 underline-offset-4 hover:text-zinc-50 hover:underline">
+      Usar otro correo
+    </button>
+  </div>
+
+  <noscript>
+    <p class="mt-4 text-sm leading-relaxed text-zinc-500">
+      Entrar al panel necesita JavaScript. Escríbenos a{' '}
+      <a href="mailto:hola@tracking-peru.com" class="text-brand underline-offset-2 hover:underline">hola@tracking-peru.com</a>
+      {' '}y te ayudamos.
+    </p>
+  </noscript>
+</form>
+
+<script is:inline>
+  ;(() => {
+    const form = document.getElementById('magic-form')
+    if (!form || !window.tp) return
+    const email = document.getElementById('magic-email')
+    const invalidMsg = document.getElementById('magic-email-error')
+    const button = form.querySelector('button[type="submit"]')
+    const stepForm = form.querySelector('[data-step="form"]')
+    const stepSent = form.querySelector('[data-step="sent"]')
+    const fallo = form.querySelector('[data-error]')
+    const siteKey = form.dataset.sitekey
+
+    // Hay JavaScript: recién ahora el botón puede hacer algo.
+    button.disabled = false
+
+    const limpiar = () => {
+      invalidMsg.hidden = true
+      email.removeAttribute('aria-invalid')
+      fallo.hidden = true
+    }
+
+    const invalido = (msg) => {
+      invalidMsg.textContent = msg
+      invalidMsg.hidden = false
+      email.setAttribute('aria-invalid', 'true')
+      email.focus()
+    }
+
+    const decir = (kicker, cuerpo) => {
+      fallo.querySelector('[data-error-kicker]').textContent = kicker
+      fallo.querySelector('[data-error-body]').textContent = cuerpo
+      fallo.hidden = false
+    }
+
+    email.addEventListener('input', limpiar)
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      limpiar()
+      const valor = email.value.trim()
+      if (!valor) return invalido('Escribe el correo de tu cuenta.')
+      // Comprobación laxa a propósito: una expresión estricta rechaza correos
+      // que existen, y el único chequeo que vale es que el mensaje llegue.
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(valor)) {
+        return invalido('Ese correo no parece completo. Revísalo y prueba de nuevo.')
+      }
+
+      // Turnstile inyecta el token en un input oculto del formulario.
+      const token = siteKey ? form.querySelector('[name="cf-turnstile-response"]')?.value || '' : ''
+
+      button.disabled = true
+      button.textContent = 'Enviando…'
+      try {
+        await window.tp.magicLink(valor, token)
+        form.querySelector('[data-sent-email]').textContent = valor
+        stepForm.hidden = true
+        stepSent.hidden = false
+        stepSent.focus()
+      } catch (err) {
+        if (err instanceof window.tp.ApiError && err.status === 429) {
+          decir('Demasiados intentos', 'Pediste demasiados enlaces. Espera un rato y vuelve a probar.')
+        } else if (err instanceof window.tp.ApiError && err.status === 403) {
+          window.turnstile?.reset()
+          decir('Verificación anti-bot', 'No pudimos verificar que no seas un bot. Recarga la página y vuelve a intentar.')
+        } else if (err instanceof window.tp.ApiError) {
+          decir(
+            'No pudimos enviarlo',
+            err.requestId ? `${err.message} (referencia ${err.requestId})` : err.message,
+          )
+        } else {
+          decir('Sin conexión', 'No pudimos enviar el enlace. Revisa tu conexión y prueba de nuevo.')
+        }
+      } finally {
+        button.disabled = false
+        button.textContent = 'Enviarme el enlace'
+        // El token de Turnstile es de un solo uso.
+        if (siteKey) window.turnstile?.reset()
+      }
+    })
+
+    form.querySelector('[data-restart]').addEventListener('click', () => {
+      stepSent.hidden = true
+      stepForm.hidden = false
+      email.focus()
+    })
+  })()
+</script>

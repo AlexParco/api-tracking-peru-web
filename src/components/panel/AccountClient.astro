@@ -1,0 +1,139 @@
+---
+/* El cliente del panel contra `/account/*` del API.
+ *
+ * Va como script `is:inline` y no como módulo importado a propósito: el sitio no
+ * sirve NI UN bundle de JavaScript (`find dist -name '*.js'` devuelve vacío y
+ * tiene que seguir devolviéndolo). Importar un `.ts` desde el cliente crearía el
+ * primero. Así que las funciones se cuelgan de `window.tp` y cada página las usa.
+ *
+ * ── Lo que muerde al integrar, y por qué está resuelto acá una sola vez ──
+ *
+ * · `credentials: 'include'` en TODAS las llamadas. La sesión es la cookie
+ *   `__Host-tp_session`, que es HttpOnly: el JavaScript no puede leerla —ni debe
+ *   intentarlo— y sin `include` el navegador no la adjunta cross-origin.
+ * · NUNCA se hace `fetch` a `/account/login`: ese canje es una NAVEGACIÓN del
+ *   navegador (el clic en el correo) y responde 303, no JSON.
+ * · Un 401 no es un error que mostrar: es la sesión vencida. Se sale al login
+ *   con su aviso, que es un aterrizaje normal y no una falla.
+ * · El cuerpo de error del API es siempre `{"error":{code,message,request_id}}`.
+ *   Se traduce a un objeto con `status`, `code`, `message` y `requestId` para que
+ *   ninguna pantalla tenga que volver a desarmarlo.
+ *
+ * El API vive en otro origen (api.tracking-peru.com) y la web en
+ * tracking-peru.com: mismo sitio registrable, así que la cookie `SameSite=Lax`
+ * viaja. Desde `localhost` NO viaja —es otro sitio—, y por eso el panel
+ * autenticado sólo se puede probar de verdad contra un API local o ya desplegado.
+ */
+const API = import.meta.env.PUBLIC_API_URL || 'https://api.tracking-peru.com'
+---
+
+<script is:inline define:vars={{ API }}>
+  ;(() => {
+    /** Un error del API ya desarmado. */
+    class ApiError extends Error {
+      constructor(status, cuerpo) {
+        super(cuerpo?.error?.message || `el API respondió ${status}`)
+        this.status = status
+        this.code = cuerpo?.error?.code || ''
+        this.requestId = cuerpo?.error?.request_id || ''
+      }
+    }
+
+    const pedir = async (ruta, opciones = {}) => {
+      const r = await fetch(API + ruta, {
+        // La cookie de sesión no viaja sin esto.
+        credentials: 'include',
+        headers: { Accept: 'application/json', ...(opciones.headers || {}) },
+        ...opciones,
+      })
+      if (r.status === 204) return null
+      const cuerpo = await r.json().catch(() => null)
+      if (!r.ok) throw new ApiError(r.status, cuerpo)
+      return cuerpo
+    }
+
+    const tp = {
+      API,
+      ApiError,
+
+      /** Pide el enlace de acceso. Responde 202 exista o no la cuenta. */
+      magicLink: (email, turnstileToken) =>
+        pedir('/account/magic-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, turnstile_token: turnstileToken || '' }),
+        }),
+
+      /** La cuenta: plan, consumo y estado de la key. También es el chequeo de sesión. */
+      me: () => pedir('/account/me'),
+
+      /** Los últimos errores propios. El API acota el límite a 100. */
+      errores: (limite = 50) => pedir(`/account/errors?limit=${limite}`),
+
+      logout: () => pedir('/account/logout', { method: 'POST' }),
+
+      /** Rota la key. Devuelve `{api_key}` UNA vez y cierra todas las sesiones. */
+      rotarKey: () => pedir('/account/key/rotate', { method: 'POST' }),
+
+      /** Sale al login con su aviso. */
+      salirA: (notice) => location.replace(`/login?notice=${notice}`),
+
+      /**
+       * Corre una carga del panel y traduce los dos finales que no son errores
+       * de pantalla: 401 es sesión vencida (se va al login) y un fallo de red es
+       * un reintento, no un dato vacío.
+       */
+      cargar: async (fn, alFallar) => {
+        try {
+          return await fn()
+        } catch (e) {
+          if (e instanceof ApiError && e.status === 401) {
+            tp.salirA('expired-session')
+            return null
+          }
+          alFallar?.(e)
+          return null
+        }
+      },
+
+      // ── Formato ──
+      // El API devuelve RFC3339 en UTC; acá se muestra en la zona del visitante.
+      fecha: (iso) => {
+        if (!iso) return null
+        const d = new Date(iso)
+        return Number.isNaN(+d) ? null : d.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      },
+      fechaHora: (iso) => {
+        if (!iso) return null
+        const d = new Date(iso)
+        return Number.isNaN(+d)
+          ? null
+          : d.toLocaleString('es-PE', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            })
+      },
+      miles: (n) => String(n ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, '.'),
+
+      /** Pinta texto en todos los `[data-campo="…"]` de la página. */
+      pintar: (campo, valor) => {
+        document.querySelectorAll(`[data-campo="${campo}"]`).forEach((el) => {
+          el.textContent = valor
+        })
+      },
+
+      /** Muestra un estado de la pantalla y esconde los otros (`[data-estado]`). */
+      estado: (cual, raiz = document) => {
+        raiz.querySelectorAll('[data-estado]').forEach((el) => {
+          el.hidden = el.dataset.estado !== cual
+        })
+      },
+    }
+
+    window.tp = tp
+  })()
+</script>
