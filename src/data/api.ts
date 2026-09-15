@@ -70,6 +70,36 @@ export interface Carrier {
    */
   requiresCode?: boolean
   agencies: { status: Status; total: number | null; note: string }
+  /**
+   * CREAR envíos con este carrier (`POST /v1/shipments`).
+   *
+   * Es el eje que faltaba: hasta septiembre de 2026 esta página sólo contaba que
+   * el API LEE (rastreo, agencias). Desde que el backend crea guías, un carrier
+   * tiene dos niveles de evidencia distintos y hay que publicar los dos — un
+   * courier puede rastrearse en vivo y no poder crear nada, que es el caso de
+   * tres de los cinco.
+   *
+   * `level` es independiente del de rastreo a propósito: son dos integraciones
+   * separadas, con backends distintos del courier y evidencia distinta.
+   *
+   * `auth` dice CON QUÉ CREDENCIAL se crea, y no es un detalle: `platform`
+   * significa que funciona con tu API key y nada más; `customer_account` obliga
+   * a que el usuario final entregue su cuenta del courier, lo que cambia por
+   * completo cómo se integra.
+   *
+   * ⚠ VERIFICADO CONTRA LA MEMORIA DEL PROYECTO, NO CONTRA EL CÓDIGO: la
+   * implementación vive sin commitear en otra máquina (`cloud-mnemo-vps`).
+   * Antes de desplegar hay que contrastar estos valores con
+   * `GET /v1/carriers.shipping` real.
+   */
+  shipping: {
+    status: Status
+    level: Level
+    auth: 'platform' | 'customer_account' | null
+    /** Dónde puede terminar el envío. */
+    delivery: ('agency' | 'home')[]
+    note: string
+  }
 }
 
 export const CARRIERS: Carrier[] = [
@@ -82,6 +112,13 @@ export const CARRIERS: Carrier[] = [
     subscribable: true,
     published: true,
     agencies: { status: 'ok', total: 193, note: 'Con geolocalización y horarios.' },
+    shipping: {
+      status: 'no',
+      level: 'none',
+      auth: null,
+      delivery: [],
+      note: 'Sin adaptador de creación: su backend no expone alta de guías.',
+    },
   },
   {
     id: 'olva',
@@ -99,6 +136,13 @@ export const CARRIERS: Carrier[] = [
       total: 431,
       note: 'El catálogo más completo: ubigeo INEI en el 100 % y horarios por día.',
     },
+    shipping: {
+      status: 'ok',
+      level: 'live',
+      auth: 'platform',
+      delivery: ['agency', 'home'],
+      note: 'Cuatro guías reales creadas. Se paga en destino o en tienda; hasta 10 bultos, una guía por bulto.',
+    },
   },
   {
     id: 'urbano',
@@ -112,6 +156,13 @@ export const CARRIERS: Carrier[] = [
     subscribable: true,
     published: true,
     agencies: { status: 'ok', total: 259, note: 'Con geolocalización, horarios y servicios por punto.' },
+    shipping: {
+      status: 'no',
+      level: 'none',
+      auth: null,
+      delivery: [],
+      note: 'Sin adaptador de creación.',
+    },
   },
   {
     id: 'cruzdelsur',
@@ -125,6 +176,13 @@ export const CARRIERS: Carrier[] = [
     subscribable: true,
     published: true,
     agencies: { status: 'ok', total: 168, note: 'Requiere credencial para sincronizar.' },
+    shipping: {
+      status: 'no',
+      level: 'none',
+      auth: null,
+      delivery: [],
+      note: 'Sin adaptador de creación.',
+    },
   },
   {
     id: 'shalom',
@@ -143,6 +201,13 @@ export const CARRIERS: Carrier[] = [
     published: true,
     requiresCode: true,
     agencies: { status: 'ok', total: 552, note: 'El catálogo más grande. Requiere credencial.' },
+    shipping: {
+      status: 'ok',
+      level: 'code_derived',
+      auth: 'customer_account',
+      delivery: ['agency'],
+      note: 'Envía Ya, con la cuenta Shalom Pro del cliente. Sólo agencia a agencia; falta la primera guía real desde el binario.',
+    },
   },
   {
     id: 'dinsides',
@@ -156,6 +221,13 @@ export const CARRIERS: Carrier[] = [
     subscribable: false,
     published: false,
     agencies: { status: 'no', total: null, note: 'No publica catálogo de agencias.' },
+    shipping: {
+      status: 'no',
+      level: 'none',
+      auth: null,
+      delivery: [],
+      note: 'Sin adaptador.',
+    },
   },
   {
     id: 'salmec',
@@ -166,6 +238,13 @@ export const CARRIERS: Carrier[] = [
     subscribable: false,
     published: false,
     agencies: { status: 'no', total: null, note: 'No publica catálogo de agencias.' },
+    shipping: {
+      status: 'no',
+      level: 'none',
+      auth: null,
+      delivery: [],
+      note: 'Sin adaptador.',
+    },
   },
 ]
 
@@ -283,6 +362,8 @@ export const METRICS = {
   agenciesSynced: await agenciesTotal('per_page=1', AGENCIES_SYNCED_FALLBACK),
   agenciesWithCredentials: 1525,
   carriersWithCatalog: PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok').length,
+  /** Couriers con los que se puede CREAR un envío hoy. */
+  carriersShipping: PUBLISHED_CARRIERS.filter((c) => c.shipping.status === 'ok').length,
 }
 
 /** Respuesta real del servicio, recortada. No es un ejemplo inventado. */
@@ -347,6 +428,63 @@ export interface Endpoint {
  * que reconocer lo que recibe.
  */
 export const ENDPOINTS: Endpoint[] = [
+  {
+    id: 'shipments',
+    method: 'POST',
+    path: '/v1/shipments',
+    summary: 'Crea una guía con el courier. Un cuerpo canónico para todos.',
+    request: {
+      title: 'request',
+      code: `{
+  "carrier": "olva",
+  "service": { "delivery": "agency" },
+  "origin": { "agency_id": "hq:12" },
+  "destination": { "agency_id": "161" },
+  "sender": { "name": "Tu Tienda SAC", "document": { "type": "ruc", "number": "20xxxxxxxxx" }, "phone": "999999999" },
+  "receiver": { "name": "Ana Quispe", "document": { "type": "dni", "number": "0xxxxxxx" }, "phone": "988888888" },
+  "parcels": [{ "weight_kg": 1.2, "content": { "category": "ropa" }, "declared_value": 120 }],
+  "payer": "receiver"
+}`,
+    },
+    response: {
+      title: '201 Created · application/json',
+      code: `{
+  "id": "shp_01K...",
+  "carrier": "olva",
+  "status": "pending_payment",
+  "tracking": { "number": "2431838-26" },
+  "parcels": [{ "index": 0, "tracking_number": "2431838-26", "url": "…/label" }],
+  "payment_instructions": "Se paga en destino al recoger."
+}`,
+    },
+    note: 'El mismo cuerpo sirve para todos los couriers. Lo que sólo pide uno va en carrier_options, y su esquema se publica en GET /v1/carriers.',
+  },
+  {
+    id: 'quote',
+    method: 'POST',
+    path: '/v1/shipments/quote',
+    summary: 'Cuánto cuesta antes de crearla. Sin efectos.',
+    request: {
+      title: 'request',
+      code: `{
+  "carrier": "olva",
+  "service": { "delivery": "agency" },
+  "origin": { "ubigeo": "150101" },
+  "destination": { "ubigeo": "110101" },
+  "parcels": [{ "weight_kg": 1 }]
+}`,
+    },
+    response: {
+      title: '200 OK · application/json',
+      code: `{
+  "carrier": "olva",
+  "amount": 8.00,
+  "currency": "PEN",
+  "delivery": "agency"
+}`,
+    },
+    note: 'Cotizar no crea nada ni consume cupo de órdenes.',
+  },
   {
     id: 'carriers',
     method: 'GET',

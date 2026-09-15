@@ -1,46 +1,83 @@
 
 
 /**
- * Los planes de acceso. Estructura del 2026-08-05.
+ * Los planes de acceso. Escalera del 2026-09-15.
  *
  * Aparte de `api.ts` a propósito: eso espeja el estado del backend, esto es una
  * decisión comercial. Se mueven por motivos distintos y en momentos distintos.
  *
- * ── El modelo: tamaño × período ──
+ * ── Esta tabla ESPEJA al backend, y esa es la regla ──
  *
- * Cuatro NIVELES —Free, Básico, Pro y a medida—, y los pagos se cobran por mes o
- * por año. El nivel es el TAMAÑO; el período es sólo la forma de pagarlo, con
- * descuento por comprometerse. Antes estaban mezclados («Mensual» era un plan) y
- * eso hacía imposible decir «el Pro anual».
+ * Los cuatro niveles, los precios y los cupos salen de `store.Plan` en
+ * `api-tracking-peru` (`internal/store/apikeys_repo.go`, commits 8242758 y
+ * 488c855). No se eligen acá:
  *
- * ── El medidor es el webhook, no la consulta ──
+ *   nivel      S/ mes   S/ año   rpm   vigilados   consultas/mes   crea envíos
+ *   Gratuito        0        0    30           3           1.000   no
+ *   Básico         39      390    60          30          10.000   sí
+ *   Plus           89      890   120         120          50.000   sí
+ *   Premium       249    2.490   300         500        sin tope   sí
  *
- * Lo que separa un nivel de otro es cuántos envíos puedes tener vigilados a la
- * vez. Es la única métrica que alinea lo que le cuesta al servicio con lo que le
- * sirve al cliente: cada suscripción hace que un poller consulte sola, y en
- * algunos carriers cada consulta cuesta de verdad.
+ * Que la web invente un número es exactamente cómo un cliente termina leyendo
+ * «Pro S/ 99» acá y recibiendo un `plus_mensual` de S/ 89 en el correo. Si el
+ * backend mueve un cupo, esta tabla se mueve detrás, no al revés.
  *
- * El RPM NO es el gancho: es un guardarraíl anti-ráfaga. Sube un poco en Pro por
+ * ── El medidor son los ENVÍOS VIGILADOS a la vez ──
+ *
+ * Es el `DefaultMaxSubs` del plan, y es lo que alinea nuestro costo con el valor
+ * del cliente: cada suscripción hace pollear, y en algunos carriers cada consulta
+ * nos sale cara. Por eso el salto de capacidad es ×4 por
+ * escalón contra un precio que sube ×2,3: el costo por envío BAJA con el
+ * volumen (S/0,17 → S/0,10 → S/0,066), que premia subir de nivel en vez de
+ * castigarlo.
+ *
+ * El RPM NO es el gancho: es un guardarraíl anti-ráfaga. Sube con el nivel por
  * margen, pero nadie compra por eso, y la página lo dice así.
+ *
+ * ── Las consultas de rastreo ya NO son «sin tope» en los pagos ──
+ *
+ * Lo eran en la escalera vieja y era falso desde el 2026-09-14: hoy Básico tiene
+ * 10.000 al mes y Plus 50.000 (`MonthlyOnDemandCap`). Son topes altos a
+ * propósito —10.000 son ~330 por día, no es fricción para nadie que use el
+ * servicio normal— y existen como freno contra el que satura nuestra capacidad. Sólo
+ * Premium y los negociados van sin tope.
+ *
+ * ── Crear envíos empieza en Básico ──
+ *
+ * `Plan.PuedeCrearEnvios()` deja al Gratuito fuera a propósito: crear un envío
+ * genera una guía real con un courier, es un acto comercial y no una prueba del
+ * API. El Gratuito sigue siendo para evaluar el rastreo.
+ *
+ * ── No hay quinto nivel ──
+ *
+ * Había una banda «Enterprise desde S/ 349» anclada al Pro viejo de S/ 99. Se
+ * quitó el 2026-09-15: la tabla publica exactamente los cuatro planes que el
+ * backend sabe emitir, y quien necesita más escribe por el mismo correo que
+ * todos. Publicar un piso que no está respaldado por ningún plan del backend es
+ * la misma clase de mentira que los precios viejos.
+ *
+ * ── Se contrata por CORREO ──
+ *
+ * No hay checkout y no está previsto por ahora: el cobro automático por
+ * MercadoPago quedó en pausa hasta poder validar la firma de sus webhooks. Con
+ * cero clientes pagos, cobrar a mano sale más barato que automatizar. `planLink`
+ * manda los pagos a un `mailto:` y el botón dice «Contratar por correo», que es
+ * literalmente lo que pasa al tocarlo.
  *
  * ── Ninguno va marcado como recomendado ──
  *
- * Hubo un `featured` que destacaba al Pro con insignia, borde teñido y botón
- * relleno. Se quitó entero, no se puso en `false`: un campo que nadie usa es
- * una invitación a volver a encenderlo sin recordar por qué se apagó.
+ * Hubo un `featured` que destacaba un plan con insignia y botón relleno. Se
+ * quitó entero, no se puso en `false`: un campo que nadie usa es una invitación
+ * a volver a encenderlo sin recordar por qué se apagó. Recomendar un plan sin
+ * saber el volumen de quien lee es un empujón, no un consejo.
  *
- * El motivo: recomendar un plan sin saber el volumen de quien lee es un
- * empujón, no un consejo. Lo que separa un nivel de otro es cuántos envíos
- * tiene vigilados a la vez, y eso lo sabe el cliente. Las cuatro tarjetas se
- * ven igual y la comparación queda a la vista.
- *
- * ── Free es permanente, y no es caridad ──
+ * ── El Gratuito es permanente, y no es caridad ──
  *
  * Reemplaza al trial de 4 días. Un trial que vence empuja al usuario afuera justo
  * cuando empezó a mandar tráfico — y ese tráfico es lo que alimenta al observador
  * de estados sin mapear, o sea que los usuarios gratis son la fábrica de datos
- * que completa los vocabularios. Free está limitado donde CUESTA (pocos webhooks
- * y tope mensual de consultas), no donde luce.
+ * que completa los vocabularios. Está limitado donde CUESTA (pocos envíos
+ * vigilados y tope mensual de consultas), no donde luce.
  */
 
 export interface Plan {
@@ -50,12 +87,27 @@ export interface Plan {
   monthly: number | null
   /** S/ por año. `0` = gratis, `null` = a convenir. */
   annual: number | null
+  /**
+   * Piso de precio cuando el plan se negocia («desde S/ 349»).
+   *
+   * Hoy no lo usa ninguno —la tabla son los cuatro planes del backend, todos con
+   * precio—. Se conserva el campo para el día que vuelva un nivel negociado.
+   */
+  monthlyFrom?: number
   /** Guardarraíl de requests por minuto. `null` = negociado. */
   rpm: number | null
   /** Envíos suscritos a webhooks a la vez. Es el medidor. `null` = negociado. */
   webhooks: number | null
   /** Para cuando el número solo se queda corto («200+»). */
   webhooksLabel?: string
+  /**
+   * Órdenes que se pueden CREAR por mes. `null` = negociado.
+   *
+   * Vive apagado detrás de `ORDERS.enabled` — ver el comentario de esa bandera.
+   */
+  orders: number | null
+  /** Para cuando el número solo se queda corto, o cuando no aplica. */
+  ordersLabel?: string
   /** Consultas de rastreo por mes. */
   queries: string
   support: string
@@ -67,108 +119,107 @@ export interface Plan {
 export const PLANS: Plan[] = [
   {
     id: 'free',
-    name: 'Free',
+    name: 'Gratuito',
     monthly: 0,
     annual: 0,
     rpm: 30,
     webhooks: 3,
+    orders: 0,
+    ordersLabel: 'no incluido',
     queries: 'hasta 1.000 al mes',
     support: 'documentación y comunidad',
-    summary: 'Para integrar, probar en serio y quedarte. No vence.',
+    summary: 'Para integrar el rastreo, probarlo en serio y quedarte. No vence.',
     free: true,
   },
   {
     id: 'basico',
     name: 'Básico',
-    monthly: 25,
-    annual: 250,
+    monthly: 39,
+    annual: 390,
     rpm: 60,
-    webhooks: 50,
-    queries: 'sin tope',
+    webhooks: 30,
+    orders: 120,
+    queries: 'hasta 10.000 al mes',
     support: 'por correo',
-    summary: 'Cuando el rastreo ya es parte de tu operación.',
+    summary: 'La primera operación con envíos todas las semanas.',
   },
   {
-    id: 'pro',
-    name: 'Pro',
-    monthly: 79,
-    annual: 790,
+    id: 'plus',
+    name: 'Plus',
+    monthly: 89,
+    annual: 890,
     rpm: 120,
-    webhooks: 200,
+    webhooks: 120,
+    orders: 500,
+    queries: 'hasta 50.000 al mes',
+    support: 'prioritario',
+    summary: 'Volumen sostenido y respuesta rápida cuando algo se rompe.',
+  },
+  {
+    id: 'premium',
+    name: 'Premium',
+    monthly: 249,
+    annual: 2490,
+    rpm: 300,
+    webhooks: 500,
+    orders: 2000,
     queries: 'sin tope',
     support: 'prioritario',
-    summary: 'Volumen alto y respuesta rápida cuando algo se rompe.',
-  },
-  {
-    id: 'custom',
-    name: 'A medida',
-    monthly: null,
-    annual: null,
-    rpm: null,
-    webhooks: null,
-    webhooksLabel: '200+',
-    queries: 'sin tope, con SLA',
-    support: 'dedicado, con SLA',
-    summary: 'Volumen alto, requisitos propios o facturación distinta.',
+    summary: 'Picos fuertes, la mayor capacidad publicada y consultas sin tope.',
   },
 ]
 
-/**
- * La beta, mientras el producto no está terminado.
- *
- * Es del PRODUCTO ENTERO, no por carrier. Esto estuvo mal escrito una vez —decía
- * que Olva y Shalom no se cobraban— y es un error de encuadre por dos motivos:
- * un carrier que responde 501 ya genera cero uso facturable solo (no se puede
- * suscribir y la consulta falla), así que la excepción era redundante; y
- * facturar por carrier choca de frente con «todos los planes tienen todos los
- * carriers», que es la propuesta de valor.
- *
- * La regla real es carrier-agnóstica y mejor: lo que NO funciona no gasta cuota.
- */
-/*
- * Las otras dos decisiones de la beta NO son campos de este objeto, y eso es
- * deliberado.
- *
- * - La beta termina cuando los cinco carriers rastreen en vivo. Es un hito
- *   medible en vez de «cuando esté completo», pero es una discusión nuestra:
- *   al cliente no le cambia nada y lo obliga a seguir nuestra hoja de ruta.
- * - Lo que no funciona no gasta cuota. Eso es comportamiento del API y vive en
- *   `/docs`, junto al resto del contrato.
- *
- * Estuvieron como propiedades de `BETA` y se filtraron igual: se quitaron de la
- * sección de precios pero quedaron en el cierre de la portada, y así salieron a
- * producción. Un comentario que dice «esto no se publica» no impide publicarlo;
- * no exportar el valor, sí.
- */
-export const BETA = {
-  /** Quien entra ahora conserva el precio de hoy aunque suba después. */
-  priceLock: true,
-  /**
-   * En beta se muestra SÓLO el plan gratis; los pagos aparecen al salir. Es una
-   * decisión de presentación: todavía no hay checkout (el cobro se coordina por
-   * correo), así que mostrar precios que no se pueden pagar suma fricción sin
-   * cerrar una venta. Un booleano lo revierte cuando el cobro esté listo.
-   */
-  onlyFree: true,
-}
 
 /**
- * Lo que trae cualquier key. Lo que cambia entre niveles es el cupo, no esto.
+ * CREAR ÓRDENES — el segundo eje del medidor.
  *
- * Va DESPUÉS de `BETA` porque la primera viñeta depende de la bandera: con
- * `onlyFree` puesto no hay «plan caro» que nombrar —el único plan es el gratis—
- * y mencionarlo obliga a hablar de algo que todavía no se puede comprar. Al
- * salir de la beta vuelve la redacción que compara, que ahí sí es el argumento.
+ * Los cupos de `orders` NO se eligieron aparte de los de webhook: un envío en
+ * tránsito ocupa un webhook activo alrededor de una semana, así que un plan que
+ * sostiene N envíos vigilados a la vez sostiene del orden de N × 4 al mes. Si
+ * los dos ejes se eligieran por separado, uno mordería antes que el otro y el
+ * segundo sería decorativo.
+ *
+ * La bandera existe para poder publicar el eje sólo cuando el endpoint lo
+ * respalde: anunciar un cupo de órdenes antes de que exista sería vender algo
+ * que el producto no hace, justo en el sitio cuyo diferencial es publicar
+ * cuánta evidencia respalda cada cosa.
  */
+export const ORDERS = {
+  enabled: true,
+}
+
+/** Lo que trae cualquier key. Lo que cambia entre niveles es el cupo, no esto. */
 export const INCLUDED_IN_ALL: string[] = [
-  BETA.onlyFree
-    ? 'Todos los carriers — ninguno queda fuera de tu key'
-    : 'Todos los carriers — ninguno queda reservado para el plan caro',
+  'Todos los carriers — ninguno queda reservado para el plan caro',
   'Todos los endpoints: rastreo, agencias y cobertura por ubigeo',
   'Webhooks firmados con HMAC, con reintentos y deduplicación',
   'Cada carrier con su nivel de evidencia publicado',
   'Los carriers que se vayan completando, sin costo extra',
 ]
+
+/**
+ * El cardinal en letra, para la prosa.
+ *
+ * «Los 6 llegan a los mismos endpoints» se lee como una ficha técnica; en una
+ * frase el número va en palabra. Pero escribirlo a mano es cómo la página
+ * terminó diciendo «los cuatro» con seis planes en pantalla, así que se deriva
+ * del largo del array y cae al dígito si algún día hay más de los previstos.
+ */
+export const cuantos = (n: number) =>
+  ['cero', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve'][n] ??
+  String(n)
+
+/**
+ * Millares con punto, siempre.
+ *
+ * `toLocaleString` no sirve acá y probarlo costó dos vueltas: `es-PE` agrupa con
+ * COMA («1,000») y `es-ES` no agrupa los números de cuatro cifras («1000»),
+ * porque la ortografía española dice que a partir de cinco. Las dos son
+ * correctas y las dos discrepan del texto que el sitio ya tiene escrito a mano
+ * —«hasta 1.000 al mes»—, y una tabla donde el número calculado y el escrito no
+ * se ven iguales es peor que una que ignora la regla ortográfica.
+ */
+export const miles = (n: number) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 
 /**
  * El ahorro de pagar por año, calculado y no escrito. Un «2 meses gratis» a mano
@@ -230,17 +281,17 @@ export const FREE = PLANS.find((p) => p.free)!
 /**
  * Adónde manda el botón de cada plan.
  *
- * El gratuito va al formulario —son dos campos, no debería costar abrir un
- * cliente de correo—. Los pagos siguen en `mailto:` porque el link de pago
- * todavía no existe: falta elegir procesador y desplegar. Cuando exista, esto
- * devuelve la URL del checkout y no cambia nada más de la página.
+ * El gratuito va al formulario —son dos campos y la key sale sola—. Los pagos
+ * abren un `mailto:` con el plan en el asunto, porque así se contratan: no hay
+ * checkout y no está previsto mientras el cobro automático siga en pausa.
  *
- * Es deliberado que NO haya un botón que diga «Pagar» y abra un correo. Prometer
- * un checkout y entregar un mail es peor que ofrecer el mail de entrada.
+ * Es deliberado que NO haya un botón que diga «Pagar» y abra un correo. El botón
+ * dice lo que hace; prometer un checkout y entregar un mail es peor que ofrecer
+ * el mail de entrada.
  */
 export const planLink = (p: Plan) =>
   p.free
     ? '#empezar'
-    : `mailto:hola@tracking-peru.com?subject=${encodeURIComponent(`Acceso al API — plan ${p.name}`)}`
+    : `mailto:hola@tracking-peru.com?subject=${encodeURIComponent(`Contratar el plan ${p.name}`)}`
 
 export const freeLink = '#empezar'
