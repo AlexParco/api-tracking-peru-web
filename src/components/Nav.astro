@@ -1,155 +1,156 @@
 ---
+import ThemeToggle from './ThemeToggle.astro'
 import Logo from './Logo.astro'
 
-/* Los links de sección son anclas de la portada. Desde /docs, un `#api` a
-   secas no lleva a ningún lado: busca el anchor en la página current, no la
-   encuentra y no pasa nada — el usuario hace clic y el sitio parece roto.
-   Fuera de la portada se les antepone `/` para que vuelvan a ella. */
+/* Fuera de la portada las anclas se anteponen con `/`: un `#api` a secas desde
+   /couriers busca el ancla en la página actual y no lleva a ningún lado. */
 const atHome = Astro.url.pathname === '/'
 const toHome = (anchor: string) => (atHome ? anchor : `/${anchor}`)
 
 const sections = [
-  { anchor: '#cobertura', label: 'Cobertura' },
   { anchor: '#api', label: 'Integración' },
+  { anchor: '#cobertura', label: 'Cobertura' },
   { anchor: '#journey', label: 'Estados' },
   { anchor: '#precios', label: 'Precios' },
 ]
 
-const inDocs = Astro.url.pathname.startsWith('/docs')
+const path = Astro.url.pathname
+const inDocs = path.startsWith('/docs')
+const inAccount = ['/login', '/dashboard'].some((p) => path.startsWith(p))
 ---
 
 {/*
- * ── Por qué hay un menú en móvil ──
+ * La barra es una fila de casilleros: cada destino es una celda con su regla, y
+ * el marco de la página sigue por los costados. La acción de cuenta va en la
+ * última celda, en tinta invertida —no en lima—, para no competir con el
+ * primario del hero.
  *
- * Los enlaces de sección eran `hidden md:flex`: por debajo de 768 px
- * desaparecían y NO los reemplazaba nada. En un teléfono, la mitad del sitio
- * quedaba sin forma de llegar salvo scrolleando a ciegas.
- *
- * Y de paso la barra desbordaba: logo + «Docs» + «Pedir acceso» miden más que
- * 390 px, así que la página entera scrolleaba en horizontal (medido: 434 px de
- * documento en /docs contra 390 de ventana). Se arregla solo al mover los dos
- * enlaces adentro del menú.
- *
- * ── Por qué `<details>` y no un botón con JavaScript ──
- *
- * Abre y cierra sin una línea de script, con teclado y con lector de pantalla,
- * porque el navegador ya sabe hacerlo. Es la regla del sitio —sin JS todo sigue
- * sirviendo— aplicada a lo que normalmente la rompe. El script de abajo sólo
- * agrega el cierre por conveniencia; si no corre, el menú sigue funcionando.
+ * El menú móvil es `<details>`: abre y cierra sin JavaScript, con teclado y
+ * lector de pantalla. El script de abajo sólo agrega el cierre por conveniencia.
  */}
-<header class="sticky top-0 z-40 border-b border-line/70 bg-ink/80 backdrop-blur">
-  <nav class="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-6" aria-label="Principal">
-    {/* `min-w-0` + `truncate`: si algo se tiene que achicar es el logotipo, no
-        el botón de la acción principal. En la práctica no se recorta, pero
-        garantiza que ningún ancho de pantalla vuelva a desbordar la barra. */}
+<header class="sticky top-0 z-40 bg-ink-soft/85 backdrop-blur">
+  <nav
+    class="relative mx-auto flex h-14 max-w-7xl items-stretch border-x border-b border-line bg-ink"
+    aria-label="Principal"
+  >
     <a
       href="/"
-      class="flex min-w-0 items-center gap-2.5 font-semibold tracking-tight text-zinc-100"
+      class="flex min-w-0 items-center gap-2.5 border-r border-line px-4 font-semibold tracking-tight text-zinc-50 sm:px-5"
     >
-      <span class="grid size-6 shrink-0 place-items-center rounded-md bg-brand text-ink">
-        <Logo size={15} />
+      <span class="chip-lime grid size-7 shrink-0 place-items-center">
+        <Logo size={16} />
       </span>
       <span class="truncate">API Tracking <span class="text-zinc-500">Perú</span></span>
     </a>
 
-    <div class="hidden items-center gap-7 text-sm text-zinc-400 md:flex">
+    <div class="hidden items-stretch lg:flex">
       {
         sections.map((s) => (
-          <a href={toHome(s.anchor)} class="transition-colors hover:text-zinc-100">
+          <a
+            href={toHome(s.anchor)}
+            class="eyebrow flex items-center border-r border-line px-5 text-zinc-500 transition-colors hover:bg-[var(--hover-soft)] hover:text-zinc-50"
+          >
             {s.label}
           </a>
         ))
       }
     </div>
 
-    {/* «Docs» salió de los enlaces de sección: no es una sección de esta página,
-        es otra página. Va como botón secundario junto a la acción principal —el
-        contorno contra el relleno blanco deja claro cuál es cuál sin que ninguno
-        desaparezca.
-
-        `aria-current` y no solo el color: quien navega por lectura de pantalla
-        también tiene que saber en qué página está. */}
-    <div class="hidden items-center gap-2 md:flex">
+    <div class="ml-auto hidden items-stretch md:flex">
       <a
         href="/docs"
         aria-current={inDocs ? 'page' : undefined}
         class:list={[
-          'rounded-lg border px-3.5 py-1.5 text-sm font-medium transition-colors',
-          inDocs
-            ? 'border-brand/40 bg-brand/10 text-brand'
-            : 'border-line text-zinc-300 hover:border-zinc-600 hover:text-zinc-100',
+          'eyebrow flex items-center border-l border-line px-5 transition-colors hover:bg-[var(--hover-soft)]',
+          inDocs ? 'text-brand' : 'text-zinc-500 hover:text-zinc-50',
         ]}
       >
         Docs
       </a>
+      <div class="flex items-center border-l border-line px-4">
+        <ThemeToggle />
+      </div>
+      <a
+        href="/login"
+        aria-current={inAccount ? 'page' : undefined}
+        class:list={[
+          'eyebrow flex items-center border-l border-line px-5 transition-colors hover:bg-[var(--hover-soft)]',
+          inAccount ? 'text-brand' : 'text-zinc-500 hover:text-zinc-50',
+        ]}
+      >
+        Entrar
+      </a>
       <a
         href={toHome('#empezar')}
-        class="rounded-lg bg-zinc-100 px-3.5 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-white"
+        class="flex items-center gap-2 border-l border-line bg-zinc-50 px-5 text-sm font-medium text-ink transition-colors hover:bg-[#a3e635] hover:text-[#08090b]"
       >
-        Pedir acceso
+        Pedir acceso <span aria-hidden="true">→</span>
       </a>
     </div>
 
-    <details id="menu" class="menu shrink-0 md:hidden">
+    <details id="menu" class="menu ml-auto flex shrink-0 md:ml-0 lg:hidden">
       <summary
-        class="grid size-9 cursor-pointer place-items-center rounded-lg border border-line text-zinc-300 transition-colors hover:border-zinc-600 hover:text-zinc-100"
+        class="grid h-full w-14 cursor-pointer place-items-center border-l border-line text-zinc-300 transition-colors hover:bg-[var(--hover-soft)] hover:text-zinc-50"
         aria-label="Menú"
       >
-        {/* Dos iconos y no uno que se transforma: el estado abierto/cerrado lo
-            resuelve el selector `[open]`, sin animación que mantener. */}
-        <svg class="cerrado size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <svg class="cerrado size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true">
           <path d="M4 7h16M4 12h16M4 17h16"></path>
         </svg>
-        <svg class="abierto size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <svg class="abierto size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true">
           <path d="M6 6l12 12M18 6L6 18"></path>
         </svg>
       </summary>
 
-      {/* El panel es `absolute` y no parte del flujo: dentro de una barra
-          `sticky` de altura fija, un panel en flujo la estiraría y empujaría la
-          página al abrirse. */}
-      {/* Fondo OPACO, no translúcido. Con `bg-ink/95` el titular del hero se
-          leía por debajo de los enlaces y el panel parecía un error de
-          renderizado. Un menú que tapa contenido tiene que taparlo: acá la
-          legibilidad gana sobre el efecto de vidrio, que además no se aprecia
-          en una tira de 300 px de alto. */}
-      <div class="panel absolute inset-x-0 top-full border-b border-line bg-ink shadow-xl shadow-black/50">
-        <div class="mx-auto max-w-6xl px-6 py-3">
-          <ul class="divide-y divide-line/60">
-            {
-              sections.map((s) => (
-                <li>
-                  <a
-                    href={toHome(s.anchor)}
-                    class="block py-3 text-sm text-zinc-300 transition-colors hover:text-zinc-100"
-                  >
-                    {s.label}
-                  </a>
-                </li>
-              ))
-            }
-            <li>
-              <a
-                href="/docs"
-                aria-current={inDocs ? 'page' : undefined}
-                class:list={[
-                  'block py-3 text-sm transition-colors',
-                  inDocs ? 'text-brand' : 'text-zinc-300 hover:text-zinc-100',
-                ]}
-              >
-                Documentación
-              </a>
-            </li>
-          </ul>
+      {/* Fondo opaco: un menú que tapa contenido tiene que taparlo. */}
+      <div class="panel absolute inset-x-[-1px] top-full border-x border-b border-line bg-ink shadow-xl shadow-black/20">
+        <ul class="divide-y divide-line border-b border-line">
+          {
+            sections.map((s, i) => (
+              <li>
+                <a
+                  href={toHome(s.anchor)}
+                  class="flex items-center gap-4 px-5 py-3.5 text-zinc-300 transition-colors hover:bg-[var(--hover-soft)] hover:text-zinc-50"
+                >
+                  <span class="eyebrow w-5 text-zinc-600">{String(i + 1).padStart(2, '0')}</span>
+                  {s.label}
+                </a>
+              </li>
+            ))
+          }
+          <li class="md:hidden">
+            <a
+              href="/docs"
+              aria-current={inDocs ? 'page' : undefined}
+              class:list={[
+                'flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-[var(--hover-soft)]',
+                inDocs ? 'text-brand' : 'text-zinc-300 hover:text-zinc-50',
+              ]}
+            >
+              <span class="eyebrow w-5 text-zinc-600">→</span>
+              Documentación
+            </a>
+          </li>
+          <li class="md:hidden">
+            <a
+              href="/login"
+              class="flex items-center gap-4 px-5 py-3.5 text-zinc-300 transition-colors hover:bg-[var(--hover-soft)] hover:text-zinc-50"
+            >
+              <span class="eyebrow w-5 text-zinc-600">→</span>
+              Entrar a mi cuenta
+            </a>
+          </li>
+        </ul>
 
-          {/* La acción principal queda a un toque, no escondida entre los
-              enlaces: es el único elemento con relleno del panel. */}
+        <div class="flex items-center gap-3 p-4 md:hidden">
           <a
             href={toHome('#empezar')}
-            class="mt-3 block rounded-lg bg-zinc-100 px-4 py-2.5 text-center text-sm font-medium text-ink transition-colors hover:bg-white"
+            class="btn btn-primary block flex-1 px-4 py-3 text-center text-sm font-medium"
           >
             Pedir acceso
           </a>
+          <div class="grid size-11 place-items-center border border-line">
+            <ThemeToggle id="tema-menu" />
+          </div>
         </div>
       </div>
     </details>
@@ -160,24 +161,14 @@ const inDocs = Astro.url.pathname.startsWith('/docs')
   ;(() => {
     const menu = document.getElementById('menu')
     if (!menu) return
-
-    // Los enlaces del panel son anclas de ESTA misma página: sin esto el menú
-    // queda abierto tapando justo la sección a la que se acaba de saltar.
-    // `closest` cubre el clic en cualquier hijo del enlace.
     menu.addEventListener('click', (e) => {
       if (e.target.closest('a')) menu.removeAttribute('open')
     })
-
-    // Escape y clic afuera, que es lo que espera cualquiera que abrió un menú.
-    // El `<summary>` se excluye a propósito: si no, el clic que lo cierra por
-    // fuera pelearía con el que lo alterna por dentro.
     addEventListener('keydown', (e) => {
       if (e.key === 'Escape') menu.removeAttribute('open')
     })
     addEventListener('click', (e) => {
-      if (menu.hasAttribute('open') && !menu.contains(e.target)) {
-        menu.removeAttribute('open')
-      }
+      if (menu.hasAttribute('open') && !menu.contains(e.target)) menu.removeAttribute('open')
     })
   })()
 </script>

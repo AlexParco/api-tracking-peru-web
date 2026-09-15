@@ -1,125 +1,195 @@
 ---
-import CodeBlock from './CodeBlock.astro'
-import { METRICS } from '../data/api.ts'
+import { METRICS, PUBLISHED_CARRIERS, TRACKING_EXAMPLE, CANONICAL_STATUSES } from '../data/api.ts'
 
-const curl = `$ curl -H "X-API-Key: ..." \\
-    "https://api.tracking-peru.com/v1/tracking?carrier=marvisur&number=V001-0000001"
+/* El hero: titular a la izquierda, una etiqueta de envío a la derecha.
+ *
+ * La etiqueta NO es ilustración inventada: cada campo sale de `TRACKING_EXAMPLE`,
+ * la respuesta real (recortada) que también muestra /docs. Se parsea acá en vez
+ * de copiar los valores para que un cambio del ejemplo cambie la etiqueta.
+ */
+const example = JSON.parse(TRACKING_EXAMPLE) as {
+  carrier: string
+  tracking_number: string
+  status: string
+  status_raw: string
+  delivered: boolean
+  terminal: boolean
+  detail: string
+  events: { status: string; status_raw: string; occurred_at: string; location: { name: string } }[]
+}
+const first = example.events[0]
+const occurred = `${first.occurred_at.slice(0, 10)} ${first.occurred_at.slice(11, 16)} ${first.occurred_at.slice(-6)}`
 
-{
-  "carrier": "marvisur",
-  "tracking_number": "V001-0000001",
-  "status": "delivered",
-  "delivered": true,
-  "terminal": true,
-  "events": [ ... ]
-}`
+/* El código de barras se deriva del número de guía: el mismo número da siempre
+   las mismas barras. Es decorativo (`aria-hidden`); el número va escrito debajo. */
+const bars = [...example.tracking_number].flatMap((ch) => {
+  const c = ch.charCodeAt(0)
+  return [(c % 3) + 1, ((c >> 2) % 2) + 1, ((c >> 1) % 3) + 2, (c % 2) + 1]
+})
+
+const metrics = [
+  { label: 'Couriers relevados', value: METRICS.carriersSurveyed },
+  { label: 'Agencias sincronizadas', value: METRICS.agenciesSynced },
+  { label: 'Estados canónicos', value: CANONICAL_STATUSES.length },
+  { label: 'Couriers que despachan', value: METRICS.carriersShipping },
+]
 ---
 
-<section class="relative isolate overflow-hidden">
-  <div class="aura absolute inset-0 -z-20" aria-hidden="true"></div>
+<section class="relative">
+  <div
+    class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-5 py-3 sm:px-8 lg:px-12"
+    data-reveal
+  >
+    <span class="eyebrow flex items-center gap-2 text-zinc-500">
+      <span class="pulse size-1.5 rounded-full bg-brand text-brand"></span>
+      Couriers de Perú · un solo API
+    </span>
+    <span class="eyebrow ml-auto hidden text-zinc-600 sm:inline">REST · JSON · Webhooks HMAC</span>
+  </div>
 
-  <div class="mx-auto max-w-6xl px-6 pb-20 pt-20 md:pt-28">
-    {/* La insignia de beta va ACÁ y no en la sección de precios.
-        Estar en beta es una condición del producto entero —cambia qué esperar de
-        él—, no una nota al pie de una tabla de planes: enterarse recién después
-        de tres pantallas de scroll es enterarse tarde. En precios queda sólo su
-        consecuencia, que el precio que tomes ahora te queda fijo. */}
-    <p class="mb-5 flex flex-wrap items-center gap-x-2.5 gap-y-2 font-mono text-xs text-zinc-500" data-reveal>
-      <span class="rounded-full border border-brand/30 bg-brand/[0.06] px-2 py-0.5 text-[11px] font-semibold text-brand">
-        beta
-      </span>
-      <span class="flex items-center gap-2">
-        <span class="pulse size-1.5 rounded-full bg-brand text-brand"></span>
-        Couriers de Perú · un solo API
-      </span>
-    </p>
-
-    <h1
-      class="max-w-3xl text-balance font-display text-4xl font-semibold leading-[1.08] tracking-tight text-zinc-50 sm:text-5xl md:text-6xl"
-      data-reveal
-      style="--step: 1"
-    >
-      Rastreo y agencias de couriers peruanos, detrás de un solo contrato.
-    </h1>
-
-    <p
-      class="mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-zinc-400"
-      data-reveal
-      style="--step: 2"
-    >
-      Cada courier tiene su propio formato de guía, su propio vocabulario de estados y su
-      propia idea de qué significa «no encontrado». Nosotros normalizamos eso a un modelo
-      único — y te decimos, carrier por carrier, cuánta evidencia real respalda cada
-      integración.
-    </p>
-
-    <div class="mt-9 flex flex-wrap items-center gap-3" data-reveal style="--step: 3">
-      <a
-        href="#empezar"
-        class="btn rounded-lg bg-brand px-5 py-2.5 font-medium text-ink hover:bg-white"
+  <div class="grid lg:grid-cols-12">
+    <div class="px-5 pb-14 pt-12 sm:px-8 md:pb-20 md:pt-16 lg:col-span-7 lg:px-12 lg:py-20">
+      <h1
+        class="text-pretty font-display text-[clamp(2.5rem,5vw,4.4rem)] font-semibold leading-[1] tracking-[-0.045em] text-zinc-50"
+        data-reveal
+        style="--step: 1"
       >
-        Pedir acceso
-      </a>
-      <a
-        href="#api"
-        class="btn rounded-lg border border-line px-5 py-2.5 font-medium text-zinc-300 hover:border-zinc-600 hover:text-zinc-100"
+        Crea y rastrea envíos de couriers peruanos con <span class="marker">un solo contrato</span>.
+      </h1>
+
+      <p
+        class="mt-8 max-w-xl text-pretty text-lg leading-relaxed text-zinc-400"
+        data-reveal
+        style="--step: 2"
       >
-        Ver la API
-      </a>
+        Genera la guía, cotiza antes, sigue el envío y recibe el aviso cuando cambia de estado.
+        Una integración para {METRICS.carriersSurveyed} couriers — con el nivel de evidencia de
+        cada uno publicado en el propio API.
+      </p>
+
+      <div class="mt-10 flex flex-wrap items-center gap-3" data-reveal style="--step: 3">
+        <a href="#empezar" class="btn btn-primary px-6 py-3 font-medium">Pedir acceso →</a>
+        <a href="#api" class="btn btn-secondary px-6 py-3 font-medium">Ver la API</a>
+      </div>
     </div>
 
     <div
-      class="mt-14 grid gap-8 lg:grid-cols-[1.05fr_1fr] lg:items-center"
+      class="grid place-items-center overflow-hidden border-t border-line bg-ink-soft px-5 py-12 sm:px-8 lg:col-span-5 lg:border-l lg:border-t-0 lg:px-10"
       data-reveal
-      style="--step: 4"
+      style="--step: 2"
     >
-      <CodeBlock title="GET /v1/tracking" code={curl} tone="brand" />
+      {/* La etiqueta. Sombra dura del color de la regla: una hoja apoyada
+          sobre otra, no una tarjeta flotando. */}
+      <figure
+        class="w-full max-w-sm border border-zinc-50 bg-ink shadow-[10px_10px_0_0_var(--color-line)] lg:-rotate-2"
+        aria-label={`Ejemplo de respuesta de GET /v1/tracking para ${example.carrier} ${example.tracking_number}`}
+      >
+        <div class="flex items-center justify-between bg-zinc-50 px-4 py-2 text-ink">
+          <span class="eyebrow font-semibold">Etiqueta de rastreo</span>
+          <span class="eyebrow">GET /v1/tracking</span>
+        </div>
 
-      <dl class="grid grid-cols-2 gap-x-6 gap-y-8">
-        <div>
-          <dt class="text-sm text-zinc-500">Couriers relevados</dt>
-          <dd
-            class="mt-1 font-display text-3xl font-semibold tabular-nums text-zinc-100"
-            data-counter={METRICS.carriersSurveyed}
-          >
-            {METRICS.carriersSurveyed}
-          </dd>
-          <p class="mt-1 text-xs leading-relaxed text-zinc-600">
-            Con su backend documentado y su evidencia archivada.
+        <div class="grid grid-cols-2 border-b border-line">
+          <div class="border-r border-line px-4 py-3">
+            <p class="eyebrow text-zinc-500">carrier</p>
+            <p class="mt-1 font-mono text-base font-semibold text-zinc-50">{example.carrier}</p>
+          </div>
+          <div class="px-4 py-3">
+            <p class="eyebrow text-zinc-500">tracking_number</p>
+            <p class="mt-1 font-mono text-base font-semibold text-zinc-50">{example.tracking_number}</p>
+          </div>
+        </div>
+
+        <div class="border-b border-line px-4 py-4" aria-hidden="true">
+          <div class="flex h-12 items-stretch justify-center gap-0">
+            {bars.map((w, i) => <span class:list={[i % 2 === 0 ? 'bg-zinc-50' : '']} style={`width: ${w}px`} />)}
+          </div>
+          <p class="mt-1.5 text-center font-mono text-[10px] tracking-[0.4em] text-zinc-500">
+            {example.tracking_number}
           </p>
         </div>
-        <div>
-          <dt class="text-sm text-zinc-500">Agencias sincronizadas</dt>
-          <dd
-            class="mt-1 font-display text-3xl font-semibold tabular-nums text-zinc-100"
-            data-counter={METRICS.agenciesSynced}
-          >
-            {METRICS.agenciesSynced}
-          </dd>
-          <p class="mt-1 text-xs leading-relaxed text-zinc-600">
-            De {METRICS.carriersWithCatalog} catálogos, con ubigeo y geolocalización.
+
+        <div class="px-4 py-4">
+          <p class="eyebrow text-zinc-500">status</p>
+          <p class="mt-1.5 font-mono text-3xl font-semibold tracking-tight">
+            <span class="marker">{example.status}</span>
+          </p>
+          <p class="mt-2 font-mono text-xs text-zinc-500">
+            status_raw <span class="text-zinc-200">"{example.status_raw}"</span>
           </p>
         </div>
-        <div>
-          <dt class="text-sm text-zinc-500">Estados canónicos</dt>
-          <dd
-            class="mt-1 font-display text-3xl font-semibold tabular-nums text-zinc-100"
-            data-counter="11"
-          >
-            11
-          </dd>
-          <p class="mt-1 text-xs leading-relaxed text-zinc-600">
-            Un vocabulario, no cinco. Con el literal del courier siempre adjunto.
+
+        <dl class="grid grid-cols-3 border-y border-line font-mono text-xs">
+          <div class="border-r border-line px-4 py-2.5">
+            <dt class="eyebrow text-zinc-500">delivered</dt>
+            <dd class="mt-0.5 text-[var(--color-partial)]">{String(example.delivered)}</dd>
+          </div>
+          <div class="border-r border-line px-4 py-2.5">
+            <dt class="eyebrow text-zinc-500">terminal</dt>
+            <dd class="mt-0.5 text-[var(--color-partial)]">{String(example.terminal)}</dd>
+          </div>
+          <div class="px-4 py-2.5">
+            <dt class="eyebrow text-zinc-500">detail</dt>
+            <dd class="mt-0.5 text-zinc-200">{example.detail}</dd>
+          </div>
+        </dl>
+
+        <div class="px-4 py-3">
+          <p class="eyebrow text-zinc-500">events[0]</p>
+          <p class="mt-1 font-mono text-xs text-zinc-200">
+            {first.status} <span class="text-zinc-600">←</span> "{first.status_raw}"
           </p>
+          <p class="mt-0.5 font-mono text-[11px] text-zinc-500">{occurred} · {first.location.name}</p>
         </div>
-        <div>
-          <dt class="text-sm text-zinc-500">Zona horaria</dt>
-          <dd class="mt-1 font-display text-3xl font-semibold text-zinc-100">-05:00</dd>
-          <p class="mt-1 text-xs leading-relaxed text-zinc-600">
-            Explícita en cada fecha. Ningún courier la manda.
-          </p>
-        </div>
-      </dl>
+
+        <div class="perf mx-4" aria-hidden="true"></div>
+        <figcaption class="eyebrow px-4 py-2.5 text-zinc-600">Respuesta real, recortada</figcaption>
+      </figure>
     </div>
+  </div>
+
+  {/* Las cuatro cifras como casilleros de la guía: rótulo arriba, valor grande
+      abajo, reglas compartidas. */}
+  <dl class="grid grid-cols-2 border-t border-line md:grid-cols-4" data-reveal style="--step: 4">
+    {
+      metrics.map((m, i) => (
+        <div
+          class:list={[
+            'border-line px-5 py-6 sm:px-8 lg:px-12 lg:py-8',
+            i % 2 === 0 && 'border-r',
+            i < 2 && 'border-b md:border-b-0',
+            i === 1 && 'md:border-r',
+          ]}
+        >
+          <dt class="eyebrow flex items-center justify-between gap-2 text-zinc-500">
+            {m.label}
+            <span class="text-zinc-700" aria-hidden="true">{String.fromCharCode(65 + i)}</span>
+          </dt>
+          <dd
+            class="mt-4 font-display text-4xl font-semibold tabular-nums tracking-tight text-zinc-50 md:text-5xl"
+            data-counter={m.value}
+          >
+            {m.value}
+          </dd>
+        </div>
+      ))
+    }
+  </dl>
+
+  <div class="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line px-5 py-4 sm:px-8 lg:px-12">
+    <span class="eyebrow text-zinc-600">Integrados</span>
+    {
+      PUBLISHED_CARRIERS.map((c, i) => (
+        <>
+          {i > 0 && <span class="text-zinc-700" aria-hidden="true">/</span>}
+          <a
+            href={`/couriers/${c.id}`}
+            class="text-sm font-medium text-zinc-300 underline-offset-4 transition-colors hover:text-zinc-50 hover:underline"
+          >
+            {c.name}
+          </a>
+        </>
+      ))
+    }
   </div>
 </section>

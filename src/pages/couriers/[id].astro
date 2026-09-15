@@ -54,10 +54,12 @@ const detectionNote: Record<string, string> = {
 // Los carriers con `requiresCode` (Shalom hoy) exigen un 2º factor: el ejemplo
 // suma `&code=` o copiar-y-pegar responde 422. Se arma por dato, no a mano, así
 // que sale solo para el carrier que lo necesita y no envejece.
+// Sin el `$` de prompt: quien copia la línea no se lo lleva adentro (y con
+// resaltado, un prompt pasa por nombre del comando).
 const curl = c.requiresCode
-  ? `$ curl -H "X-API-Key: $API_KEY" \\
+  ? `curl -H "X-API-Key: $API_KEY" \\
     "https://api.tracking-peru.com/v1/tracking?carrier=${c.id}&number=TU-NUMERO-DE-GUIA&code=TU-CODIGO-DE-ORDEN"`
-  : `$ curl -H "X-API-Key: $API_KEY" \\
+  : `curl -H "X-API-Key: $API_KEY" \\
     "https://api.tracking-peru.com/v1/tracking?carrier=${c.id}&number=TU-NUMERO-DE-GUIA"`
 
 /*
@@ -110,7 +112,7 @@ const jsonLd = {
 <Base title={title} description={description} jsonLd={jsonLd}>
   <Nav />
 
-  <main id="contenido">
+  <main id="contenido" class="mx-auto max-w-7xl border-x border-line bg-ink">
     <div class="mx-auto max-w-4xl px-6 py-16">
       <p class="font-mono text-xs text-zinc-600">
         <a href="/couriers" class="transition-colors hover:text-zinc-300">Couriers</a>
@@ -175,11 +177,11 @@ const jsonLd = {
               {detectionNote[c.detection]}
             </p>
             <div class="mt-4">
-              <CodeBlock title={`GET /v1/tracking · ${c.id}`} code={curl} tone="brand" />
+              <CodeBlock title={`GET /v1/tracking · ${c.id}`} code={curl} lang="bash" tone="brand" />
             </div>
             {c.requiresCode && (
-              <p class="mt-3 text-pretty text-xs leading-relaxed text-amber-500/90">
-                <strong class="font-semibold text-amber-400">{c.name} pide un segundo factor:</strong>{' '}
+              <p class="mt-3 text-pretty text-xs leading-relaxed text-[var(--color-partial)]">
+                <strong class="font-semibold text-[var(--color-partial)]">{c.name} pide un segundo factor:</strong>{' '}
                 además del número de guía, el <code class="font-mono">code</code> (código de orden) que
                 figura en el comprobante del envío. Es credencial —prueba que el envío es tuyo—, y sin él
                 el rastreo responde <code class="font-mono">422</code>.
@@ -232,13 +234,13 @@ const jsonLd = {
         <div class="mt-5 flex flex-wrap gap-3">
           <a
             href="/#empezar"
-            class="btn rounded-lg bg-brand px-5 py-2.5 font-medium text-ink hover:bg-white"
+            class="btn btn-primary rounded-lg px-5 py-2.5 font-medium"
           >
             Crear mi key gratis
           </a>
           <a
             href="/docs"
-            class="btn rounded-lg border border-line px-5 py-2.5 font-medium text-zinc-300 hover:border-zinc-600 hover:text-zinc-100"
+            class="btn btn-secondary rounded-lg px-5 py-2.5 font-medium"
           >
             Ver la documentación
           </a>

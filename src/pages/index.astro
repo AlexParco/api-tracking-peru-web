@@ -2,6 +2,7 @@
 import Base from '../layouts/Base.astro'
 import Nav from '../components/Nav.astro'
 import Hero from '../components/Hero.astro'
+import Capabilities from '../components/Capabilities.astro'
 import Coverage from '../components/Coverage.astro'
 import Agencies from '../components/Agencies.astro'
 import Integration from '../components/Integration.astro'
@@ -10,7 +11,7 @@ import Pricing from '../components/Pricing.astro'
 import CallToAction from '../components/CallToAction.astro'
 import Footer from '../components/Footer.astro'
 import { PUBLISHED_CARRIERS, METRICS } from '../data/api.ts'
-import { PLANS, BETA } from '../data/plans.ts'
+import { PLANS } from '../data/plans.ts'
 
 /* Datos estructurados de la portada: la organización, el sitio y el servicio con
    su lista de precios. Es lo que habilita un resultado enriquecido y lo que le
@@ -46,7 +47,7 @@ const jsonLd = {
       provider: { '@id': 'https://tracking-peru.com/#organizacion' },
       areaServed: { '@type': 'Country', name: 'Perú' },
       description: `Rastreo de envíos y catálogo de agencias de ${PUBLISHED_CARRIERS.length} couriers de Perú detrás de un solo contrato REST, con ${METRICS.agenciesSynced} agencias sincronizadas.`,
-      offers: PLANS.filter((p) => p.monthly !== null && (!BETA.onlyFree || p.free)).map((p) => ({
+      offers: PLANS.filter((p) => p.monthly !== null).map((p) => ({
         '@type': 'Offer',
         name: `Plan ${p.name}`,
         price: p.monthly,
@@ -60,17 +61,27 @@ const jsonLd = {
 ---
 
 <Base
-  title="API Tracking Perú — Rastreo y agencias de couriers peruanos"
-  description={`Rastrea envíos de Olva, Shalom, Marvisur, Urbano y Cruz del Sur desde un solo API REST. Estado canónico, webhooks firmados y ${METRICS.agenciesSynced} agencias con ubigeo.`}
+  title="API Tracking Perú — Crea y rastrea envíos de couriers peruanos"
+  description={`Genera guías, cotiza, rastrea envíos y recibe webhooks de Olva, Shalom, Marvisur, Urbano y Cruz del Sur desde un solo API REST. Estado canónico y ${METRICS.agenciesSynced} agencias con ubigeo.`}
 
   jsonLd={jsonLd}
 >
   <Nav />
-  <main id="contenido">
+  <main id="contenido" class="mx-auto max-w-7xl overflow-x-clip border-x border-line bg-ink">
+    {/* El orden de la portada, reordenado el 2026-09-08.
+        Antes era Hero → Coverage → Agencies → Integration → Journey → Pricing.
+        O sea: la segunda cosa que veía un visitante era la EVIDENCIA («qué
+        funciona hoy, sin maquillaje»), que responde «cuánto puedo confiar» —una
+        pregunta que nadie se hace antes de saber qué es el producto—.
+
+        Ahora sigue el orden en que alguien decide: qué hace → cómo se escribe →
+        cuánto confío → qué cuesta. La evidencia no perdió peso, cambió de lugar:
+        llega cuando ya hay algo que evaluar. */}
     <Hero />
+    <Capabilities />
+    <Integration />
     <Coverage />
     <Agencies />
-    <Integration />
     <Journey />
     <Pricing />
     <CallToAction />

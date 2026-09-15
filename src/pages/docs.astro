@@ -20,7 +20,7 @@ import {
   type Level,
 } from '../data/api.ts'
 import { EXPECTED_IDS } from '../data/docs-nav.ts'
-import { PLANS, BETA } from '../data/plans.ts'
+import { PLANS, ORDERS, miles } from '../data/plans.ts'
 
 /* La página se arma entera desde `api.ts`. No hay una segunda copia de los
    endpoints ni de los states: si el API cambia se toca un archivo y la portada
@@ -28,8 +28,8 @@ import { PLANS, BETA } from '../data/plans.ts'
 
 const methodClass: Record<string, string> = {
   GET: 'text-[var(--color-live)]',
-  POST: 'text-sky-400',
-  DELETE: 'text-rose-400',
+  POST: 'text-[var(--color-method-write)]',
+  DELETE: 'text-[var(--color-method-delete)]',
 }
 
 const withTracking = PUBLISHED_CARRIERS.filter((c) => c.tracking.status === 'ok')
@@ -121,6 +121,7 @@ const GAPS = [
 ---
 
 <Base
+  framed={false}
   title="Documentación del API de rastreo de couriers peruanos"
   jsonLd={jsonLd}
   description="Referencia del API de rastreo y agencias de couriers peruanos: endpoints, estados canónicos, webhooks firmados y el nivel de verificación por carrier."
@@ -159,28 +160,13 @@ const GAPS = [
         <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
           Toda llamada lleva tu key en la cabecera{' '}
           <code class="font-mono text-zinc-300">X-API-Key</code>.{' '}
-          {/* Mientras dure la beta el único plan que existe es el Free, así que
-              enumerar los niveles acá mandaba a la página de precios a buscar
-              tres planes que no están. */}
-          {BETA.onlyFree ? (
-            <>
-              Mientras dure la beta toda key es del{' '}
-              <a href="/#precios" class="text-brand/80 underline-offset-2 hover:underline">
-                plan Free
-              </a>{' '}
-              y se emite sola desde la web.
-            </>
-          ) : (
-            <>
-              Cada key va con un plan{' '}
-              —<a href="/#precios" class="text-brand/80 underline-offset-2 hover:underline">Free,
-              Básico, Pro o a medida</a>—. La del plan Free se emite sola desde la web; las de
-              pago, a pedido.
-            </>
-          )}
+          Cada key va con un plan{' '}
+          —<a href="/#precios" class="text-brand/80 underline-offset-2 hover:underline">Gratuito,
+          Básico, Plus o Premium</a>—. La del Gratuito se emite sola desde la web; las de
+          pago se contratan por correo.
         </p>
         <div class="mt-5">
-          <CodeBlock title="GET /v1/carriers" code={AUTH_CURL} tone="brand" />
+          <CodeBlock title="GET /v1/carriers" code={AUTH_CURL} lang="bash" tone="brand" />
         </div>
         <p class="mt-3 text-pretty text-xs leading-relaxed text-zinc-600">
           La key identifica y contabiliza: no la pongas en un cliente que se descargue al
@@ -192,29 +178,30 @@ const GAPS = [
             precios. Repetirlos a mano aquí sería garantizar que un día digan un
             número distinto del que se cobra. */}
         <h3 class="mt-8 text-sm font-medium text-zinc-300">
-          {BETA.onlyFree ? 'Cupos de la key' : 'Cupos por plan'}
+          Cupos por plan
         </h3>
-        {/* En beta la tabla tiene una sola fila —el Free es el único plan que se
-            emite—, así que no hay «cupo del plan con el que se emitió» que
-            explicar: es el mismo para todos. */}
         <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">
-          {BETA.onlyFree
-            ? 'Estos son los cupos de toda key emitida hoy. El límite por minuto es un guardarraíl contra ráfagas, no una cuota mensual: el tope de consultas al mes se cuenta aparte. La key se entrega en la misma respuesta del alta.'
-            : 'Tu key trae el cupo del plan con el que se emitió. El límite por minuto es un guardarraíl contra ráfagas, no una cuota mensual: ningún plan tiene tope de consultas al mes salvo el Free, que sí lo tiene. La key se entrega en la misma respuesta del alta.'}
+          Tu key trae el cupo del plan con el que se emitió. El límite por minuto es un
+          guardarraíl contra ráfagas, no una cuota mensual: el tope de consultas al mes se
+          cuenta aparte. La key se entrega en la misma respuesta del alta.
         </p>
-        <div class="mt-4 overflow-x-auto">
+        <div class="scroll-shadow mt-4 overflow-x-auto">
           <table class="w-full min-w-[26rem] border-collapse text-left text-sm md:min-w-0">
             <thead>
               <tr class="border-b border-line text-xs text-zinc-500">
                 <th scope="col" class="py-2.5 pr-4 font-normal">Plan</th>
                 <th scope="col" class="py-2.5 pr-4 font-normal">Requests / minuto</th>
                 <th scope="col" class="py-2.5 pr-4 font-normal">Webhooks activos</th>
+                {/* Sale sola mientras el endpoint de órdenes no exista. Ver `plans.ts`. */}
+                {ORDERS.enabled && (
+                  <th scope="col" class="py-2.5 pr-4 font-normal">Órdenes / mes</th>
+                )}
                 <th scope="col" class="py-2.5 font-normal">Consultas</th>
               </tr>
             </thead>
             <tbody>
               {
-                PLANS.filter((p) => !BETA.onlyFree || p.free).map((p) => (
+                PLANS.map((p) => (
                   <tr class="row border-b border-line/60">
                     <td class="py-3 pr-4 text-zinc-100">{p.name}</td>
                     <td class="py-3 pr-4 font-mono tabular-nums text-zinc-300">
@@ -225,6 +212,16 @@ const GAPS = [
                         <span class="text-xs text-zinc-500">negociado</span>
                       )}
                     </td>
+                    {ORDERS.enabled && (
+                      <td class="py-3 pr-4 font-mono tabular-nums text-zinc-300">
+                        {p.ordersLabel ??
+                          (p.orders === null ? (
+                            <span class="text-xs text-zinc-500">negociado</span>
+                          ) : (
+                            miles(p.orders)
+                          ))}
+                      </td>
+                    )}
                     <td class="py-3 text-zinc-400">{p.queries}</td>
                   </tr>
                 ))
@@ -377,7 +374,7 @@ const GAPS = [
           {
             JOURNEY.map((h, i) => (
               <li class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span class="w-5 shrink-0 font-mono text-xs text-zinc-700">{i + 1}</span>
+                <span class="w-5 shrink-0 font-mono text-xs text-zinc-600">{i + 1}</span>
                 {/* `min-w-0`: sin él este grupo es un ítem flex con
                     `min-width: auto`, o sea que se niega a bajar del ancho de
                     su estado más largo («available_for_pickup»), y a 390 px eso
@@ -457,7 +454,7 @@ const GAPS = [
           }
         </dl>
 
-        <div class="mt-8 overflow-x-auto">
+        <div class="scroll-shadow mt-8 overflow-x-auto">
           <table class="w-full min-w-[32rem] border-collapse text-left text-sm md:min-w-0">
             <thead>
               <tr class="border-b border-line text-xs text-zinc-500">
@@ -543,7 +540,7 @@ const GAPS = [
           vuelves a serializar antes de firmar, la firma no va a coincidir.
         </p>
         <div class="mt-4">
-          <CodeBlock title="X-Webhook-Signature" code={WEBHOOK_SIGNATURE} />
+          <CodeBlock title="X-Webhook-Signature" code={WEBHOOK_SIGNATURE} lang="text" />
         </div>
       </section>
 
@@ -552,7 +549,7 @@ const GAPS = [
           Una entrega
         </h3>
         <div class="mt-4">
-          <CodeBlock title="POST a tu endpoint" code={WEBHOOK_EXAMPLE} tone="brand" />
+          <CodeBlock title="POST a tu endpoint" code={WEBHOOK_EXAMPLE} lang="http" tone="brand" />
         </div>
       </section>
 
@@ -590,7 +587,7 @@ const GAPS = [
           <CodeBlock title="la forma de un error" code={ERROR_SHAPE} />
         </div>
 
-        <div class="mt-6 overflow-x-auto">
+        <div class="scroll-shadow mt-6 overflow-x-auto">
           <table class="w-full min-w-[34rem] border-collapse text-left text-sm md:min-w-0">
             <thead>
               <tr class="border-b border-line text-xs text-zinc-500">

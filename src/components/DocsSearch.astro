@@ -99,7 +99,7 @@ const INDICE = DOCS_NAV
         (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
       )
 
-    const methodColor = { GET: 'text-[var(--color-live)]', POST: 'text-sky-400', DELETE: 'text-rose-400' }
+    const methodColor = { GET: 'text-[var(--color-live)]', POST: 'text-[var(--color-method-write)]', DELETE: 'text-[var(--color-method-delete)]' }
 
     const paint = () => {
       countEl.textContent = `${matches.length} resultado${matches.length === 1 ? '' : 's'}`

@@ -1,135 +1,84 @@
 ---
 import TrialForm from './TrialForm.astro'
-import { FREE, BETA } from '../data/plans.ts'
 ---
 
-<section id="empezar" class="scroll-mt-20 border-t border-line py-24">
-  <div class="mx-auto max-w-6xl px-6">
-    <div class="card rounded-2xl border border-line bg-ink-soft p-8 md:p-12" data-reveal>
-      {/* Dos columnas: el argumento a la izquierda, el formulario en su propio
-          panel a la derecha. En una sola, el contenido se apretaba contra el
-          borde izquierdo de una tarjeta de 6xl y sobraba media caja vacía. */}
-      {/* `items-center`: el panel conserva su altura natural y se centra contra la
-          columna izquierda, que es más alta. Estirarlo llenaba el hueco de afuera
-          creando uno adentro; centrarlo reparte el aire arriba y abajo. */}
-      <div class="grid gap-10 lg:grid-cols-[1fr_minmax(0,23rem)] lg:items-center lg:gap-14">
-        <div>
-          <h2 class="text-balance font-display text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl">
-            Empieza gratis, y no vence
-          </h2>
-          {/* «subes de plan cuando quieras» sobra en beta: no hay a qué subir
-              todavía, así que la promesa manda a buscar algo que no está. */}
-          <p class="mt-4 text-pretty leading-relaxed text-zinc-400">
-            Déjanos tu correo y te emitimos la key en el momento. El plan Free no vence y no
-            pide tarjeta
-            {BETA.onlyFree ? '. ' : ': si tu volumen crece, subes de plan cuando quieras. '}
-            Y si el courier que te importa está en ámbar, dilo — eso prioriza el orden en que
-            se completan.
-          </p>
+{/* El cierre: el sello lima a la izquierda con el argumento, el formulario a la
+    derecha sobre la hoja. El formulario NO va dentro del lima: sus controles
+    usan los tokens del tema, y un primario lima sobre fondo lima desaparece. */}
+<section id="empezar" class="scroll-mt-14 grid border-t border-line lg:grid-cols-12">
+  <div class="on-lime px-5 py-16 sm:px-8 md:py-20 lg:col-span-7 lg:px-12 lg:py-24" data-reveal>
+    <p class="eyebrow flex items-center gap-3">
+      <span class="inline-grid h-6 min-w-8 place-items-center bg-[#08090b] px-1.5 font-semibold text-[#a3e635]">07</span>
+      Empezar
+    </p>
 
-          {/* Los números de la prueba, aquí y no apretados bajo el botón: la
-              columna izquierda tenía media pantalla vacía, y esto es justo lo que
-              alguien necesita saber ANTES de dejar su correo. Salen de `TRIAL`,
-              que espeja los del backend. */}
-          {/* Mismo patrón que las métricas del hero: la etiqueta arriba y el número
-              abajo. Antes la unidad iba en un `dt` con `sr-only` Y repetida
-              visible, así que un lector de pantalla la escuchaba dos veces:
-              «días 4 días de acceso completo». */}
-          <dl class="mt-9 grid max-w-md grid-cols-2 gap-x-8 gap-y-6">
-            {[
-              [FREE.webhooks, 'webhooks activos', 'envíos vigilados a la vez'],
-              ['1.000', 'consultas al mes', 'de rastreo bajo demanda'],
-              [FREE.rpm, 'req / minuto', 'guardarraíl contra ráfagas'],
-              ['S/ 0', 'para siempre', 'no vence ni pide tarjeta'],
-            ].map(([big, unit, note]) => (
-              <div>
-                <dt class="text-sm text-zinc-500">{unit}</dt>
-                <dd class="mt-1 font-display text-3xl font-semibold tabular-nums text-zinc-50">
-                  {big}
-                </dd>
-                <p class="mt-1 text-xs leading-relaxed text-zinc-600">{note}</p>
-              </div>
-            ))}
-          </dl>
+    <h2 class="mt-8 text-balance font-display text-[clamp(2.6rem,6vw,5rem)] font-bold leading-[0.95] tracking-[-0.05em]">
+      Empieza gratis, y no vence
+    </h2>
 
-          {/* Lo que decide y no es un número. El primero es el argumento fuerte:
-              la key sale en la misma respuesta del alta, no hay espera. */}
-          <ul class="mt-8 max-w-md space-y-2.5 border-t border-line pt-6">
-            {[
-              /* Decía «además te llega por correo con su fecha de vencimiento»,
-                 y esa fecha NO existe: el correo del alta
-                 (`internal/email/templates.go`, FreeEmail) dice «No vence» en
-                 negrita, porque el plan gratis es permanente. Además se
-                 contradecía con la viñeta de acá abajo. */
-              `Ves la key en pantalla apenas la pides, y además te llega por correo.`,
-              'Una key gratuita por dirección de correo. Si esa dirección ya tiene la suya, te lo decimos en el momento.',
-              `El plan Free no vence: no te cobramos, no se renueva sola y no hay nada que cancelar.`,
-              /* La viñeta del precio fijo se cae mientras `onlyFree` esté puesto:
-                 prometer que «el precio que tomes ahora te queda fijo» obliga a
-                 hablar de precios que todavía no se pueden pagar. En su lugar va
-                 lo que sí es cierto hoy —todo el API entra en la key gratis—.
+    <p class="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-zinc-400">
+      Déjanos tu correo y te emitimos la key en el momento. El plan Free no vence y no
+      pide tarjeta: si tu volumen crece, subes de plan cuando quieras.
+      Y si el courier que te importa está en ámbar, dilo — eso prioriza el orden en que
+      se completan.
+    </p>
 
-                 Antes la línea decía además cuándo termina la beta —«que los
-                 cinco carriers rastreen en vivo»—, que es un criterio interno
-                 nuestro: al cliente no le cambia nada y lo obliga a llevar la
-                 cuenta de nuestra hoja de ruta. */
-              BETA.onlyFree
-                ? `Durante la beta la key gratis trae todo el API: todos los carriers, todos los endpoints y webhooks firmados.`
-                : `Mientras dure la beta, el precio que tomes ahora te queda fijo.`,
-            ].map((x) => (
-              <li class="flex gap-3 text-sm leading-relaxed text-zinc-400">
-                <span class="mt-1.5 size-1.5 shrink-0 rounded-full bg-brand" aria-hidden="true" />
-                <span class="text-pretty">{x}</span>
-              </li>
-            ))}
-          </ul>
+    <ul class="mt-10 max-w-xl border-t border-line">
+      {[
+        `Ves la key en pantalla apenas la pides, y además te llega por correo.`,
+        'Una key gratuita por dirección de correo. Si esa dirección ya tiene la suya, te lo decimos en el momento.',
+        `El plan Free no vence: no te cobramos, no se renueva sola y no hay nada que cancelar.`,
+        `La key gratis trae todo el API: todos los carriers, todos los endpoints y webhooks firmados.`,
+      ].map((x, i) => (
+        <li class="flex gap-4 border-b border-line py-3 text-sm leading-relaxed text-zinc-300">
+          <span class="eyebrow mt-0.5 w-5 shrink-0 text-zinc-500">{String(i + 1).padStart(2, '0')}</span>
+          <span class="text-pretty">{x}</span>
+        </li>
+      ))}
+    </ul>
 
-        </div>
-
-        {/* El formulario y no un botón de correo: pedir la prueba es la acción
-            más barata de la página y no debería costar abrir un cliente de mail.
-            Para lo demás —un volumen raro, un requisito propio— sigue el correo,
-            que ahí sí hace falta contar más de lo que entra en dos campos. */}
-        <div class="rounded-xl border border-line bg-ink p-6">
-          <TrialForm />
-
-
-
-          {/* Debajo del formulario: primero la acción gratis, después el canal
-              para lo que no entra en dos campos. En beta esa puerta NO se anuncia
-              como «un plan pago» —no hay ninguno que vender todavía—, sino por lo
-              que de verdad la justifica: un volumen o un requisito fuera de lo
-              que cubre la key gratis. */}
-          <div class="mt-6 border-t border-line pt-5">
-            <p class="text-sm text-zinc-500">
-              {BETA.onlyFree ? '¿Un volumen alto o algo a medida?' : '¿Un plan pago o algo a medida?'}
-            </p>
-            <a
-              href="mailto:hola@tracking-peru.com?subject=Acceso%20al%20API"
-              class="mt-1 block font-mono text-sm text-brand/80 underline-offset-2 hover:underline"
-            >
-              hola@tracking-peru.com
-            </a>
-          </div>
-        </div>
+    <dl class="mt-10 grid max-w-xl grid-cols-3 border-y border-line">
+      <div class="border-r border-line py-3 pr-3">
+        <dt class="eyebrow text-zinc-500">Autenticación</dt>
+        <dd class="mt-1 font-mono text-sm font-semibold">X-API-Key</dd>
       </div>
+      <div class="border-r border-line px-3 py-3">
+        <dt class="eyebrow text-zinc-500">Formato</dt>
+        <dd class="mt-1 font-mono text-sm font-semibold">JSON · REST</dd>
+      </div>
+      <div class="px-3 py-3">
+        <dt class="eyebrow text-zinc-500">Webhooks</dt>
+        <dd class="mt-1 font-mono text-sm font-semibold">
+          <a href="#api" class="underline decoration-1 underline-offset-2">firmados · HMAC</a>
+        </dd>
+      </div>
+    </dl>
+  </div>
 
-      <dl class="mt-10 grid gap-6 border-t border-line pt-8 sm:grid-cols-3">
-        <div>
-          <dt class="text-sm text-zinc-500">Autenticación</dt>
-          <dd class="mt-1 font-mono text-sm text-zinc-300">X-API-Key</dd>
-        </div>
-        <div>
-          <dt class="text-sm text-zinc-500">Formato</dt>
-          <dd class="mt-1 font-mono text-sm text-zinc-300">JSON · REST</dd>
-        </div>
-        <div>
-          <dt class="text-sm text-zinc-500">Webhooks</dt>
-          <dd class="mt-1 font-mono text-sm text-[var(--color-live)]">
-            <a href="#api" class="transition-colors hover:text-zinc-100">firmados · HMAC</a>
-          </dd>
-        </div>
-      </dl>
+  <div class="flex flex-col justify-center border-t border-line px-5 py-12 sm:px-8 lg:col-span-5 lg:border-l lg:border-t-0 lg:px-10" data-reveal style="--step: 1">
+    <p class="eyebrow text-zinc-500">Formulario · Key gratuita</p>
+    <div class="mt-6">
+      <TrialForm />
+    </div>
+
+    <div class="mt-8 grid gap-4 border-t border-line pt-6 sm:grid-cols-2">
+      <div>
+        <p class="text-sm text-zinc-500">¿Ya tienes cuenta?</p>
+        <a href="/login" class="mt-1 block text-sm font-medium text-zinc-50 underline-offset-4 hover:underline">
+          Entrar al panel →
+        </a>
+      </div>
+      <div>
+        <p class="text-sm text-zinc-500">
+          ¿Un plan pago o algo a medida?
+        </p>
+        <a
+          href="mailto:hola@tracking-peru.com?subject=Acceso%20al%20API"
+          class="mt-1 block break-all font-mono text-sm text-brand underline-offset-4 hover:underline"
+        >
+          hola@tracking-peru.com
+        </a>
+      </div>
     </div>
   </div>
 </section>

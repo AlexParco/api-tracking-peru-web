@@ -1,15 +1,22 @@
 ---
 import '../styles/global.css'
-import Reticle from '../components/Reticle.astro'
 
 interface Props {
   title: string
   description: string
   /** Datos estructurados de la página. Se serializan en el `<head>`. */
   jsonLd?: Record<string, unknown>
+  /**
+   * La página vive dentro del marco de la guía (reglas a los costados y fondo
+   * exterior un peldaño más gris). /docs no lo usa: tiene su propio armazón de
+   * barra lateral fija.
+   */
+  framed?: boolean
+  /** Fuera del índice de buscadores. Lo usan las maquetas de cuenta. */
+  noindex?: boolean
 }
 
-const { title, description, jsonLd } = Astro.props
+const { title, description, jsonLd, framed = true, noindex = false } = Astro.props
 
 const SITIO = 'API Tracking Perú'
 const ORIGEN = Astro.site ?? new URL('https://tracking-peru.com')
@@ -29,12 +36,19 @@ const og = new URL('/og.png', ORIGEN)
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
 
-    {/* El sitio es de tema oscuro fijo. Declararlo acá y no sólo en el CSS evita
-        el destello blanco antes de que la hoja cargue: el navegador ya pinta el
-        fondo y las barras de scroll en oscuro. */}
-    <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#08090b" />
+    {/* Los dos temas, con el claro primero: el orden importa porque el primero
+        es el que el navegador usa para pintar el fondo y las barras de scroll
+        antes de que la hoja cargue. El CSS y el script del final del <head>
+        deciden cuál queda.
+
+        `theme-color` con `media` da el color de la barra del navegador en móvil
+        para cada caso; sin el `media`, Android pintaba la barra de negro también
+        en el tema claro. */}
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#08090b" media="(prefers-color-scheme: dark)" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content={SITIO} />
     <meta property="og:title" content={title} />
@@ -118,15 +132,29 @@ const og = new URL('/og.png', ORIGEN)
       if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
         document.documentElement.classList.add('motion')
       }
+
+      /* El tema, también antes de pintar y por el mismo motivo: leerlo después
+         del primer pintado significa que quien eligió oscuro ve un fogonazo
+         blanco en cada navegación. Es la única razón por la que este script
+         vive en el <head> y bloquea.
+
+         El DEFECTO es claro. No se mira `prefers-color-scheme`: es una decisión
+         de producto —el sitio se presenta en claro— y no una preferencia que
+         adivinar. Lo que sí se respeta es la elección explícita del visitante,
+         que persiste en localStorage.
+
+         `try` porque en una ventana privada o con las cookies bloqueadas
+         `localStorage` no lee: ahí cae al defecto en vez de reventar el script
+         que además pone `.motion`. */
+      try {
+        if (localStorage.getItem('tema') === 'dark') {
+          document.documentElement.dataset.theme = 'dark'
+        }
+      } catch {}
     </script>
   </head>
 
-  <body class="bg-ink text-zinc-200 antialiased">
-    {/* La retícula, una sola vez y para todo el documento. Va aquí y no en cada
-        página porque es fondo, no contenido: dos instancias serían dos grillas
-        desalineadas y dos scripts peleando por el mismo cursor. */}
-    <Reticle />
-
+  <body class:list={['text-zinc-200 antialiased', framed ? 'bg-ink-soft' : 'bg-ink']}>
     <a
       href="#contenido"
       class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-brand focus:px-4 focus:py-2 focus:font-medium focus:text-ink"
@@ -156,7 +184,9 @@ const og = new URL('/og.png', ORIGEN)
           if (!Number.isFinite(target)) return
           const arranque = performance.now()
           const tick = (t) => {
-            const progress = Math.min(1, (t - arranque) / 950)
+            // `t` de rAF puede ser ANTERIOR a `arranque` (se tomó con performance.now()
+            // un instante después): sin el piso en 0 el primer cuadro mostraba negativos.
+            const progress = Math.min(1, Math.max(0, (t - arranque) / 950))
             const eased = 1 - (1 - progress) ** 3
             // El valor exacto se escribe al final y no se drift del easing:
             // redondear 817,6 daría 818 por casualidad, no por corrección.

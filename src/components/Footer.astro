@@ -1,18 +1,81 @@
 ---
-/* Extraído de `Cierre.astro` cuando apareció la segunda página. Estaba pegado
-   al CTA, así que /docs habría tenido que duplicar el descargo legal — y un
-   descargo duplicado es un descargo que un día dice dos cosas distintas. */
+import Logo from './Logo.astro'
+import { PUBLISHED_CARRIERS } from '../data/api.ts'
+
+/* El pie es el último casillero de la guía: la marca y el descargo a la
+   izquierda, y a la derecha los enlaces que un buscador —y quien llegó al
+   final— necesita para seguir. Las anclas van con `/` porque el pie también se
+   muestra fuera de la portada. */
 const year = new Date().getFullYear()
+
+const columns = [
+  {
+    title: 'Producto',
+    links: [
+      { href: '/#que-hace', label: 'Qué hace' },
+      { href: '/#api', label: 'Integración' },
+      { href: '/#cobertura', label: 'Cobertura' },
+      { href: '/#precios', label: 'Precios' },
+    ],
+  },
+  {
+    title: 'Couriers',
+    links: PUBLISHED_CARRIERS.map((c) => ({ href: `/couriers/${c.id}`, label: c.name })),
+  },
+  {
+    title: 'Recursos',
+    links: [
+      { href: '/docs', label: 'Documentación' },
+      { href: '/login', label: 'Entrar' },
+      { href: 'mailto:hola@tracking-peru.com', label: 'hola@tracking-peru.com' },
+    ],
+  },
+]
 ---
 
-<footer class="border-t border-line py-10">
-  <div
-    class="mx-auto flex max-w-6xl flex-col gap-4 px-6 text-sm text-zinc-600 sm:flex-row sm:items-center sm:justify-between"
-  >
-    <p>© {year} API Tracking Perú</p>
-    <p class="max-w-md text-pretty leading-relaxed">
-      Servicio independiente. No afiliado a ninguno de los couriers mencionados; sus
-      nombres se usan solo para identificar la cobertura.
-    </p>
+<footer class="mx-auto max-w-7xl overflow-hidden border-x border-t border-line bg-ink">
+  <div class="grid lg:grid-cols-12">
+    <div class="border-b border-line px-5 py-10 sm:px-8 lg:col-span-5 lg:border-b-0 lg:border-r lg:px-12">
+      <p class="flex items-center gap-2.5 font-semibold tracking-tight text-zinc-50">
+        <span class="chip-lime grid size-7 place-items-center"><Logo size={16} /></span>
+        API Tracking Perú
+      </p>
+      <p class="mt-5 max-w-sm text-pretty text-sm leading-relaxed text-zinc-500">
+        Servicio independiente. No afiliado a ninguno de los couriers mencionados; sus
+        nombres se usan solo para identificar la cobertura.
+      </p>
+      <p class="eyebrow mt-8 text-zinc-600">© {year} API Tracking Perú</p>
+    </div>
+
+    <nav class="grid gap-8 px-5 py-10 sm:grid-cols-3 sm:px-8 lg:col-span-7 lg:px-12" aria-label="Pie">
+      {
+        columns.map((col) => (
+          <div>
+            <p class="eyebrow text-zinc-600">{col.title}</p>
+            <ul class="mt-4 space-y-2.5">
+              {col.links.map((l) => (
+                <li>
+                  <a
+                    href={l.href}
+                    class="break-words text-sm text-zinc-400 underline-offset-4 transition-colors hover:text-zinc-50 hover:underline"
+                  >
+                    {l.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+    </nav>
   </div>
+
+  {/* La marca en grande, cortada por el borde inferior como un sello que no
+      entró entero en la hoja. Decorativa: el nombre ya está arriba. */}
+  <p
+    class="select-none border-t border-line px-3 pt-4 font-display text-[clamp(3rem,13.5vw,11.5rem)] font-bold leading-[0.72] tracking-[-0.06em] text-zinc-800"
+    aria-hidden="true"
+  >
+    tracking-perú
+  </p>
 </footer>

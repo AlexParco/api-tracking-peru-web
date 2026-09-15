@@ -1,0 +1,107 @@
+---
+import SectionHead from './SectionHead.astro'
+import { METRICS, PUBLISHED_CARRIERS } from '../data/api.ts'
+
+/* Qué hace el producto, en cuatro verbos y en el orden en que los usa quien
+ * integra: crea el envío, lo cotiza antes, lo rastrea y deja que le avisen.
+ *
+ * Los números no se escriben a mano: el día que un courier empiece a crear
+ * guías, esta sección lo dice sola.
+ */
+const conCreacion = PUBLISHED_CARRIERS.filter((c) => c.shipping.status === 'ok')
+const conRastreo = PUBLISHED_CARRIERS.filter((c) => c.tracking.status === 'ok')
+
+const capacidades = [
+  {
+    verbo: 'Crear',
+    titulo: 'Genera la guía con el courier',
+    detalle:
+      'Un solo cuerpo para todos: origen, destino, quién manda, qué va adentro y quién paga. Devuelve el número de seguimiento y el rótulo listo para imprimir.',
+    dato: `${conCreacion.length} de ${PUBLISHED_CARRIERS.length} couriers`,
+    pie: conCreacion.map((c) => c.name).join(' · '),
+    endpoint: 'POST /v1/shipments',
+  },
+  {
+    verbo: 'Cotizar',
+    titulo: 'Cuánto cuesta, antes de crearla',
+    detalle:
+      'El precio real del courier para ese origen, destino y peso. No crea nada y no gasta cupo, así que se puede llamar en cada cambio del carrito.',
+    dato: 'Sin efectos',
+    pie: 'Agencia o domicilio, con el precio de cada uno',
+    endpoint: 'POST /v1/shipments/quote',
+  },
+  {
+    verbo: 'Rastrear',
+    titulo: 'Un vocabulario, no cinco',
+    detalle:
+      'Once estados canónicos con el literal del courier siempre adjunto, timeline ordenado y zona horaria explícita. Normalizar sin perder el dato original.',
+    dato: `${conRastreo.length} de ${PUBLISHED_CARRIERS.length} couriers`,
+    pie: 'Con el nivel de evidencia de cada uno publicado',
+    endpoint: 'GET /v1/tracking',
+  },
+  {
+    verbo: 'Avisar',
+    titulo: 'O deja que te avise',
+    detalle:
+      'Suscribes un envío y recibes un POST firmado cuando cambia de estado. Llega el mismo objeto que devuelve la consulta.',
+    dato: 'Webhooks HMAC',
+    pie: 'Con reintentos y deduplicación',
+    endpoint: 'POST /v1/tracking/subscriptions',
+  },
+]
+---
+
+<section id="que-hace" class="scroll-mt-14 border-t border-line pt-20 md:pt-28">
+  <SectionHead n="01" kicker="Qué hace" title="Despacha, rastrea y cobra sin escribir cinco integraciones">
+    Cada courier peruano tiene su propio formato de guía, su propio vocabulario de estados y
+    su propia idea de qué significa «no encontrado». Acá es un solo contrato REST — y te
+    decimos, courier por courier, cuánta evidencia real respalda cada integración.
+  </SectionHead>
+
+  {/* Rejilla a sangre: las reglas de los casilleros tocan el marco de la hoja. */}
+  <ul class="mt-16 grid sm:grid-cols-2">
+    {
+      capacidades.map((c, i) => (
+        <li
+          class:list={[
+            'flex min-w-0 flex-col border-t border-line px-5 py-10 sm:px-8 lg:px-12 lg:py-14',
+            i % 2 === 0 && 'sm:border-r',
+          ]}
+          data-reveal
+          style={`--step: ${i}`}
+        >
+          <p class="flex items-center justify-between gap-4">
+            <span class="eyebrow text-zinc-600">{String(i + 1).padStart(2, '0')}</span>
+            <code class="truncate font-mono text-xs text-zinc-500">{c.endpoint}</code>
+          </p>
+
+          <p class="mt-10 font-display text-5xl font-semibold tracking-[-0.04em] text-zinc-50 md:text-6xl">
+            {c.verbo}
+            <span class="text-brand">.</span>
+          </p>
+          <p class="mt-3 text-lg font-medium text-zinc-200">{c.titulo}</p>
+          <p class="mt-3 max-w-md text-pretty text-sm leading-relaxed text-zinc-400">{c.detalle}</p>
+
+          <p class="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 pt-8 text-sm">
+            <span class="chip-lime px-1.5 py-0.5 font-mono text-xs font-semibold">{c.dato}</span>
+            <span class="text-zinc-500">{c.pie}</span>
+          </p>
+        </li>
+      ))
+    }
+  </ul>
+
+  {/* La advertencia, a lo ancho y en voz alta: el sitio se vende diciendo que la
+      creación es lo más desigual. */}
+  <p
+    class="flex flex-col gap-3 border-t border-line px-5 py-6 text-sm leading-relaxed text-zinc-500 sm:flex-row sm:items-baseline sm:gap-8 sm:px-8 lg:px-12"
+    data-reveal
+  >
+    <span class="eyebrow shrink-0 text-[var(--color-partial)]">Nota</span>
+    <span class="max-w-3xl text-pretty">
+      La creación es lo más nuevo y por eso lo más desigual: {METRICS.carriersShipping} de los{' '}
+      {PUBLISHED_CARRIERS.length} couriers la tienen, y cada uno con su propio nivel de
+      evidencia. Está todo abajo, sin maquillaje.
+    </span>
+  </p>
+</section>

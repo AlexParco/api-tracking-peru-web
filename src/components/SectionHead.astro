@@ -1,0 +1,51 @@
+---
+/* La cabecera de casillero.
+ *
+ * Todas las secciones de la portada abren igual, como los campos numerados de
+ * una guía: número en caja de tinta, rótulo, regla hasta el borde; debajo, el
+ * titular grande a la izquierda y la bajada abajo a la derecha.
+ *
+ * Es un componente y no una tira de clases repetida porque siete secciones con
+ * la misma cabecera escrita a mano son siete que se desincronizan.
+ */
+interface Props {
+  /** «01», «02»… El orden en la página. */
+  n: string
+  /** El rótulo corto, en mono mayúscula. */
+  kicker: string
+  title: string
+}
+
+const { n, kicker, title } = Astro.props
+const hasLead = Astro.slots.has('default')
+---
+
+<header class="grid gap-x-10 gap-y-6 px-5 sm:px-8 lg:grid-cols-12 lg:px-12">
+  <p class="eyebrow flex items-center gap-3 text-zinc-500 lg:col-span-12" data-reveal>
+    <span class="inline-grid h-6 min-w-8 place-items-center bg-zinc-50 px-1.5 font-semibold text-ink tabular-nums">
+      {n}
+    </span>
+    <span>{kicker}</span>
+    <span class="h-px flex-1 bg-line" aria-hidden="true"></span>
+  </p>
+
+  <h2
+    class="text-balance font-display text-[clamp(2rem,4.4vw,3.6rem)] font-semibold leading-[1.02] tracking-[-0.035em] text-zinc-50 lg:col-span-7"
+    data-reveal
+    style="--step: 1"
+  >
+    {title}
+  </h2>
+
+  {
+    hasLead && (
+      <div
+        class="max-w-xl text-pretty leading-relaxed text-zinc-400 lg:col-span-5 lg:self-end"
+        data-reveal
+        style="--step: 2"
+      >
+        <slot />
+      </div>
+    )
+  }
+</header>

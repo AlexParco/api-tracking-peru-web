@@ -110,7 +110,16 @@ const TURNSTILE_SITE_KEY = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || ''
     )
   }
 
-  <div class="mt-5 flex flex-wrap items-center gap-3">
+  {/* El botón ocupa el ancho del formulario y la letra chica va DEBAJO.
+
+      Antes los dos compartían una fila `flex-wrap`: en cuanto la columna se
+      angostaba —que es casi siempre, porque este formulario vive en una tarjeta
+      de media página— el texto bajaba y el botón quedaba como un rectángulo
+      chico arrinconado a la izquierda, sin relación con los dos campos de ancho
+      completo que tiene encima. Un formulario de dos campos tiene UNA acción:
+      que ocupe el ancho de los campos la señala sin que haya que buscarla, y de
+      paso agranda el blanco del clic en móvil. */}
+  <div class="mt-5">
     {/* Sale DESHABILITADO y lo habilita el script.
         Sin `action`, un submit sin JavaScript se iría por GET a la misma URL y
         dejaría el correo del visitante en la barra de direcciones y en el
@@ -120,11 +129,12 @@ const TURNSTILE_SITE_KEY = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || ''
     <button
       type="submit"
       disabled
-      class="btn rounded-lg bg-brand px-5 py-2.5 font-medium text-ink hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+      class="btn btn-primary w-full rounded-lg px-5 py-3 text-center font-medium disabled:cursor-not-allowed disabled:opacity-60"
     >
       Crear mi key gratis
     </button>
-    <p class="text-sm text-zinc-500">
+    {/* Centrada bajo el botón: es su pie, no una columna aparte. */}
+    <p class="mt-2.5 text-center text-sm text-zinc-500">
       {FREE.webhooks} webhooks · sin tarjeta · no vence
     </p>
   </div>

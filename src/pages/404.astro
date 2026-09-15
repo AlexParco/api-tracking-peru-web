@@ -28,7 +28,7 @@ const description = 'La dirección que abriste no corresponde a ninguna página 
 <Base title={title} description={description}>
   <Nav />
 
-  <main id="contenido">
+  <main id="contenido" class="mx-auto max-w-7xl border-x border-line bg-ink">
     <div class="mx-auto max-w-2xl px-6 py-24">
       <p class="font-mono text-xs text-zinc-600">404</p>
 
@@ -42,12 +42,12 @@ const description = 'La dirección que abriste no corresponde a ninguna página 
       </p>
 
       <div class="mt-8 flex flex-wrap gap-3">
-        <a href="/" class="btn rounded-lg bg-brand px-5 py-2.5 font-medium text-ink hover:bg-white">
+        <a href="/" class="btn btn-primary rounded-lg px-5 py-2.5 font-medium">
           Ir al inicio
         </a>
         <a
           href="/docs"
-          class="btn rounded-lg border border-line px-5 py-2.5 font-medium text-zinc-300 hover:border-zinc-600 hover:text-zinc-100"
+          class="btn btn-secondary rounded-lg px-5 py-2.5 font-medium"
         >
           Ver la documentación
         </a>

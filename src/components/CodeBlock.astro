@@ -1,13 +1,41 @@
 ---
+import { Code } from 'astro:components'
+import { CODE_THEME } from '../data/code-theme.ts'
+
+/** Un tramo de código con su lenguaje. Ver `Props.code`. */
+export interface Part {
+  code: string
+  /**
+   * Los que usa el sitio. `text` deja el tramo sin resaltar y es lo correcto
+   * para lo que no es código de ningún lenguaje (la fórmula de la firma).
+   * `http` sirve para una petición cruda: resalta el sobre y embebe JSON en el
+   * cuerpo, así que el ejemplo del webhook va entero en un solo tramo.
+   */
+  lang: 'json' | 'bash' | 'http' | 'text'
+}
+
 interface Props {
   /** Etiqueta de la barra de título. Suele ser el comando o la ruta. */
   title?: string
-  code: string
+  /**
+   * Un string, o varios tramos cuando el bloque mezcla lenguajes.
+   *
+   * El caso de los tramos es el de la portada: un `curl` y, debajo, la
+   * respuesta JSON que devuelve. Son DOS gramáticas y ninguna sabe leer a la
+   * otra — pasar todo como `bash` pinta el JSON como si sus claves fueran
+   * argumentos del comando, y pasarlo como `json` rompe con la primera línea.
+   * Se resaltan por separado y se apilan dentro de la misma caja.
+   */
+  code: string | Part[]
+  /** Sólo cuando `code` es un string. */
+  lang?: Part['lang']
   /** Clase de acento del punto de la barra. */
   tone?: 'brand' | 'zinc'
 }
 
-const { title, code, tone = 'zinc' } = Astro.props
+const { title, code, lang = 'json', tone = 'zinc' } = Astro.props
+
+const parts: Part[] = typeof code === 'string' ? [{ code, lang }] : code
 ---
 
 {/* `min-w-0` no es decorativo: sin él este bloque desborda la página entera en
@@ -17,16 +45,16 @@ const { title, code, tone = 'zinc' } = Astro.props
     ANCHO DE CONTENIDO MÍNIMO. Para un `<pre>` eso es su línea más larga sin
     cortar —acá, una URL de curl de ~82 caracteres—, así que el ítem se niega a
     bajar de ~655 px y estira la columna, el contenedor y el `<body>` con él. El
-    `overflow-x-auto` de más abajo no lo salva: scrollea el interior, pero la
-    caja de afuera ya se agrandó.
+    `overflow-x` del `<pre>` no lo salva: scrollea el interior, pero la caja de
+    afuera ya se agrandó.
 
     Medido en Chrome a 390 px: la portada armaba un documento de 635 px, con el
     scroll horizontal que eso implica. Con `min-w-0` el mínimo pasa a cero, la
     columna se ajusta a lo disponible y la línea larga scrollea donde debe. */}
-<div class="min-w-0 overflow-hidden rounded-xl border border-line bg-ink-soft">
+<div class="code-block min-w-0 overflow-hidden rounded-xl">
   {
     title && (
-      <div class="flex items-center gap-2 border-b border-line px-4 py-2.5">
+      <div class="code-block-bar flex items-center gap-2 px-4 py-2.5">
         {/* Este punto NO glyph-pulse, aunque sea del color de marca. Es cromo de
             ventana —dice "aquí empieza un bloque de código"—, no una señal de que
             algo esté vivo. Con un pulse aquí habría once latiendo en la página y
@@ -42,9 +70,104 @@ const { title, code, tone = 'zinc' } = Astro.props
       </div>
     )
   }
-  {/* overflow-x-auto en el contenedor del código y no en la página: una línea
-      larga tiene que scrollear dentro de su caja, nunca mover el body. */}
-  <div class="overflow-x-auto">
-    <pre class="p-4 font-mono text-[13px] leading-relaxed text-zinc-300"><code set:text={code} /></pre>
-  </div>
+  {
+    parts.map((p, i) => (
+      /* `wrap`: las líneas se ENVUELVEN, no scrollean.
+         Antes cada `<pre>` llevaba `overflow-x: auto` y una línea larga —la URL
+         de un `curl`, el `id_format` de Marvisur— dejaba media respuesta fuera
+         de cuadro. Un bloque de código en una landing es para LEERSE de un
+         vistazo; obligar a arrastrar horizontalmente para ver el final de una
+         línea es pedirle trabajo al visitante para algo que sólo tenía que
+         mostrarle la forma del JSON.
+
+         Lo que se pierde es la indentación exacta de una línea que envuelve, y
+         se compensa con `--code-indent`: la continuación se sangra, así que se
+         sigue viendo dónde empieza y dónde sigue.
+
+         El separador aparece sólo entre tramos, y es la misma línea que usa la
+         barra de título: el bloque se sigue leyendo como una sola ventana. */
+      <div class:list={[i > 0 && 'code-block-sep']}>
+        {/* El resaltado ocurre acá, en tiempo de build — ver `code-theme.ts`. */}
+        <Code code={p.code} lang={p.lang} theme={CODE_THEME} wrap={true} />
+      </div>
+    ))
+  }
 </div>
+
+<style>
+  /* Shiki emite su propio `<pre class="astro-code">` con el fondo y el color de
+     base en línea, y sin tipografía ni espaciado: eso es del sitio, no del
+     resaltador. Se le pone acá lo mismo que tenía el `<pre>` que había antes,
+     así el cambio de highlighter no mueve un píxel de la caja.
+
+     `:global` porque el nodo lo genera el componente `<Code />` y no lleva el
+     atributo de ámbito de este archivo. Queda acotado por `.code-block`. */
+  /* El bloque de código es OSCURO en los dos temas, y no es pereza de no hacer
+     un tema claro para Shiki: un bloque de código es una pieza con identidad
+     propia —una terminal— y la convención de que sea oscuro sobre una página
+     clara está tan establecida que romperla confunde más de lo que integra.
+
+     Lo que sí hacía falta era que la CAJA acompañe. Antes el contenedor usaba
+     `bg-ink-soft` y `border-line`, que con el tema claro dejaban una barra de
+     título casi blanca encima de un interior negro: se leía como si faltara
+     pintar. Ahora la caja entera es de la pieza, no del tema. */
+  .code-block {
+    background: #0e1014;
+    border: 1px solid #1c1f26;
+    --scroll-bg: #0e1014;
+
+    /* La caja es oscura SIEMPRE, así que adentro rigen los grises del tema
+       oscuro aunque la página esté en claro. Sin esto, el título de la barra
+       («GET /v1/tracking», un `text-zinc-500`) quedaba gris OSCURO sobre negro
+       en el tema claro: invisible.
+
+       Se redefinen las variables y no las clases porque las clases son las
+       mismas —`text-zinc-500` sigue significando «etiqueta»—; lo que cambia es
+       sobre qué fondo vive. Es el mismo mecanismo que usan los dos temas, sólo
+       que acotado a esta caja. */
+    --z100: #f4f4f5;
+    --z300: #d4d4d8;
+    --z400: #a1a1aa;
+    --z500: #8c8c97;
+    --z600: #7c7c87;
+    --z700: #3f3f46;
+    --line: #1c1f26;
+  }
+
+  .code-block-bar {
+    border-bottom: 1px solid #1c1f26;
+  }
+
+  .code-block-sep {
+    border-top: 1px solid #1c1f26;
+  }
+
+  /* SIN sangría de continuación, y quedó documentado por qué se intentó dos
+     veces y se descartó:
+
+     1. `text-indent` negativo en el `<pre>` sólo afecta a su PRIMERA línea, así
+        que sangraba al revés (la continuación más a la izquierda que su línea).
+     2. Moverlo a `.line` con `display: block` sí sangraba bien, pero Shiki
+        separa los spans de línea con un `\n` literal y con los spans en bloque
+        ese salto pasa a contar como línea propia: el código salía a doble
+        espacio.
+
+     Una línea que envuelve arranca al margen, como en cualquier editor con
+     wrap. Se pierde un poco de estructura visual en las tres o cuatro líneas
+     largas que hay; se gana no tener que arrastrar la caja para leer el final
+     de una respuesta, que es lo que se estaba arreglando. */
+
+  .code-block :global(pre.astro-code) {
+    margin: 0;
+    padding: 1rem;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.625;
+
+
+    /* El fondo lo pone Shiki en línea con el valor del tema (`editor.background`
+       = --color-ink-soft). No se repite acá para que haya UN solo lugar donde
+       cambiarlo. La sombra de scroll toma su `--scroll-bg` de `.code-block`,
+       que lo fija al mismo oscuro en los dos temas. */
+  }
+</style>

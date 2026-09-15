@@ -1,119 +1,57 @@
 ---
-/* El buscador de agencies.
+/* El buscador de agencias.
  *
- * Tiene DOS modos y el mismo código para los dos:
+ * Dos modos con el mismo código: sin `PUBLIC_API_URL` filtra en el navegador
+ * sobre datos de ejemplo que van en el HTML; con él consulta `GET /v1/agencies`
+ * de verdad (producción desde el 2026-08-06), SIN key: el catálogo es público y
+ * una key en una página pública está publicada.
  *
- * - Sin `PUBLIC_API_URL` → filtra en el navegador sobre los datos de ejemplo
- *   que van en el HTML. Es donde estamos hoy.
- * - Con `PUBLIC_API_URL` → consulta `GET /v1/agencies` de verdad. Es el modo
- *   que corre en producción desde el 2026-08-06.
- *
- * Pasar de uno a otro es una variable de entorno, no una reescritura.
- *
- * SIN JAVASCRIPT LA SECCIÓN SIGUE SIRVIENDO. La list se renderiza entera en el
- * HTML y el script solo la filtra escondiendo `<li>`. Es la regla 2 de
- * `global.css` aplicada a algo que normalmente la rompe: un buscador que sin JS
- * es una caja vacía no muestra nada, este muestra el catálogo completo.
- *
- * ── Sobre la autenticación ────────────────────────────────────────────────
- * El componente consulta SIN key, a propósito. Una key en una página pública
- * está publicada: viaja en el bundle, se lee con Ctrl+U y cualquiera la usa con
- * tu cupo. No hay forma de esconderla en el navegador.
- *
- * Las tres condiciones para el modo vivo ya se cumplen (2026-08-06):
- *   1. lectura ANÓNIMA de `/v1/agencies`, con cupo por IP  → hecho;
- *   2. CORS abierto al origen de la landing                → hecho;
- *   3. el API desplegado en un host público                → hecho.
- *
- * El catálogo se lee sin API key a propósito: es información pública —dónde
- * quedan las agencias— y pedir credencial para eso obligaría a publicar una en
- * el HTML, que es peor. El resto de `/v1` sigue exigiendo `X-API-Key`.
- *
- * Los datos de ejemplo NO se borraron: siguen sirviendo de modo de respaldo si
- * algún día conviene compilar sin apuntar al API.
+ * Sobre la consulta se muestra la URL que se está pidiendo, actualizada en cada
+ * tecla. No es adorno: es la línea que el visitante va a escribir en su código.
  */
-
+import SectionHead from './SectionHead.astro'
 import { MOCK_AGENCIES } from '../data/agencies-mock.ts'
+import { PUBLISHED_CARRIERS } from '../data/api.ts'
 
-/* Olva mete la dirección DENTRO del nombre de la agencia: «ACOBAMBA (HCV) - AV
-   MANUEL CANDAMO NRO 620 CERCADO ACOBAMBA», y su campo `address` es esa misma
-   dirección. La tarjeta la mostraba dos veces seguidas.
-   No se corrige el dato ajeno ni se recorta el nombre —los dos se muestran tal
-   como los publica el courier—: sólo se omite la línea que repetiría algo que ya
-   está a la vista. Se compara sin distinguir mayúsculas ni espacios de más,
-   porque la repetición no siempre es carácter por carácter.
+/* Una demostración de que el buscador consulta en vivo, no un listado. */
+const EN_PORTADA = 6
 
-   NO lleva `export`. Astro sube los `export` del frontmatter al ámbito del
-   módulo, mientras que los `const` normales viven dentro de la función de
-   render — así que un ayudante exportado no ve a uno que no lo está, y esto
-   reventaba con «norm is not defined» al renderizar. Sin `export` las dos
-   quedan en el mismo ámbito, que además es lo correcto: sólo las usa este
-   componente. */
+/* Olva mete la dirección dentro del nombre: no se repite la línea. Sin `export`
+   a propósito (Astro sube los export al ámbito del módulo y dejan de verse). */
 const norm = (x: string) => (x ?? '').toUpperCase().replace(/\s+/g, ' ').trim()
 const repeats = (name: string, address: string) => {
   const a = norm(address)
   return a.length > 0 && norm(name).includes(a)
 }
-import { PUBLISHED_CARRIERS } from '../data/api.ts'
 
 const API = import.meta.env.PUBLIC_API_URL ?? ''
 const isLive = API !== ''
 
-// Solo los carriers que de verdad publican catálogo. Ofrecer un filtro por un
-// courier que no tiene agencies es prometer un resultado vacío.
 const withCatalog = PUBLISHED_CARRIERS.filter((c) => c.agencies.status === 'ok')
-
 const nameOf = new Map(PUBLISHED_CARRIERS.map((c) => [c.id, c.name]))
 
-/**
- * Todo lo que el filtro mira, junto y en minúsculas, calculado en build.
- *
- * El carrier va adentro —su id Y su nombre legible— porque se muestra en cada
- * card: escribir «olva» y no obtener nada mientras la palabra está en
- * pantalla se lee como que el buscador está roto, no como que buscaba otra cosa.
- * Lo que se ve, se busca.
- */
+/** Lo que se ve, se busca: el carrier va adentro del índice con id y nombre. */
 const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
-  [
-    a.carrier,
-    nameOf.get(a.carrier),
-    a.name,
-    a.location.address,
-    a.location.district,
-    a.location.province,
-    a.location.department,
-  ]
+  [a.carrier, nameOf.get(a.carrier), a.name, a.location.address, a.location.district, a.location.province, a.location.department]
     .filter(Boolean)
     .join(' ')
     .toLowerCase()
+
+const cardClass = 'flex min-w-0 flex-col border-b border-r border-line p-5'
 ---
 
-<section id="agencias" class="scroll-mt-20 border-t border-line py-24">
-  <div class="mx-auto max-w-6xl px-6">
-    <h2
-      class="max-w-2xl text-balance font-display text-3xl font-semibold tracking-tight text-zinc-50 md:text-4xl"
-      data-reveal
-    >
-      Busca una agencia
-    </h2>
-    <p
-      class="mt-4 max-w-2xl text-pretty leading-relaxed text-zinc-400"
-      data-reveal
-      style="--step: 1"
-    >
-      El mismo <code class="font-mono text-sm text-zinc-300">GET /v1/agencies</code> que
-      usarías tú, contra los catálogos de los couriers que publican uno. Cada resultado
-      dice de dónde salió su ubigeo — y cuándo no lo pudimos resolver.
-    </p>
+<section id="agencias" class="scroll-mt-14 border-t border-line pt-20 md:pt-28">
+  <SectionHead n="04" kicker="Agencias" title="Busca una agencia">
+    El mismo <code class="font-mono text-sm text-zinc-200">GET /v1/agencies</code> que
+    usarías tú, contra los catálogos de los couriers que publican uno. Cada resultado
+    dice de dónde salió su ubigeo — y cuándo no lo pudimos resolver.
+  </SectionHead>
 
+  <div class="mt-16 border-t border-line px-5 py-10 sm:px-8 lg:px-12">
     {
       !isLive && (
-        <p
-          class="mt-6 flex max-w-2xl flex-wrap items-baseline gap-x-2 rounded-lg border border-partial/25 bg-partial/[0.04] px-4 py-3 text-sm leading-relaxed text-zinc-400"
-          data-reveal
-          style="--step: 2"
-        >
-          <span class="font-mono text-xs text-[var(--color-partial)]">datos de ejemplo</span>
+        <p class="mb-6 flex flex-wrap items-baseline gap-x-3 border border-[var(--color-partial)] px-4 py-3 text-sm leading-relaxed text-zinc-400">
+          <span class="eyebrow text-[var(--color-partial)]">datos de ejemplo</span>
           <span class="text-pretty">
             El API todavía no está desplegado, así que estas {MOCK_AGENCIES.length} agencias son ficticias y
             están para probar el buscador. No son el catálogo.
@@ -122,178 +60,128 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
       )
     }
 
-    <div class="mt-8 flex flex-col gap-3 sm:flex-row" data-reveal style="--step: 3">
-      <div class="flex-1">
-        <label for="agencias-q" class="sr-only">Buscar por distrito, dirección o nombre</label>
+    <div class="grid border border-zinc-50 sm:grid-cols-[minmax(0,1fr)_15rem]" data-reveal>
+      <div class="flex min-w-0 items-center">
+        <label for="agencias-q" class="eyebrow shrink-0 self-stretch border-r border-line px-4 py-4 text-zinc-500">
+          <span class="sr-only">Buscar por distrito, dirección o nombre</span>
+          <span aria-hidden="true">q=</span>
+        </label>
         <input
           id="agencias-q"
           type="search"
           autocomplete="off"
           placeholder="Distrito, dirección o nombre…"
           data-query
-          class="w-full rounded-lg border border-line bg-ink-soft px-4 py-2.5 text-zinc-100 placeholder:text-zinc-600 focus:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/30"
+          class="min-w-0 flex-1 bg-transparent px-4 py-4 text-lg text-zinc-50 placeholder:text-zinc-600 focus:outline-none"
         />
       </div>
-      <div>
-        {/* Un menú propio y no un `<select>`. El desplegable nativo lo dibuja el
-            sistema operativo: ignora el tema de la página, no acepta CSS y en
-            macOS aparece con fondo claro sobre un sitio oscuro.
 
-            El precio de reemplazarlo es tener que reimplementar el teclado, así
-            que está entero: flechas, Inicio/Fin, Enter, Espacio y Escape, con
-            `combobox`/`listbox` para que un lector de pantalla lo anuncie como
-            lo que es. El valor vive en un input oculto, así que el filtro de
-            abajo sigue leyendo `.value` y escuchando `change` sin enterarse. */}
-        <div class="relative w-full sm:w-56" data-dropdown>
-          <span id="agencias-carrier-label" class="sr-only">Filtrar por courier</span>
-          <input type="hidden" data-carrier value="" />
+      {/* Menú propio y no `<select>`: el nativo ignora el tema y lo pinta el
+          sistema operativo. El teclado está entero y el valor vive en un input
+          oculto, así que el filtro sigue escuchando `change`. */}
+      <div class="relative border-t border-zinc-50 sm:border-l sm:border-t-0" data-dropdown>
+        <span id="agencias-carrier-label" class="sr-only">Filtrar por courier</span>
+        <input type="hidden" data-carrier value="" />
 
-          <button
-            type="button"
-            id="agencias-carrier"
-            role="combobox"
-            aria-haspopup="listbox"
-            aria-expanded="false"
-            aria-controls="agencias-carrier-menu"
-            aria-labelledby="agencias-carrier-label agencias-carrier"
-            data-dropdown-button
-            class="flex w-full items-center justify-between gap-2 rounded-lg border border-line bg-ink-soft px-4 py-2.5 text-left text-zinc-100 transition-colors hover:border-zinc-600 focus:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/30"
-          >
+        <button
+          type="button"
+          id="agencias-carrier"
+          role="combobox"
+          aria-haspopup="listbox"
+          aria-expanded="false"
+          aria-controls="agencias-carrier-menu"
+          aria-labelledby="agencias-carrier-label agencias-carrier"
+          data-dropdown-button
+          class="flex h-full w-full items-center justify-between gap-2 px-4 py-4 text-left text-zinc-100 transition-colors hover:bg-[var(--hover-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/60"
+        >
+          <span class="flex min-w-0 items-baseline gap-2">
+            <span class="eyebrow text-zinc-500" aria-hidden="true">carrier=</span>
             <span class="truncate" data-dropdown-label>Todos los couriers</span>
-            <svg
-              class="size-4 shrink-0 text-zinc-500 transition-transform duration-200"
-              data-dropdown-chevron
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-              aria-hidden="true"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-            </svg>
-          </button>
+          </span>
+          <svg class="size-4 shrink-0 text-zinc-500 transition-transform duration-200" data-dropdown-chevron fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="square" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+          </svg>
+        </button>
 
-          <ul
-            id="agencias-carrier-menu"
-            role="listbox"
-            aria-labelledby="agencias-carrier-label"
-            tabindex="-1"
-            data-dropdown-menu
-            hidden
-            class="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-line bg-ink-soft p-1.5 shadow-2xl shadow-black/60"
-          >
-            {[{ id: '', name: 'Todos los couriers' }, ...withCatalog].map((c, i) => (
-              <li
-                role="option"
-                aria-selected={i === 0 ? 'true' : 'false'}
-                data-value={c.id}
-                data-dropdown-option
-                class="flex cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-zinc-300"
-              >
-                <span class="truncate">{c.name}</span>
-                <svg
-                  class="size-4 shrink-0 text-brand opacity-0"
-                  data-dropdown-check
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  stroke-width="2.5"
-                  aria-hidden="true"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                </svg>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <ul
+          id="agencias-carrier-menu"
+          role="listbox"
+          aria-labelledby="agencias-carrier-label"
+          tabindex="-1"
+          data-dropdown-menu
+          hidden
+          class="absolute -left-px -right-px top-full z-30 border border-zinc-50 bg-ink shadow-[8px_8px_0_0_var(--color-line)]"
+        >
+          {[{ id: '', name: 'Todos los couriers' }, ...withCatalog].map((c, i) => (
+            <li
+              role="option"
+              aria-selected={i === 0 ? 'true' : 'false'}
+              data-value={c.id}
+              data-dropdown-option
+              class="flex cursor-pointer items-center justify-between gap-2 border-b border-line px-4 py-2.5 text-sm text-zinc-300 last:border-b-0"
+            >
+              <span class="truncate">{c.name}</span>
+              <svg class="size-4 shrink-0 text-brand opacity-0" data-dropdown-check fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                <path stroke-linecap="square" d="m4.5 12.75 6 6 9-13.5" />
+              </svg>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
 
-    {/* `polite` y no `assertive`: el conteo cambia en cada tecla y un lector de
-        pantalla que interrumpa en cada una vuelve la caja inusable. */}
-    <p class="mt-4 font-mono text-xs text-zinc-600" data-status aria-live="polite">
-      {isLive ? 'consultando…' : `${MOCK_AGENCIES.length} agencias`}
-    </p>
+    <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-x border-b border-line px-4 py-2.5">
+      <code class="min-w-0 break-all font-mono text-xs text-zinc-500">
+        <span class="font-semibold text-[var(--color-live)]">GET</span>
+        <span data-url>/v1/agencies?per_page={EN_PORTADA}</span>
+      </code>
+      {/* `polite`: el conteo cambia en cada tecla y no debe interrumpir. */}
+      <p class="eyebrow text-zinc-600" data-status aria-live="polite">
+        {isLive ? 'consultando…' : `${MOCK_AGENCIES.length} agencias`}
+      </p>
+    </div>
 
-    {/* En vivo NO se sirven los datos de ejemplo. Si se sirvieran, el banner que
-        los delata no está —está atado a `!isLive`— y cualquier fallo del API los
-        dejaría a la vista presentados como el catálogo. Un buscador vacío que
-        dice por qué está vacío es honesto; uno lleno de agencias ficticias sin
-        avisar, no. */}
-    {/* Cada card lleva su borde, en vez del truco de `gap-px` sobre un
-        contenedor teñido. Ese truco dibuja los separadores gratis, pero cuando
-        la cantidad de resultados es impar la celda que sobra queda pintada con
-        el color del contenedor y se ve como una tarjeta vacía. En una grilla
-        fija da igual; en una que cambia con cada tecla, no. */}
-    {/* Dos reglas, y las dos son para que la grilla tenga un ritmo único.
-
-        Sin `items-start`: con él cada tarjeta se quedaba en su alto natural y,
-        como la fila mide lo que la más alta, las cortas dejaban un escalón
-        debajo. Con datos reales la diferencia dentro de una misma fila llegaba
-        a 66 px —hay nombres de una línea y otros de tres—. El valor por
-        omisión, `stretch`, las iguala.
-
-        Y adentro los márgenes son FIJOS, no `mt-auto`: pegar el pie al fondo
-        iguala los bordes pero desiguala el interior, porque el hueco pasa a
-        valer lo que le sobre a cada tarjeta. Con márgenes fijos, la separación
-        entre líneas es idéntica en todas y lo que sobra queda abajo. */}
-    <ul class="mt-4 grid gap-3 sm:grid-cols-2" data-list>
+    {/* Borde por tarjeta (derecha y abajo) y la lista pone arriba e izquierda:
+        con resultados impares el hueco queda abierto en vez de pintado como una
+        tarjeta vacía. En vivo NO se sirven los ejemplos. */}
+    <ul class="mt-6 grid border-l border-t border-line sm:grid-cols-2 lg:grid-cols-3" data-list>
       {
-        (isLive ? [] : MOCK_AGENCIES).map((a) => (
-          <li
-            class="flex flex-col rounded-xl border border-line bg-ink-soft p-4"
-            data-item
-            data-carrier-id={a.carrier}
-            data-search={indexOf(a)}
-          >
-            <p class="flex flex-wrap items-baseline gap-x-2">
-              <span class="font-mono text-xs text-brand/80">{a.carrier}</span>
-              <span class="line-clamp-2 font-medium text-zinc-100">{a.name}</span>
+        (isLive ? [] : MOCK_AGENCIES.slice(0, EN_PORTADA)).map((a) => (
+          <li class={cardClass} data-item data-carrier-id={a.carrier} data-search={indexOf(a)}>
+            <p class="flex items-center justify-between gap-3">
+              <span class="eyebrow border border-line px-1.5 py-0.5 text-zinc-300">{a.carrier}</span>
+              {a.location.ubigeo ? (
+                <span class="font-mono text-[11px] text-zinc-500">
+                  {a.location.ubigeo}<span class="text-zinc-600"> · {a.ubigeo_source}</span>
+                </span>
+              ) : (
+                <span class="font-mono text-[11px] text-[var(--color-partial)]">sin ubigeo</span>
+              )}
             </p>
+            <p class="mt-4 line-clamp-2 font-medium text-zinc-50">{a.name}</p>
             {!repeats(a.name, a.location.address) && (
               <p class="mt-1 text-sm leading-relaxed text-zinc-500">{a.location.address}</p>
             )}
             {(() => {
-              const where = [a.location.district, a.location.province, a.location.department]
-                .filter(Boolean)
-                .join(' · ')
-              return where ? <p class="mt-1.5 text-sm text-zinc-600">{where}</p> : null
+              const where = [a.location.district, a.location.province, a.location.department].filter(Boolean).join(' · ')
+              return where ? <p class="eyebrow mt-auto pt-4 text-zinc-600">{where}</p> : null
             })()}
-
-            {/* El ubigeo y su procedencia van juntos siempre. El código solo no
-                dice nada: `carrier` lo declaró el courier, `matched` lo
-                resolvimos por texto y puede estar mal. */}
-            <p class="mt-2 font-mono text-xs">
-              {a.location.ubigeo ? (
-                <span class="text-zinc-500">
-                  ubigeo {a.location.ubigeo}
-                  <span class="text-zinc-700"> · {a.ubigeo_source}</span>
-                </span>
-              ) : (
-                <span class="text-[var(--color-partial)]">sin ubigeo · ubicación sin resolver</span>
-              )}
-            </p>
           </li>
         ))
       }
     </ul>
 
-    {/* Se sirve oculto y el script lo muestra: es el único estado que no puede
-        estar en el HTML inicial, porque al cargar nunca hay «cero resultados». */}
     <p class="mt-6 text-sm leading-relaxed text-zinc-500" data-empty hidden>
       Ninguna agencia coincide. Prueba con el distrito solo, o quita el filtro de courier.
     </p>
     <p class="mt-6 text-sm leading-relaxed text-[var(--color-partial)]" data-error hidden></p>
 
-    {/* Un buscador es lo único de esta página que no puede funcionar sin JS. En
-        vez de dejar una caja muerta, se ofrece la consulta que hace el buscador
-        —que además es la que el visitante va a escribir en su código. */}
     {
       isLive && (
         <noscript>
           <p class="mt-6 max-w-2xl text-pretty text-sm leading-relaxed text-zinc-500">
             El buscador necesita JavaScript. La misma consulta, sin él:
-            <code class="mt-2 block overflow-x-auto rounded-lg border border-line bg-ink-soft p-3 font-mono text-xs text-zinc-300">
+            <code class="scroll-shadow mt-2 block overflow-x-auto border border-line bg-ink-soft p-3 font-mono text-xs text-zinc-300" style="--scroll-bg: var(--color-ink-soft)">
               curl "{API}/v1/agencies?carrier=olva&q=miraflores"
             </code>
           </p>
@@ -303,22 +191,17 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
   </div>
 </section>
 
-<script is:inline define:vars={{ API }}>
+<script is:inline define:vars={{ API, EN_PORTADA, cardClass }}>
   ;(() => {
-    // `'agencias'` con A: es el id del `<section>`, que es un ancla de la URL y
-    // parte de la superficie pública — no un identificador de código. El refactor
-    // a inglés lo tradujo acá y dejó de coincidir con el HTML, así que `seccion`
-    // daba null y el `return` de abajo apagaba TODA la sección: el buscador
-    // también, no solo el desplegable.
+    // `agencias` con A: es el id del `<section>`, parte de la URL pública.
     const seccion = document.getElementById('agencias')
     if (!seccion) return
 
     const q = seccion.querySelector('[data-query]')
     const carrier = seccion.querySelector('[data-carrier]')
+    const urlEl = seccion.querySelector('[data-url]')
 
     // ── El desplegable propio ──
-    // Escribe en el input oculto y dispara `change`, así que el filtro de abajo
-    // no sabe que dejó de existir un `<select>`.
     ;(() => {
       const root = seccion.querySelector('[data-dropdown]')
       if (!root) return
@@ -334,15 +217,11 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
         options.forEach((o, i) => {
           const selected = o.getAttribute('aria-selected') === 'true'
           o.querySelector('[data-dropdown-check]').classList.toggle('opacity-0', !selected)
-          // El resaltado sigue al teclado, no al ratón: si sólo respondiera al
-          // hover, al bajar con las flechas no se vería dónde estás parado.
-          o.classList.toggle('bg-white/[0.06]', i === active)
-          o.classList.toggle('text-zinc-100', i === active || selected)
+          o.classList.toggle('bg-[var(--hover-soft)]', i === active)
+          o.classList.toggle('text-zinc-50', i === active || selected)
           if (i === active) o.id = 'agencias-carrier-activa'
           else o.removeAttribute('id')
         })
-        // Se quita en vez de dejarlo vacío: un `aria-activedescendant=""` apunta
-        // a un elemento que no existe y algunos lectores lo reportan como error.
         if (open) button.setAttribute('aria-activedescendant', 'agencias-carrier-activa')
         else button.removeAttribute('aria-activedescendant')
       }
@@ -371,7 +250,6 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
         carrier.value = options[i].dataset.value
         active = i
         hide(true)
-        // El filtro escucha `change`, igual que con el `<select>`.
         carrier.dispatchEvent(new Event('change'))
       }
 
@@ -382,7 +260,6 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
       }
 
       button.addEventListener('click', () => (open ? hide(false) : show()))
-
       button.addEventListener('keydown', (e) => {
         if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) {
           e.preventDefault()
@@ -406,7 +283,6 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
           paint()
         }
       })
-
       options.forEach((o, i) => {
         o.addEventListener('click', () => choose(i))
         o.addEventListener('mousemove', () => {
@@ -416,19 +292,12 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
           }
         })
       })
-
-      // Un clic afuera cierra. Se escucha en captura para llegar antes de que
-      // otro manejador detenga la propagación.
-      document.addEventListener(
-        'pointerdown',
-        (e) => {
-          if (open && !root.contains(e.target)) hide(false)
-        },
-        true,
-      )
-
+      document.addEventListener('pointerdown', (e) => {
+        if (open && !root.contains(e.target)) hide(false)
+      }, true)
       paint()
     })()
+
     const list = seccion.querySelector('[data-list]')
     const estado = seccion.querySelector('[data-status]')
     const empty = seccion.querySelector('[data-empty]')
@@ -437,35 +306,37 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
 
     const rows = [...list.querySelectorAll('[data-item]')]
 
-    // `total` es cuántas hay; `mostradas` cuántas se ven. En vivo se pide una
-    // página de 20 sobre catálogos de cientos, así que decir solo el total sería
-    // anunciar 417 agencies con veinte en pantalla.
+    // La URL que se pide, a la vista. Se arma igual en los dos modos.
+    const buildUrl = () => {
+      const params = new URLSearchParams()
+      if (q.value.trim()) params.set('q', q.value.trim())
+      if (carrier.value) params.set('carrier', carrier.value)
+      params.set('per_page', String(EN_PORTADA))
+      if (urlEl) urlEl.textContent = `/v1/agencies?${params}`
+      return params
+    }
+
     const count = (mostradas, total = mostradas) => {
       const n = total === 1 ? '1 agencia' : `${total} agencias`
       estado.textContent = total > mostradas ? `${n} · mostrando ${mostradas}` : n
       empty.toggleAttribute('hidden', mostradas !== 0)
     }
 
-    // ── Modo ejemplo: filtra las rows que ya están en el HTML ──
     const filterLocal = () => {
+      buildUrl()
       const query = q.value.trim().toLowerCase()
       const cual = carrier.value
       let matches = 0
       for (const row of rows) {
-        const pasa =
-          (!cual || row.dataset.carrierId === cual) &&
-          (!query || row.dataset.search.includes(query))
+        const pasa = (!cual || row.dataset.carrierId === cual) && (!query || row.dataset.search.includes(query))
         row.toggleAttribute('hidden', !pasa)
         if (pasa) matches++
       }
       count(matches)
     }
 
-    // ── Modo vivo: consulta el API ──
     let inFlight = null
 
-    // Misma regla que en el render estático: no repetir la dirección cuando ya
-    // viene dentro del nombre (pasa con todo el catálogo de Olva).
     const norm = (x) => String(x ?? '').toUpperCase().replace(/\s+/g, ' ').trim()
     const repite = (name, address) => {
       const a = norm(address)
@@ -473,107 +344,64 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
     }
 
     const escapeHtml = (s) =>
-      String(s ?? '').replace(
-        /[&<>"']/g,
-        (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
-      )
+      String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
 
+    // Nombre y dirección vienen del courier: texto ajeno, siempre escapado.
     const paint = (agencies) => {
-      // Se arma con `escapeHtml()` en cada campo y no con `textContent` por nodo
-      // porque el nombre y la dirección vienen del courier, no de nosotros: son
-      // texto ajeno entrando al DOM y hay exactamente una forma de que eso sea
-      // seguro.
       list.innerHTML = agencies
         .map((a) => {
           const l = a.location ?? {}
           const where = [l.district, l.province, l.department].filter(Boolean).join(' · ')
           const ubigeo = l.ubigeo
-            ? `<span class="text-zinc-500">ubigeo ${escapeHtml(l.ubigeo)}<span class="text-zinc-700"> · ${escapeHtml(a.ubigeo_source)}</span></span>`
-            : '<span class="text-[var(--color-partial)]">sin ubigeo · ubicación sin resolver</span>'
-          return `<li class="flex flex-col rounded-xl border border-line bg-ink-soft p-4">
-            <p class="flex flex-wrap items-baseline gap-x-2">
-              <span class="font-mono text-xs text-brand/80">${escapeHtml(a.carrier)}</span>
-              <span class="line-clamp-2 font-medium text-zinc-100">${escapeHtml(a.name)}</span>
+            ? `<span class="font-mono text-[11px] text-zinc-500">${escapeHtml(l.ubigeo)}<span class="text-zinc-600"> · ${escapeHtml(a.ubigeo_source)}</span></span>`
+            : '<span class="font-mono text-[11px] text-[var(--color-partial)]">sin ubigeo</span>'
+          return `<li class="${cardClass}">
+            <p class="flex items-center justify-between gap-3">
+              <span class="eyebrow border border-line px-1.5 py-0.5 text-zinc-300">${escapeHtml(a.carrier)}</span>
+              ${ubigeo}
             </p>
+            <p class="mt-4 line-clamp-2 font-medium text-zinc-50">${escapeHtml(a.name)}</p>
             ${repite(a.name, l.address) ? '' : `<p class="mt-1 text-sm leading-relaxed text-zinc-500">${escapeHtml(l.address)}</p>`}
-            ${where ? `<p class="mt-1.5 text-sm text-zinc-600">${escapeHtml(where)}</p>` : ''}
-            <p class="mt-2 font-mono text-xs">${ubigeo}</p>
+            ${where ? `<p class="eyebrow mt-auto pt-4 text-zinc-600">${escapeHtml(where)}</p>` : ''}
           </li>`
         })
         .join('')
     }
 
-    /* El esqueleto de carga.
-     *
-     * Reproduce la FORMA de la tarjeta real —chip del courier, nombre,
-     * dirección, pie— y no un rectángulo genérico: así lo que aparece después
-     * ocupa el mismo sitio y la lista no da un salto al llegar los datos.
-     *
-     * `aria-hidden` porque no es contenido: quien usa lector de pantalla se
-     * entera por `aria-busy` en la lista y por el texto del estado, no por
-     * cinco párrafos vacíos.
-     *
-     * Los anchos varían por fila (un patrón fijo, no al azar, para que el
-     * resultado sea el mismo en cada render) porque cinco barras idénticas
-     * repetidas veinte veces se leen como una tabla rota, no como algo que está
-     * por llegar.
-     */
+    /* El esqueleto reproduce la forma de la tarjeta real, así lo que llega
+       después ocupa el mismo sitio y la lista no salta. */
     const anchos = [
-      ['w-14', 'w-32', 'w-full', 'w-2/3', 'w-40'],
-      ['w-12', 'w-40', 'w-5/6', 'w-1/2', 'w-32'],
-      ['w-16', 'w-28', 'w-full', 'w-3/5', 'w-44'],
+      ['w-14', 'w-3/4', 'w-full', 'w-24'],
+      ['w-12', 'w-2/3', 'w-5/6', 'w-28'],
+      ['w-16', 'w-4/5', 'w-3/5', 'w-20'],
     ]
     let mostradoEn = 0
     const skeleton = (n) => {
       mostradoEn = performance.now()
       list.setAttribute('aria-busy', 'true')
       list.innerHTML = Array.from({ length: n }, (_, i) => {
-        const [c, nom, dir, don, pie] = anchos[i % anchos.length]
-        return `<li class="flex flex-col rounded-xl border border-line bg-ink-soft p-4" aria-hidden="true">
-          <p class="flex items-baseline gap-x-2">
-            <span class="skel h-3 ${c} rounded"></span>
-            <span class="skel h-3.5 ${nom} rounded"></span>
-          </p>
-          <p class="mt-2.5 skel h-3 ${dir} rounded"></p>
-          <p class="mt-2.5 skel h-3 ${don} rounded"></p>
-          <p class="mt-3 skel h-3 ${pie} rounded"></p>
+        const [c, nom, dir, pie] = anchos[i % anchos.length]
+        return `<li class="${cardClass}" aria-hidden="true">
+          <p class="flex items-center justify-between"><span class="skel h-4 ${c}"></span><span class="skel h-3 w-16"></span></p>
+          <p class="mt-4 skel h-4 ${nom}"></p>
+          <p class="mt-2.5 skel h-3 ${dir}"></p>
+          <p class="mt-5 skel h-3 ${pie}"></p>
         </li>`
       }).join('')
     }
 
     const query = async () => {
-      // Se cancela la anterior: sin esto, una respuesta lenta de hace tres
-      // teclas puede llegar después de la current y pisar los resultados buenos.
       inFlight?.abort()
       inFlight = new AbortController()
 
-      /* El esqueleto NO se muestra de inmediato.
-       *
-       * La búsqueda ya espera 220 ms a que dejes de escribir, y el API suele
-       * contestar en menos de 150. Pintar el esqueleto al toque haría que en la
-       * mayoría de las consultas parpadee y desaparezca antes de que alcances a
-       * leerlo — más ruido que información. Con este retardo, sólo aparece
-       * cuando la espera de verdad se nota.
-       *
-       * La cantidad es la que hay en pantalla, para que la lista conserve su
-       * alto y nada salte. En la primera carga no hay nada, así que van seis:
-       * suficiente para que se lea como una lista cargando sin llenar la
-       * pantalla de barras grises.
-       *
-       * Hoy el API tarda ~680 ms medidos, o sea que el esqueleto se ve de
-       * verdad. Los dos umbrales están igual porque protegen de cosas
-       * distintas: el retardo, de un API rápido; el mínimo de abajo, de que
-       * aparezca y se vaya antes de que el ojo lo registre. Si algún día la
-       * respuesta baja a 150 ms, esto sigue comportándose bien sin tocarlo. */
+      // El esqueleto espera 140 ms: un API rápido no debe hacerlo parpadear.
       const visibles = list.querySelectorAll('li').length
       mostradoEn = 0
-      const lento = setTimeout(() => skeleton(visibles || 6), 140)
+      const lento = setTimeout(() => skeleton(visibles || EN_PORTADA), 140)
       estado.textContent = 'consultando…'
 
       const url = new URL('/v1/agencies', API)
-      if (q.value.trim()) url.searchParams.set('q', q.value.trim())
-      if (carrier.value) url.searchParams.set('carrier', carrier.value)
-      url.searchParams.set('per_page', '20')
+      url.search = buildUrl().toString()
 
       try {
         const r = await fetch(url, { signal: inFlight.signal, headers: { Accept: 'application/json' } })
@@ -582,32 +410,22 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
         const agencies = datos.agencies ?? []
         clearTimeout(lento)
 
-        /* Si el esqueleto alcanzó a mostrarse, se le da un mínimo de 260 ms en
-           pantalla. Aparecer y desaparecer en 40 ms no se lee como «está
-           cargando»: se lee como un defecto. Y si nunca se mostró, `mostradoEn`
-           vale 0 y esto no espera nada. */
+        // Si el esqueleto se mostró, al menos 260 ms en pantalla.
         const visto = mostradoEn ? performance.now() - mostradoEn : Infinity
-        if (visto < 260) await new Promise((r) => setTimeout(r, 260 - visto))
+        if (visto < 260) await new Promise((res) => setTimeout(res, 260 - visto))
 
         paint(agencies)
         list.removeAttribute('aria-busy')
         count(agencies.length, datos.pagination?.total ?? agencies.length)
         error.hidden = true
       } catch (e) {
-        // El `AbortError` es de una consulta que reemplazamos nosotros: la que
-        // la sustituye ya programó su propio esqueleto, así que acá sólo se
-        // cancela el de esta y se sale sin tocar la pantalla.
         clearTimeout(lento)
         if (e.name === 'AbortError') return
-        // La lista se vacía antes de mostrar el error: dejar los resultados de
-        // la consulta anterior debajo de un mensaje de fallo los presenta como
-        // la respuesta a lo que se acaba de escribir.
+        // Sin resultados viejos debajo del error: se leerían como la respuesta.
         list.innerHTML = ''
         list.removeAttribute('aria-busy')
         empty.hidden = true
         estado.textContent = ''
-        // Y se dice qué pasó. Una caja vacía sin explicación se lee como «no hay
-        // agencias», que es una respuesta distinta y falsa.
         error.textContent = `No se pudo consultar el catálogo: ${e.message}.`
         error.hidden = false
       }
@@ -615,20 +433,18 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
 
     const search = API ? query : filterLocal
 
-    // 220 ms: sin esto el modo vivo dispara un request por tecla. En modo
-    // ejemplo no haría falta, pero se comparte para que el comportamiento que
-    // pruebas sea el que se publica.
     let timer = 0
     const schedule = () => {
       clearTimeout(timer)
       timer = setTimeout(search, 220)
     }
 
-    q.addEventListener('input', schedule)
+    q.addEventListener('input', () => {
+      buildUrl()
+      schedule()
+    })
     carrier.addEventListener('change', search)
 
-    // En modo vivo la lista del HTML son los datos de ejemplo: hay que
-    // reemplazarla por lo que conteste el API antes de que nadie la lea.
     if (API) search()
   })()
 </script>
