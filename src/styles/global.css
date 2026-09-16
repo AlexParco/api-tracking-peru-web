@@ -700,11 +700,15 @@ summary:focus-visible,
 }
 
 .scroll-shadow {
+  /* `--ink` y no `--color-ink`: la variable CRUDA es la que respeta los ámbitos
+     fijos (`.on-dark`, `.on-lime`). La de Tailwind, anidada dentro de otro
+     `var()`, se resolvía contra `:root` y pintaba las capas de tapado BLANCAS
+     sobre la banda oscura — una luz en los dos bordes que no señalaba nada. */
   background-image:
-    linear-gradient(to right, var(--scroll-bg, var(--color-ink)) 40%, transparent),
-    linear-gradient(to left, var(--scroll-bg, var(--color-ink)) 40%, transparent),
-    linear-gradient(to right, color-mix(in oklab, var(--color-brand) 16%, transparent), transparent),
-    linear-gradient(to left, color-mix(in oklab, var(--color-brand) 16%, transparent), transparent);
+    linear-gradient(to right, var(--scroll-bg, var(--ink)) 40%, transparent),
+    linear-gradient(to left, var(--scroll-bg, var(--ink)) 40%, transparent),
+    linear-gradient(to right, color-mix(in oklab, var(--accent) 16%, transparent), transparent),
+    linear-gradient(to left, color-mix(in oklab, var(--accent) 16%, transparent), transparent);
   background-position:
     left center,
     right center,
