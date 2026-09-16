@@ -145,6 +145,27 @@ const kickerClass: Record<string, string> = {
 <script is:inline>
   ;(() => {
     const params = new URLSearchParams(location.search)
+
+    /* Si YA hay sesión, esta pantalla no tiene nada que pedir: se entra.
+     *
+     * Sin esto, quien tiene la cookie viva igual veía el formulario y quedaba
+     * encerrado — la única forma de llegar al panel era escribir /dashboard a
+     * mano, y quien no lo sabía terminaba pidiendo otro enlace (el anterior ya
+     * no sirve: es de un solo uso).
+     *
+     * NO se comprueba cuando el aviso dice que la sesión acaba de terminar o que
+     * hace falta una más fresca: ahí redirigir sería mandar de vuelta al panel
+     * del que el usuario justo salió, o un ida y vuelta infinito con el 403 de
+     * rotar la key.
+     */
+    const recienSalido = ['logout', 'all-sessions-closed', 'key-rotated', 'reauthenticate']
+    if (window.tp && !recienSalido.includes(params.get('notice'))) {
+      window.tp
+        .me()
+        .then(() => location.replace('/dashboard'))
+        // 401 es el caso normal acá: no hay sesión y el formulario es lo correcto.
+        .catch(() => {})
+    }
     /* Dos fuentes para el mismo aviso: `?notice=` lo pone el propio panel al
        salir, y `?error=invalid_link` lo pone el API cuando el enlace del correo
        ya no sirve. Es su contrato de redirect y no se puede cambiar desde acá. */
