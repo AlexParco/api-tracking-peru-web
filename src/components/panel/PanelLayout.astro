@@ -89,7 +89,9 @@ const current = groups.flatMap((g) => g.items).find((i) => i.href === path)
     </div>
   </header>
 
-  <div class="mx-auto max-w-[90rem] border-x border-line lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+  <div
+    class="mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-[90rem] flex-col border-x border-line lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]"
+  >
     <nav aria-label="Secciones del panel" class="border-b border-line bg-ink lg:border-b-0 lg:border-r">
       {/* Teléfono: un desplegable con el nombre de la sección actual, que es lo
           único que hace falta saber ahí. */}
@@ -159,7 +161,7 @@ const current = groups.flatMap((g) => g.items).find((i) => i.href === path)
       </div>
     </nav>
 
-    <main id="contenido" class="min-w-0 bg-ink-soft">
+    <main id="contenido" class="flex min-w-0 flex-1 flex-col bg-ink-soft">
       <header class="border-b border-line bg-ink px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
         <p class="eyebrow text-zinc-500">
           <a href="/dashboard" class="hover:text-zinc-50">Panel</a>
@@ -193,7 +195,7 @@ const current = groups.flatMap((g) => g.items).find((i) => i.href === path)
         <button type="button" data-reintentar class="ml-2 text-zinc-50 underline underline-offset-4">Reintentar</button>
       </p>
 
-      <div class="space-y-6 px-5 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
+      <div class="flex-1 space-y-6 px-5 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
         <slot />
       </div>
 
@@ -229,19 +231,19 @@ const current = groups.flatMap((g) => g.items).find((i) => i.href === path)
         if (!c) return
         tp.pintar('email', c.email)
         tp.pintar('inicial', (c.email || '·')[0].toUpperCase())
-        tp.pintar('plan', c.plan)
+        tp.pintar('plan', tp.plan(c.plan))
 
         // `tope_mes = 0` significa sin tope: ahí no hay barra que llenar.
-        if (c.tope_mes > 0) {
-          const pct = Math.min(100, Math.round((c.uso_mes / c.tope_mes) * 100))
+        if (c.quota_limit > 0) {
+          const pct = Math.min(100, Math.round((c.quota_used / c.quota_limit) * 100))
           const caja = document.querySelector('[data-consumo]')
           if (caja) {
             caja.hidden = false
             caja.querySelector('[data-campo-barra="uso"]').style.width = `${Math.max(pct, 1)}%`
           }
-          tp.pintar('uso-corto', `${tp.miles(c.uso_mes)} / ${tp.miles(c.tope_mes)} consultas`)
+          tp.pintar('uso-corto', `${tp.miles(c.quota_used)} / ${tp.miles(c.quota_limit)} consultas`)
         } else {
-          tp.pintar('uso-corto', `${tp.miles(c.uso_mes)} consultas · sin tope`)
+          tp.pintar('uso-corto', `${tp.miles(c.quota_used)} consultas · sin tope`)
           const caja = document.querySelector('[data-consumo]')
           if (caja) caja.hidden = false
           const barra = document.querySelector('[data-campo-barra="uso"]')

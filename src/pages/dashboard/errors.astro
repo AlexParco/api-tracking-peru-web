@@ -13,8 +13,9 @@ import PanelCard from '../../components/panel/PanelCard.astro'
  * el protagonista: ya viene en castellano y dice qué hacer. Los repetidos se
  * agrupan por código, porque repetido casi siempre significa mal configurado.
  *
- * OJO con los nombres de los campos: esa struct del backend no lleva tags JSON,
- * así que las claves llegan capitalizadas (`RequestID`, `Timestamp`, `Status`…).
+ * Los campos llegan normalizados por `AccountClient`: el API los devuelve en
+ * snake_case (`request_id`, `error_code`…) y antes los leía capitalizados, que
+ * es como esta pantalla se quedó en blanco con 4 errores contados detrás.
  */
 ---
 
@@ -96,7 +97,7 @@ import PanelCard from '../../components/panel/PanelCard.astro'
       const html = grupos
         .map((g) => {
           if (filtro && g.code !== filtro) return ''
-          const ocurrencias = q ? g.items.filter((e) => String(e.RequestID).toLowerCase().includes(q)) : g.items
+          const ocurrencias = q ? g.items.filter((e) => String(e.requestId).toLowerCase().includes(q)) : g.items
           if (!ocurrencias.length) return ''
           visibles++
           const repetido = g.items.length >= 10
@@ -122,7 +123,7 @@ import PanelCard from '../../components/panel/PanelCard.astro'
                   <span class="font-display text-5xl font-semibold tabular-nums tracking-tight text-zinc-50">${g.items.length}</span>
                   <span class="ml-1 text-sm text-zinc-500">${g.items.length === 1 ? 'vez' : 'veces'}</span>
                 </p>
-                <p class="eyebrow text-zinc-600">última ${esc(tp.fechaHora(g.items[0].Timestamp) ?? '')}</p>
+                <p class="eyebrow text-zinc-600">última ${esc(tp.fechaHora(g.items[0].timestamp) ?? '')}</p>
               </div>
             </div>
             <div class="border-t border-line">
@@ -134,9 +135,9 @@ import PanelCard from '../../components/panel/PanelCard.astro'
                   .slice(0, 10)
                   .map(
                     (e) => `<li class="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 px-5 py-3 sm:grid-cols-[9.5rem_1fr_auto]">
-                      <span class="font-mono text-xs text-zinc-400">${esc(tp.fechaHora(e.Timestamp) ?? '')}</span>
-                      <code class="col-span-2 row-start-2 min-w-0 break-all font-mono text-xs text-zinc-300 sm:col-span-1 sm:row-start-auto">${esc(e.RequestID)}</code>
-                      <button type="button" data-copy="${esc(e.RequestID)}" class="eyebrow row-start-1 border border-line px-2 py-1 text-zinc-400 hover:border-zinc-50 hover:text-zinc-50 sm:row-start-auto">Copiar ID</button>
+                      <span class="font-mono text-xs text-zinc-400">${esc(tp.fechaHora(e.timestamp) ?? '')}</span>
+                      <code class="col-span-2 row-start-2 min-w-0 break-all font-mono text-xs text-zinc-300 sm:col-span-1 sm:row-start-auto">${esc(e.requestId)}</code>
+                      <button type="button" data-copy="${esc(e.requestId)}" class="eyebrow row-start-1 border border-line px-2 py-1 text-zinc-400 hover:border-zinc-50 hover:text-zinc-50 sm:row-start-auto">Copiar ID</button>
                     </li>`,
                   )
                   .join('')}
@@ -158,9 +159,9 @@ import PanelCard from '../../components/panel/PanelCard.astro'
       // Agrupado por código (o por status si el error no trae código).
       const mapa = new Map()
       for (const e of items) {
-        const code = e.ErrorCode || `http_${e.Status}`
+        const code = e.code || `http_${e.status}`
         if (!mapa.has(code)) {
-          mapa.set(code, { code, status: e.Status, endpoint: e.Endpoint, mensaje: e.Message || code, items: [] })
+          mapa.set(code, { code, status: e.status, endpoint: e.endpoint, mensaje: e.message || code, items: [] })
         }
         mapa.get(code).items.push(e)
       }
@@ -177,7 +178,7 @@ import PanelCard from '../../components/panel/PanelCard.astro'
 
       // Por status HTTP.
       const porStatus = new Map()
-      for (const e of items) porStatus.set(e.Status, (porStatus.get(e.Status) ?? 0) + 1)
+      for (const e of items) porStatus.set(e.status, (porStatus.get(e.status) ?? 0) + 1)
       document.querySelector('[data-por-status]').innerHTML = [...porStatus.entries()]
         .sort((a, b) => b[1] - a[1])
         .map(

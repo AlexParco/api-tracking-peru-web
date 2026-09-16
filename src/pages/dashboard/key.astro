@@ -202,7 +202,7 @@ const pasos = [
         const r = await tp.rotarKey()
         dlgRotate.close()
         dlgSecret.querySelector('[data-valor]').textContent = r.api_key
-        tp.pintar('aviso-key', r.aviso ?? '')
+        tp.pintar('aviso-key', r.message ?? r.aviso ?? '')
         dlgSecret.querySelector('[data-secret-ack]').checked = false
         done.disabled = true
         dlgSecret.showModal()

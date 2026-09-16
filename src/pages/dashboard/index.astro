@@ -105,8 +105,8 @@ const stat = 'flex min-w-0 flex-col border border-line bg-ink p-5'
 
     tp.cuenta.then((c) => {
       if (!c) return
-      tp.pintar('uso', tp.miles(c.uso_mes))
-      tp.pintar('tope', c.tope_mes > 0 ? `de ${tp.miles(c.tope_mes)}` : '· sin tope')
+      tp.pintar('uso', tp.miles(c.quota_used))
+      tp.pintar('tope', c.quota_limit > 0 ? `de ${tp.miles(c.quota_limit)}` : '· sin tope')
       tp.pintar('key-estado', c.key_enabled ? '● Activa' : '○ Inactiva')
       document.querySelectorAll('[data-campo="key-estado"]').forEach((el) => {
         el.classList.add(c.key_enabled ? 'text-[var(--color-live)]' : 'text-[var(--color-partial)]')
@@ -114,8 +114,8 @@ const stat = 'flex min-w-0 flex-col border border-line bg-ink p-5'
       tp.pintar('key-uso', tp.fechaHora(c.key_last_used_at) ?? 'nunca')
 
       let pct = 0
-      if (c.tope_mes > 0) {
-        pct = Math.min(100, Math.round((c.uso_mes / c.tope_mes) * 100))
+      if (c.quota_limit > 0) {
+        pct = Math.min(100, Math.round((c.quota_used / c.quota_limit) * 100))
         const caja = document.querySelector('[data-barra]')
         caja.hidden = false
         caja.querySelector('[data-campo-barra="uso"]').style.width = `${Math.max(pct, 1)}%`
@@ -140,7 +140,7 @@ const stat = 'flex min-w-0 flex-col border border-line bg-ink p-5'
 
       const porCodigo = new Map()
       for (const e of items) {
-        const k = e.ErrorCode || String(e.Status)
+        const k = e.code || String(e.status)
         porCodigo.set(k, (porCodigo.get(k) ?? 0) + 1)
       }
       tp.pintar(
@@ -156,9 +156,9 @@ const stat = 'flex min-w-0 flex-col border border-line bg-ink p-5'
 
       const [codigo, veces] = [...porCodigo.entries()].sort((a, b) => b[1] - a[1])[0] ?? []
       if (veces >= 10) {
-        const ej = items.find((e) => (e.ErrorCode || String(e.Status)) === codigo)
+        const ej = items.find((e) => (e.code || String(e.status)) === codigo)
         tp.pintar('repetido-veces', String(veces))
-        tp.pintar('repetido-msg', ej?.Message || codigo)
+        tp.pintar('repetido-msg', ej?.message || codigo)
         document.querySelector('[data-alerta="errores"]').hidden = false
       }
 
@@ -168,10 +168,10 @@ const stat = 'flex min-w-0 flex-col border border-line bg-ink p-5'
         .slice(0, 3)
         .map(
           (e) => `<li class="flex items-start gap-4 px-5 py-3.5">
-            <span class="mt-0.5 border border-line px-1.5 py-0.5 font-mono text-xs text-zinc-300">${esc(e.Status)}</span>
+            <span class="mt-0.5 border border-line px-1.5 py-0.5 font-mono text-xs text-zinc-300">${esc(e.status)}</span>
             <span class="min-w-0 flex-1">
-              <span class="line-clamp-2 text-sm text-zinc-100">${esc(e.Message || e.ErrorCode)}</span>
-              <span class="mt-1 block font-mono text-[11px] text-zinc-500">${esc(e.ErrorCode)} · ${esc(tp.fechaHora(e.Timestamp) ?? '')}</span>
+              <span class="line-clamp-2 text-sm text-zinc-100">${esc(e.message || e.code)}</span>
+              <span class="mt-1 block font-mono text-[11px] text-zinc-500">${esc(e.code)} · ${esc(tp.fechaHora(e.timestamp) ?? '')}</span>
             </span>
           </li>`,
         )

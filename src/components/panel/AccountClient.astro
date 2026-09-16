@@ -64,11 +64,43 @@ const API = import.meta.env.PUBLIC_API_URL || 'https://api.tracking-peru.com'
           body: JSON.stringify({ email, turnstile_token: turnstileToken || '' }),
         }),
 
-      /** La cuenta: plan, consumo y estado de la key. También es el chequeo de sesión. */
-      me: () => pedir('/account/me'),
+      /**
+       * La cuenta: plan, consumo y estado de la key. También es el chequeo de sesión.
+       *
+       * Se NORMALIZA acá y no en cada pantalla: el API renombró estos campos una
+       * vez (`uso_mes`/`tope_mes` → `quota_used`/`quota_limit`, que son los mismos
+       * números de las cabeceras X-Quota-*) y cinco pantallas leyendo las claves a
+       * mano significa cinco lugares que se rompen en silencio. Se aceptan los dos
+       * nombres para que un cambio de contrato no deje el panel en blanco.
+       */
+      me: async () => {
+        const d = await pedir('/account/me')
+        return {
+          ...d,
+          quota_used: d.quota_used ?? d.uso_mes ?? 0,
+          quota_limit: d.quota_limit ?? d.tope_mes ?? 0,
+        }
+      },
 
-      /** Los últimos errores propios. El API acota el límite a 100. */
-      errores: (limite = 50) => pedir(`/account/errors?limit=${limite}`),
+      /**
+       * Los últimos errores propios. El API acota el límite a 100.
+       *
+       * Las claves vienen en snake_case; se aceptan también las capitalizadas
+       * por el mismo motivo que arriba.
+       */
+      errores: async (limite = 50) => {
+        const d = await pedir(`/account/errors?limit=${limite}`)
+        const items = (d?.errors ?? []).map((e) => ({
+          requestId: e.request_id ?? e.RequestID ?? '',
+          timestamp: e.timestamp ?? e.Timestamp ?? null,
+          method: e.method ?? e.Method ?? '',
+          endpoint: e.endpoint ?? e.Endpoint ?? '',
+          status: e.status ?? e.Status ?? '',
+          code: e.error_code ?? e.ErrorCode ?? '',
+          message: e.message ?? e.Message ?? '',
+        }))
+        return { errors: items }
+      },
 
       logout: () => pedir('/account/logout', { method: 'POST' }),
 
@@ -118,6 +150,18 @@ const API = import.meta.env.PUBLIC_API_URL || 'https://api.tracking-peru.com'
             })
       },
       miles: (n) => String(n ?? 0).replace(/\B(?=(\d{3})+(?!\d))/g, '.'),
+
+      /**
+       * El plan llega como identificador (`premium_anual`, `free`). Se muestra
+       * legible sin traducir nada: el guion bajo separa nivel y período, así que
+       * se parte por ahí y se deja el período en minúscula detrás de un punto.
+       */
+      plan: (id) => {
+        if (!id) return '—'
+        const [nivel, periodo] = String(id).split('_')
+        const cap = nivel.charAt(0).toUpperCase() + nivel.slice(1)
+        return periodo ? `${cap} · ${periodo}` : cap
+      },
 
       /** Pinta texto en todos los `[data-campo="…"]` de la página. */
       pintar: (campo, valor) => {

@@ -4,9 +4,10 @@ import PanelCard from '../../components/panel/PanelCard.astro'
 
 /* Plan y consumo.
  *
- * `/account/me` trae el plan y dos números: `uso_mes` y `tope_mes`, los mismos
- * que viajan en las cabeceras `X-Quota-*`. `tope_mes = 0` significa SIN TOPE, y
- * ahí no se dibuja una barra vacía: se dice.
+ * `/account/me` trae el plan y dos números: `quota_used` y `quota_limit`, que
+ * son los MISMOS que viajan en las cabeceras `X-Quota-*` — por eso el API los
+ * llama así y no de otra forma. `quota_limit = 0` significa SIN TOPE, y ahí no
+ * se dibuja una barra vacía: se dice.
  *
  * La comparación de planes NO se arma acá con `plans.ts`: esos precios están
  * desactualizados contra la escalera nueva del backend, y publicar un precio
@@ -94,19 +95,19 @@ import PanelCard from '../../components/panel/PanelCard.astro'
 
     tp.cuenta.then((c) => {
       if (!c) return
-      tp.pintar('plan', c.plan)
-      tp.pintar('uso', tp.miles(c.uso_mes))
+      tp.pintar('plan', tp.plan(c.plan))
+      tp.pintar('uso', tp.miles(c.quota_used))
 
-      if (c.tope_mes > 0) {
-        const pct = Math.min(100, Math.round((c.uso_mes / c.tope_mes) * 100))
-        tp.pintar('tope', tp.miles(c.tope_mes))
-        tp.pintar('tope-fin', tp.miles(c.tope_mes))
+      if (c.quota_limit > 0) {
+        const pct = Math.min(100, Math.round((c.quota_used / c.quota_limit) * 100))
+        tp.pintar('tope', tp.miles(c.quota_limit))
+        tp.pintar('tope-fin', tp.miles(c.quota_limit))
         tp.pintar('pct', String(pct))
-        tp.pintar('restantes', tp.miles(Math.max(0, c.tope_mes - c.uso_mes)))
+        tp.pintar('restantes', tp.miles(Math.max(0, c.quota_limit - c.quota_used)))
         const medidor = document.querySelector('[data-medidor]')
         medidor.setAttribute('aria-valuemin', '0')
-        medidor.setAttribute('aria-valuemax', String(c.tope_mes))
-        medidor.setAttribute('aria-valuenow', String(c.uso_mes))
+        medidor.setAttribute('aria-valuemax', String(c.quota_limit))
+        medidor.setAttribute('aria-valuenow', String(c.quota_used))
         medidor.querySelector('[data-campo-barra="uso"]').style.width = `${Math.max(pct, 1)}%`
         tp.estado('con-tope')
       } else {
