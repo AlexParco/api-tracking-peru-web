@@ -150,6 +150,20 @@ const GAPS = [
           publican catálogo de agencias. El estado real, carrier por carrier, lo publica el
           propio API en <code class="font-mono text-zinc-300">GET /v1/carriers</code>.
         </p>
+
+        {/* El spec, enlazado desde acá porque es donde lo busca quien lo necesita.
+            Se genera de la misma constante que esta página, así que no puede
+            contradecirla ni quedarse atrás cuando se agregue un endpoint. */}
+        <p class="mt-4 text-pretty text-sm leading-relaxed text-zinc-500">
+          ¿Prefieres generar el cliente en vez de escribirlo? El spec OpenAPI está en{' '}
+          <a
+            href="/openapi.json"
+            class="font-mono text-zinc-300 underline-offset-4 hover:text-zinc-100 hover:underline"
+          >
+            /openapi.json
+          </a>
+          , generado en cada despliegue desde la misma fuente que esta página.
+        </p>
       </section>
 
       {/* ── Autenticación ── */}

@@ -693,7 +693,7 @@ export const ENDPOINTS: Endpoint[] = [
     method: 'GET',
     path: '/v1/tracking',
     summary: 'Rastreo unificado por número de guía.',
-    note: 'Cada evento trae los tres: status (canónico), status_raw (el literal del courier) y carrier_code (su código, si hay) — normalizar no significa perder el dato original. Y para saber si un envío TERMINÓ usá los bools terminal/delivered, no el nombre: available_for_pickup no es entrega, y una devolución también es terminal. Segundo factor: algunos carriers piden además el código de orden — pasalo como &code=<código>. Es OBLIGATORIO en los que declaran requires_code en GET /v1/carriers (hoy Shalom: sin él responde 422) y se ignora en el resto.',
+    note: 'Cada evento trae los tres: status (canónico), status_raw (el literal del courier) y carrier_code (su código, si hay) — normalizar no significa perder el dato original. Y para saber si un envío TERMINÓ usa los bools terminal/delivered, no el nombre: available_for_pickup no es entrega, y una devolución también es terminal. Segundo factor: algunos carriers piden además el código de orden — pásalo como &code=<código>. Es OBLIGATORIO en los que declaran requires_code en GET /v1/carriers (hoy Shalom: sin él responde 422) y se ignora en el resto.',
     response: { title: '200 OK · application/json', code: TRACKING_EXAMPLE },
   },
   {
