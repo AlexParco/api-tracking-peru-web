@@ -18,6 +18,10 @@ interface Props {
 
 const { title, description, jsonLd, framed = true, noindex = false } = Astro.props
 
+/* Páginas donde no se carga ninguna métrica: las que muestran credenciales o
+   datos de la cuenta. Mismo criterio que el `inAccount` de la barra. */
+const SIN_METRICAS = ['/login', '/dashboard'].some((r) => Astro.url.pathname.startsWith(r))
+
 const SITIO = 'API Tracking Perú'
 const ORIGEN = Astro.site ?? new URL('https://tracking-peru.com')
 const canonical = new URL(Astro.url.pathname, ORIGEN)
@@ -107,11 +111,28 @@ const og = new URL('/og.png', ORIGEN)
         `is:inline` para que Astro no lo procese ni lo empaquete: el sitio no
         envía bundles, y éste tiene que quedar tal cual lo publica Clarity.
 
+        ── Y NUNCA en las páginas de cuenta ──
+
+        Clarity no mide clics: reconstruye la sesión, o sea que lo que se ve en
+        pantalla queda grabado del lado de Microsoft. En `/dashboard` eso incluye
+        la API key del cliente, que es una credencial: basta con leerla de una
+        repetición para usar su cuota y su cuenta. En `/login` incluye el correo
+        con el que se pide el enlace de acceso.
+
+        Ninguna de esas páginas necesita métricas —no son páginas de captación—,
+        así que el script directamente no se sirve ahí. Se decide por RUTA y no
+        por una prop del layout a propósito: una página nueva bajo /dashboard
+        queda excluida sola, sin que nadie tenga que acordarse.
+
+        Lo que esto NO cubre: la portada muestra la key recién creada al terminar
+        el alta gratuita, y ahí Clarity sí corre porque es la página que hay que
+        medir. Ese caso se resuelve enmascarando ese bloque en `TrialForm.astro`.
+
         Es el ÚNICO tercero del sitio. Si algún día se agrega un CSP al nginx,
         necesita `script-src https://www.clarity.ms` y `connect-src` hacia
         `https://*.clarity.ms`, o deja de reportar en silencio. */}
     {
-      import.meta.env.PROD && (
+      import.meta.env.PROD && !SIN_METRICAS && (
         <script
           is:inline
           set:html={`(function(c,l,a,r,i,t,y){

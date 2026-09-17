@@ -144,8 +144,20 @@ const TURNSTILE_SITE_KEY = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || ''
   {/* El alta devuelve la key en la MISMA respuesta, así que se muestra aquí y no
       se manda al visitante a revisar el correo. Se sirve oculto y con el hueco
       del valor vacío: no hay ninguna key en el HTML hasta que el servidor emite
-      la de este visitante. */}
-  <div id="trial-key-panel" class="mt-5 rounded-xl border border-brand/30 bg-brand/[0.04] p-4" hidden>
+      la de este visitante.
+
+      `data-clarity-mask` porque Clarity corre en esta página —es la de captación,
+      es justo la que hay que medir— y no cuenta clics: reconstruye la sesión. Sin
+      esto, la key recién emitida quedaría legible en la repetición del lado de
+      Microsoft, y una key es una credencial: alcanza con leerla para usar la
+      cuenta. El bloque se enmascara entero y no sólo el <code>, para que la nota
+      de abajo tampoco filtre el prefijo. */}
+  <div
+    id="trial-key-panel"
+    data-clarity-mask="true"
+    class="mt-5 rounded-xl border border-brand/30 bg-brand/[0.04] p-4"
+    hidden
+  >
     <p class="font-mono text-xs text-brand">tu key</p>
     <div class="mt-2 flex items-start gap-2">
       <code
