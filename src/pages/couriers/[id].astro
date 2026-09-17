@@ -42,9 +42,34 @@ const tracks = c.tracking.status === 'ok'
 const hasCatalog = c.agencies.status === 'ok'
 
 const detectionNote: Record<string, string> = {
-  strong: 'Su formato de guía es inconfundible, así que podemos detectarlo solos: podés omitir el parámetro carrier.',
+  strong: 'Su formato de guía es inconfundible, así que podemos detectarlo solos: puedes omitir el parámetro carrier.',
   weak: 'Su formato se parece al de otros couriers. Conviene mandar el carrier explícito para evitar una detección equivocada.',
   none: 'No hay forma de reconocerlo por el número de guía. El parámetro carrier es obligatorio.',
+}
+
+/* CREAR guías.
+ *
+ * Este bloque existía en el dato (`shipping`) y sólo lo pintaba la portada, así
+ * que la página del courier —la que debería ser la mejor respuesta para «api
+ * olva»— era la que MENOS sabía de Olva. Peor: era lo único que distinguía a
+ * estas cinco páginas entre sí, porque rastreo y agencias las describen casi
+ * igual. Crear es el eje donde de verdad se diferencian: hoy dos de cinco lo
+ * soportan, y con credenciales distintas.
+ */
+const creates = c.shipping.status === 'ok'
+
+/* Con qué credencial se crea. No es un detalle de implementación: `platform`
+   significa que alcanza con tu API key, y `customer_account` obliga a pedirle al
+   usuario final su cuenta del courier — eso cambia el alta del producto entero,
+   no sólo la llamada. */
+const authNote: Record<'platform' | 'customer_account', string> = {
+  platform: `Se crea con tu API key y nada más: ${c.name} no le pide credenciales a tu usuario final.`,
+  customer_account: `Requiere la cuenta del cliente en ${c.name}. El usuario final tiene que conectarla antes de poder generar una guía, y ese paso hay que preverlo en tu alta.`,
+}
+
+const deliveryLabel: Record<'agency' | 'home', string> = {
+  agency: 'recojo en agencia',
+  home: 'entrega a domicilio',
 }
 
 /* El ejemplo usa el id real del carrier y un marcador para el número, porque el
@@ -112,7 +137,7 @@ const jsonLd = {
 <Base title={title} description={description} jsonLd={jsonLd}>
   <Nav />
 
-  <main id="contenido" class="mx-auto max-w-7xl border-x border-line bg-ink">
+  <main id="content" class="mx-auto max-w-7xl border-x border-line bg-ink">
     <div class="mx-auto max-w-4xl px-6 py-16">
       <p class="font-mono text-xs text-zinc-600">
         <a href="/couriers" class="transition-colors hover:text-zinc-300">Couriers</a>
@@ -199,6 +224,64 @@ const jsonLd = {
         )
       }
 
+      {/* Crear guías. El eje que más diferencia a un courier de otro: dos de los
+          cinco lo soportan, con credenciales y modalidades de entrega distintas.
+          Cuando NO se puede, el motivo concreto también informa —y es lo que
+          alguien que evalúa vino a averiguar—, así que la sección se pinta
+          siempre, no sólo en el caso feliz. */}
+      <div class="mt-10">
+        <h2 class="font-display text-xl font-semibold tracking-tight text-zinc-50">
+          Crear guías con {c.name}
+        </h2>
+
+        {
+          creates ? (
+            <>
+              <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">
+                Además de rastrear, el API genera guías de {c.name} con{' '}
+                <code class="font-mono text-zinc-300">POST /v1/shipments</code>. {c.shipping.note}
+              </p>
+
+              <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                <div class="rounded-xl border border-line p-5">
+                  <p class="text-xs text-zinc-600">Con qué credencial</p>
+                  <p class="mt-1 font-mono text-sm text-zinc-200">{c.shipping.auth}</p>
+                  {c.shipping.auth && (
+                    <p class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-500">
+                      {authNote[c.shipping.auth]}
+                    </p>
+                  )}
+                </div>
+
+                <div class="rounded-xl border border-line p-5">
+                  <p class="text-xs text-zinc-600">Dónde puede terminar el envío</p>
+                  <p class="mt-1 font-mono text-sm text-zinc-200">
+                    {c.shipping.delivery.map((d) => deliveryLabel[d]).join(' · ')}
+                  </p>
+                  <p class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-500">
+                    {c.shipping.delivery.length === 1
+                      ? `${c.name} sólo admite ${deliveryLabel[c.shipping.delivery[0]!]}: si tu tienda promete la otra modalidad, no la cubre este courier.`
+                      : `${c.name} admite las dos modalidades, así que el destino lo decide tu checkout y no el courier.`}
+                  </p>
+                </div>
+              </div>
+
+              <p class="mt-3 text-pretty text-xs leading-relaxed text-zinc-600">
+                Evidencia de la creación: <code class="font-mono text-zinc-400">{c.shipping.level}</code> —{' '}
+                {LEVELS[c.shipping.level].detail} Es un nivel INDEPENDIENTE del de rastreo: son dos
+                integraciones distintas, contra backends distintos de {c.name}.
+              </p>
+            </>
+          ) : (
+            <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">
+              Todavía no. {c.shipping.note} El rastreo de {c.name}
+              {tracks ? ' sí funciona' : ' tampoco'}, y son integraciones separadas: que no se
+              pueda crear una guía no dice nada sobre la otra.
+            </p>
+          )
+        }
+      </div>
+
       <div class="mt-10 grid gap-4 sm:grid-cols-2">
         <div class="rounded-xl border border-line p-5">
           <p class="text-xs text-zinc-600">Nivel de evidencia</p>
@@ -215,7 +298,7 @@ const jsonLd = {
           <p class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-500">
             {
               c.subscribable
-                ? `Suscribís un envío de ${c.name} y te avisamos con un POST firmado cada vez que cambia de estado.`
+                ? `Suscribes un envío de ${c.name} y te avisamos con un POST firmado cada vez que cambia de estado.`
                 : 'El alta de suscripción lo rechaza en el POST, con el motivo. No dejamos crear una que nunca iba a entregar nada.'
             }
           </p>
@@ -233,7 +316,7 @@ const jsonLd = {
         </p>
         <div class="mt-5 flex flex-wrap gap-3">
           <a
-            href="/#empezar"
+            href="/#get-started"
             class="btn btn-primary rounded-lg px-5 py-2.5 font-medium"
           >
             Crear mi key gratis
