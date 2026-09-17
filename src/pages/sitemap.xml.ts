@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro'
 import { PUBLISHED_CARRIERS, CATALOGS } from '../data/api.ts'
+import { COMPLETA } from '../data/legal.ts'
 
 /* El sitemap, escrito a mano en vez de con `@astrojs/sitemap`.
  *
@@ -47,6 +48,10 @@ export const GET: APIRoute = ({ site }) => {
   const urls: { path: string; lastmod?: string }[] = [
     { path: '/', lastmod: ultimo },
     { path: '/docs' },
+    /* La política de privacidad entra sólo cuando está completa. Mientras le falte
+       la identidad fiscal se sirve como borrador con `noindex`, y listarla acá
+       sería pedirle a Google que indexe justo lo que le estamos prohibiendo. */
+    ...(COMPLETA ? [{ path: '/privacy' }] : []),
     { path: '/couriers', lastmod: ultimo },
     ...PUBLISHED_CARRIERS.map((c) => ({
       path: `/couriers/${c.id}`,

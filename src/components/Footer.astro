@@ -1,6 +1,7 @@
 ---
 import Logo from './Logo.astro'
 import { PUBLISHED_CARRIERS } from '../data/api.ts'
+import { COMPLETA } from '../data/legal.ts'
 
 /* El pie es el último casillero de la guía: la marca y el descargo a la
    izquierda, y a la derecha los enlaces que un buscador —y quien llegó al
@@ -26,7 +27,11 @@ const columns = [
     title: 'Recursos',
     links: [
       { href: '/docs', label: 'Documentación' },
+      { href: '/couriers', label: 'Comparar couriers' },
       { href: '/login', label: 'Entrar' },
+      /* La política sólo se enlaza cuando está completa: un enlace del pie a un
+         borrador lo pone delante de todo el que baje hasta el final. */
+      ...(COMPLETA ? [{ href: '/privacy', label: 'Privacidad' }] : []),
       { href: 'mailto:hola@tracking-peru.com', label: 'hola@tracking-peru.com' },
     ],
   },

@@ -1,0 +1,341 @@
+---
+import Base from '../layouts/Base.astro'
+import Nav from '../components/Nav.astro'
+import Footer from '../components/Footer.astro'
+import { PUBLISHED_CARRIERS } from '../data/api.ts'
+import { RESPONSABLE, COMPLETA, CONTACTO, RETENCION } from '../data/legal.ts'
+
+/* La política de privacidad.
+ *
+ * ── Por qué existe ──
+ *
+ * No es un trámite de cumplimiento: es un bloqueador de venta. El API recibe
+ * nombre, documento y teléfono del destinatario cada vez que un cliente crea una
+ * guía, y la propia documentación los llama datos personales. Cualquier empresa
+ * peruana con un proceso de compra formal pide la política antes de firmar, y sin
+ * ella la conversación se detiene ahí.
+ *
+ * ── Los dos roles, que es lo que casi ninguna política de API distingue ──
+ *
+ * Frente a los datos de la CUENTA —el correo y el nombre de quien se registra—
+ * este servicio decide para qué se usan: es titular del banco de datos.
+ *
+ * Frente a los datos del DESTINATARIO —los que el cliente manda en
+ * `POST /v1/shipments`— no decide nada: los recibe para cumplir un encargo. El
+ * titular ahí es la tienda, y este servicio es encargado del tratamiento. La
+ * diferencia cambia quién responde ante quién, y confundirla es el error más
+ * común del rubro.
+ *
+ * ── Qué se afirma y qué no ──
+ *
+ * Todo lo verificable sale del código: los terceros que carga el `<head>`, los
+ * campos que piden los formularios, lo que `POST /v1/shipments` recibe y lo que el
+ * rastreo limpia antes de servir. Lo que depende de una decisión de negocio
+ * —quién responde y plazos de conservación— vive en `legal.ts`, y mientras no haya
+ * un responsable identificable la página se sirve como borrador: `noindex` y fuera
+ * del sitemap.
+ */
+
+const title = 'Política de privacidad — API Tracking Perú'
+const description =
+  'Qué datos personales trata el API de rastreo de couriers peruanos, en qué rol, con quién se comparten y cómo ejercer tus derechos bajo la Ley 29733.'
+
+const carriers = PUBLISHED_CARRIERS.map((c) => c.name)
+const listaCarriers = `${carriers.slice(0, -1).join(', ')} y ${carriers.at(-1)}`
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: title,
+  description,
+  isPartOf: { '@type': 'WebSite', name: 'API Tracking Perú' },
+}
+---
+
+<Base title={title} description={description} jsonLd={jsonLd} noindex={!COMPLETA}>
+  <Nav />
+
+  <main id="content" class="mx-auto max-w-7xl border-x border-line bg-ink">
+    <div class="mx-auto max-w-3xl px-6 py-16">
+      <p class="font-mono text-xs text-zinc-600">
+        <a href="/" class="transition-colors hover:text-zinc-300">Inicio</a>
+        <span class="mx-1.5 text-zinc-700">/</span>
+        <span class="text-zinc-400">privacy</span>
+      </p>
+
+      <h1 class="mt-4 text-balance font-display text-4xl font-semibold tracking-tight text-zinc-50">
+        Política de privacidad
+      </h1>
+
+      {
+        !COMPLETA && (
+          <div class="mt-8 rounded-2xl border border-[var(--color-partial)]/40 bg-[var(--color-partial)]/[0.06] p-5">
+            <p class="font-display text-base font-semibold text-[var(--color-partial)]">
+              Borrador — no publicado todavía
+            </p>
+            <p class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-400">
+              Falta el nombre de quien responde por los datos en{' '}
+              <code class="font-mono text-zinc-300">src/data/legal.ts</code>. Mientras tanto esta
+              página no se indexa ni figura en el sitemap. En cuanto esté, se publica sola.
+            </p>
+          </div>
+        )
+      }
+
+      <p class="mt-6 text-pretty text-lg leading-relaxed text-zinc-400">
+        Este documento explica qué datos personales trata API Tracking Perú, en qué condición los
+        trata, con quién los comparte y cómo ejercer los derechos que reconoce la Ley 29733 de
+        Protección de Datos Personales y su reglamento.
+      </p>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Quién responde por estos datos
+      </h2>
+      {/* La Ley 29733 admite que el titular del banco de datos sea persona natural
+          o jurídica. Hoy es una persona, y se dice así: aparentar una empresa que
+          no existe es lo primero que detecta un área de compras, y además sería
+          falso en el único documento del sitio que no puede permitírselo. Los
+          campos fiscales aparecen solos el día que haya empresa. */}
+      {
+        COMPLETA ? (
+          <>
+            <dl class="mt-4 divide-y divide-line/60 border-y border-line/60 text-sm">
+              {(
+                [
+                  ['Responsable', RESPONSABLE.nombre!],
+                  ...(RESPONSABLE.ruc ? ([['RUC', RESPONSABLE.ruc]] as const) : []),
+                  ...(RESPONSABLE.domicilio
+                    ? ([['Domicilio', RESPONSABLE.domicilio]] as const)
+                    : []),
+                  ['Correo de contacto', CONTACTO],
+                ] as readonly (readonly [string, string])[]
+              ).map(([k, v]) => (
+                <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-2.5">
+                  <dt class="text-zinc-500">{k}</dt>
+                  <dd class="text-right text-zinc-300">{v}</dd>
+                </div>
+              ))}
+            </dl>
+            {!RESPONSABLE.ruc && (
+              <p class="mt-4 text-pretty text-sm leading-relaxed text-zinc-500">
+                API Tracking Perú lo opera hoy una persona natural: no hay una empresa constituida
+                detrás, y por eso no verás un RUC en esta página. La Ley 29733 no lo exige —el
+                titular de un banco de datos puede ser persona natural o jurídica—, pero conviene
+                que lo sepas antes de integrar, sobre todo si tu área de compras necesita facturar
+                a una empresa. Si ese es tu caso, escríbenos y lo conversamos de frente.
+              </p>
+            )}
+          </>
+        ) : (
+          <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-500">
+            Pendiente de completar: el nombre de quien responde. El contacto para cualquier consulta
+            es{' '}
+            <a href={`mailto:${CONTACTO}`} class="text-zinc-300 underline-offset-4 hover:underline">
+              {CONTACTO}
+            </a>
+            .
+          </p>
+        )
+      }
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Qué datos tratamos, y en qué rol
+      </h2>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        La distinción importa porque cambia quién responde ante quién. Hay datos sobre los que
+        decidimos nosotros y datos que sólo procesamos por encargo de un cliente.
+      </p>
+
+      <h3 class="mt-8 font-display text-lg font-semibold tracking-tight text-zinc-100">
+        Los tuyos, como cliente del API
+      </h3>
+      <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">
+        Cuando pides una key gratuita te pedimos <strong class="text-zinc-300">nombre</strong> y{' '}
+        <strong class="text-zinc-300">correo electrónico</strong>. Cuando entras a tu panel usamos
+        ese mismo correo para mandarte un enlace de acceso. No pedimos contraseña, y no pedimos
+        tarjeta para el plan gratuito.
+      </p>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Los usamos para crear y mantener tu cuenta, entregarte y renovar tu API key, avisarte de tu
+        cupo y responderte si escribes. Sobre estos datos somos titulares del banco de datos: la
+        finalidad la decidimos nosotros, y por eso respondemos directamente ante ti.
+      </p>
+
+      <h3 class="mt-8 font-display text-lg font-semibold tracking-tight text-zinc-100">
+        Los de tus destinatarios, cuando creas una guía
+      </h3>
+      <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">
+        Al generar un envío con <code class="font-mono text-zinc-300">POST /v1/shipments</code> tu
+        sistema nos envía los datos que el courier necesita para entregarlo:{' '}
+        <strong class="text-zinc-300">nombre, documento de identidad y teléfono</strong> del
+        remitente y del destinatario, la dirección de entrega y una descripción del bulto.
+      </p>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Esos datos son de terceros y no son nuestros. Los recibimos únicamente para cumplir el
+        encargo —crear la guía en el courier que elegiste y devolverte su número— y los
+        transmitimos al courier correspondiente, que es quien materialmente hace la entrega. No los
+        usamos para ninguna otra finalidad, no los cedemos a nadie más y no los explotamos con
+        fines comerciales ni analíticos.
+      </p>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Frente a esos datos somos encargados del tratamiento y tú eres el titular del banco de
+        datos. Si una persona te reclama por sus datos, quien tiene que atenderlo eres tú; nosotros
+        estamos obligados a asistirte, y lo hacemos.
+      </p>
+
+      <h3 class="mt-8 font-display text-lg font-semibold tracking-tight text-zinc-100">
+        Los que devuelve el rastreo
+      </h3>
+      <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">
+        Al consultar un envío, el courier puede devolver el nombre de quien lo recibió, además de la
+        secuencia de estados y la ubicación de cada evento. Lo que llega depende de cada courier:{' '}
+        <code class="font-mono text-zinc-300">GET /v1/carriers</code> publica en{' '}
+        <code class="font-mono text-zinc-300">provides.parties</code> cuáles exponen esa información
+        y cuáles no. Trátala como dato personal, porque lo es.
+      </p>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Los documentos de identidad no salen del rastreo
+      </h2>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Varios couriers peruanos exponen el DNI de quien recibió el paquete en endpoints que
+        cualquiera puede consultar con un número de guía. Nosotros no lo reenviamos: en los{' '}
+        {PUBLISHED_CARRIERS.length} couriers integrados el campo{' '}
+        <code class="font-mono text-zinc-300">provides.party_documents</code> es{' '}
+        <code class="font-mono text-zinc-300">false</code>, y donde la respuesta cruda del courier
+        lo traía, se elimina antes de servirla. Pedir la respuesta con{' '}
+        <code class="font-mono text-zinc-300">include=raw</code> tampoco lo devuelve.
+      </p>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Los webhooks siguen el mismo criterio: el aviso que llega a tu servidor lleva el cambio de
+        estado y nada más. Remitente, destinatario y contenido del bulto se quedan fuera del envío.
+      </p>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Esto es una decisión de diseño, no una consecuencia. Un documento de identidad que no viaja
+        es un documento que no se puede filtrar en el camino.
+      </p>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Con quién compartimos datos
+      </h2>
+      <dl class="mt-4 divide-y divide-line/60 border-y border-line/60 text-sm">
+        {(
+          [
+            [
+              `Los ${PUBLISHED_CARRIERS.length} couriers integrados`,
+              `${listaCarriers}. Reciben los datos del envío que tú nos mandas, porque sin ellos no hay entrega posible. Cada uno trata esos datos bajo su propia política.`,
+            ],
+            [
+              'Cloudflare',
+              'Protege el formulario de registro gratuito con un CAPTCHA (Turnstile) y sirve parte del tráfico del sitio. Para verificar que no eres un bot procesa tu dirección IP y señales de tu navegador.',
+            ],
+            [
+              'Microsoft Clarity',
+              'Mide cómo se usa este sitio web: páginas vistas, clics, desplazamiento y reconstrucción de la sesión de navegación. Corre en todas las páginas del sitio, incluido el panel de tu cuenta. No recibe datos de envíos ni llamadas al API —eso va por otro dominio—, pero sí registra tu navegación mientras estás dentro del panel.',
+            ],
+          ] as const
+        ).map(([k, v]) => (
+          <div class="py-3.5">
+            <dt class="text-sm font-medium text-zinc-200">{k}</dt>
+            <dd class="mt-1 text-pretty text-sm leading-relaxed text-zinc-500">{v}</dd>
+          </div>
+        ))}
+      </dl>
+      <p class="mt-4 text-pretty text-sm leading-relaxed text-zinc-400">
+        No vendemos datos personales, no los cedemos con fines publicitarios y no hay más terceros
+        que los tres de arriba.
+      </p>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Transferencias fuera del Perú
+      </h2>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Cloudflare y Microsoft operan infraestructura fuera del Perú, así que los datos que reciben
+        —IP y señales del navegador en un caso, comportamiento de navegación en el otro— se tratan
+        en el extranjero. Son transferencias internacionales en los términos de la Ley 29733, y se
+        limitan a lo descrito arriba: ni el contenido de tus envíos ni los datos de tus
+        destinatarios salen por esa vía.
+      </p>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Cuánto tiempo conservamos cada cosa
+      </h2>
+      <dl class="mt-4 divide-y divide-line/60 border-y border-line/60 text-sm">
+        {RETENCION.map((r) => (
+          <div class="py-3.5">
+            <dt class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+              <span class="text-sm font-medium text-zinc-200">{r.concepto}</span>
+              <span
+                class:list={[
+                  'font-mono text-xs',
+                  r.plazo ? 'text-zinc-300' : 'text-[var(--color-partial)]',
+                ]}
+              >
+                {r.plazo ?? 'plazo por definir'}
+              </span>
+            </dt>
+            <dd class="mt-1 text-pretty text-sm leading-relaxed text-zinc-500">{r.detalle}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Tus derechos, y cómo ejercerlos
+      </h2>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        La Ley 29733 te reconoce los derechos de acceso, rectificación, cancelación y oposición
+        sobre tus datos personales, además del derecho a revocar el consentimiento y a impedir que
+        se usen para finalidades distintas de las declaradas acá.
+      </p>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Para ejercerlos escribe a{' '}
+        <a href={`mailto:${CONTACTO}`} class="text-zinc-200 underline-offset-4 hover:underline">
+          {CONTACTO}
+        </a>{' '}
+        desde el correo de tu cuenta, o desde cualquiera si adjuntas cómo verificar que eres quien
+        dices. Respondemos dentro de los plazos que fija el reglamento de la ley. Si no quedas
+        conforme, puedes reclamar ante la Autoridad Nacional de Protección de Datos Personales del
+        Ministerio de Justicia.
+      </p>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Si tu reclamo es sobre los datos de un envío que creó una tienda —es decir, si eres el
+        destinatario de un paquete y no nuestro cliente—, quien tiene que atenderte es esa tienda,
+        que es el titular del banco de datos. Escríbenos igual y te ayudamos a llegar a quien
+        corresponde.
+      </p>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Seguridad
+      </h2>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Todo el tráfico del sitio y del API viaja cifrado con TLS. El acceso al panel no usa
+        contraseña sino un enlace de un solo uso enviado a tu correo. Las llamadas al API se
+        autentican con una key que puedes rotar cuando quieras desde tu panel, y los webhooks van
+        firmados con HMAC-SHA256 para que tu servidor pueda verificar que el aviso salió de acá y
+        no de un tercero.
+      </p>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Cambios a esta política
+      </h2>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Si cambia algo de lo que dice acá —qué datos se tratan, con quién se comparten o cuánto se
+        conservan— se actualiza esta página y se avisa por correo a las cuentas activas antes de que
+        el cambio entre en vigor.
+      </p>
+
+      <div class="mt-12 rounded-2xl border border-line bg-ink-soft p-6">
+        <p class="text-pretty text-sm leading-relaxed text-zinc-400">
+          ¿Algo de esto no responde tu pregunta? Escribe a{' '}
+          <a href={`mailto:${CONTACTO}`} class="text-zinc-200 underline-offset-4 hover:underline">
+            {CONTACTO}
+          </a>{' '}
+          y te contestamos. Si tu área legal necesita algo en un formato distinto para una
+          evaluación de proveedor, dilo y lo preparamos.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <Footer />
+</Base>
