@@ -42,8 +42,9 @@ export interface Responsable {
 }
 
 export const RESPONSABLE: Responsable = {
-  // ⚠ PENDIENTE — mientras esté en null la página no se indexa ni se enlaza.
-  nombre: null,
+  // Persona natural que opera el servicio. Es el único campo que la política
+  // necesita para publicarse.
+  nombre: 'Alexander Parco Flores',
   // Todavía no hay empresa constituida: se quedan en null y la página lo dice.
   ruc: null,
   domicilio: null,
