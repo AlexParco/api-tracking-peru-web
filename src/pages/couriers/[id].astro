@@ -285,27 +285,157 @@ const colas = [
 const cola = colas.find((x) => cabeza.length + 1 + x.length <= 155) ?? ''
 const description = cola ? `${cabeza} ${cola}` : cabeza
 
-/* Datos estructurados. Le dicen al buscador que esto es una página sobre un
-   servicio concreto, no prosa suelta — es lo que habilita un resultado
-   enriquecido. Todo sale de la misma fuente que el texto visible, así que no
-   pueden decir cosas distintas. */
+
+/* ── Preguntas frecuentes ──
+ *
+ * Ninguna página del sitio tenía contenido en formato pregunta-respuesta, que es
+ * la forma que mejor se extrae: un modelo que cita, o un buscador que arma un
+ * fragmento, se lleva un par pregunta/respuesta entero sin necesitar el contexto
+ * de la página.
+ *
+ * REGLA: sólo entra la pregunta cuya RESPUESTA sea propia de este courier. Una
+ * respuesta igual en las cinco páginas reintroduce el duplicado que costó
+ * arreglar, y encima con el formato que más se copia. Por eso no hay preguntas
+ * genéricas del tipo «¿qué es un estado canónico?» — ésas viven en /docs, que es
+ * su lugar.
+ *
+ * El texto visible y el JSON-LD salen de esta misma lista: marcar como FAQPage
+ * algo que no está a la vista es exactamente lo que las guías de datos
+ * estructurados prohíben.
+ */
+const faqs: { q: string; a: string }[] = []
+
+faqs.push({
+  q: `¿Hay que mandar el parámetro carrier para rastrear un envío de ${c.name}?`,
+  a:
+    c.detection === 'strong'
+      ? `No hace falta. El formato de guía de ${c.name} es inconfundible, así que el API lo reconoce solo: puedes llamar a GET /v1/tracking con el número y nada más. Mandarlo igual no molesta.`
+      : c.detection === 'weak'
+        ? `Conviene mandarlo. El formato de guía de ${c.name} se parece al de otros couriers peruanos, así que una detección equivocada es posible: con carrier=${c.id} explícito no hay ambigüedad.`
+        : `Sí, es obligatorio. No hay forma de reconocer un número de guía de ${c.name} por su formato, así que sin carrier=${c.id} el API no sabe a quién preguntarle.`,
+})
+
+faqs.push({
+  q: `¿Se pueden crear guías de ${c.name} desde el API?`,
+  a: creates
+    ? c.shipping.auth === 'platform'
+      ? `Sí, con POST /v1/shipments y tu propia API key: ${c.name} no le pide credenciales a tu usuario final. ${c.shipping.note}`
+      : `Sí, pero con la cuenta del cliente en ${c.name}, no con tu API key: el usuario final tiene que conectarla antes. ${c.shipping.note}`
+    : `Todavía no. ${c.shipping.note} El rastreo de ${c.name} sí funciona: son dos integraciones separadas, contra backends distintos del courier.`,
+})
+
+if (c.requiresCode)
+  faqs.push({
+    q: `¿Qué se necesita además del número de guía para rastrear en ${c.name}?`,
+    a: `El código de orden que figura en el comprobante del envío. ${c.name} es el único de los cinco que exige ese segundo factor, y sin él el rastreo responde 422. Ese código lo tiene el comprador y no tu sistema, así que hay que preverlo en tu propia interfaz.`,
+  })
+
+if (cat)
+  faqs.push({
+    q: `¿El catálogo de agencias de ${c.name} sirve para filtrar por ubicación?`,
+    a:
+      cat.ubigeoRate >= 0.99
+        ? `Sí, y es el único de los cinco que lo resuelve del todo: los ${cat.total} puntos de ${c.name} traen ubigeo INEI a nivel distrito, así que puedes cruzarlos contra tablas oficiales sin normalizar nada.`
+        : cat.departments === 0
+          ? `No directamente. ${c.name} no publica departamento, provincia ni distrito: sus ${cat.total} puntos llegan con la dirección en una sola cadena sin estructurar, y sólo el ${pct(cat.geoRate)} trae coordenadas.`
+          : `Parcialmente. ${c.name} nombra ${cat.departments} departamentos y ${cat.provinces} provincias en texto, pero sin ubigeo INEI: cruzarlo contra tablas oficiales queda de tu lado. El ${pct(cat.geoRate)} de sus puntos sí trae coordenadas.`,
+  })
+
+if (cat)
+  faqs.push({
+    q: `¿Se puede saber si una agencia de ${c.name} está abierta?`,
+    a:
+      cat.hoursRate >= 0.999
+        ? `Sí. El horario de los ${cat.total} puntos de ${c.name} viene en franjas parseadas con día y hora, así que resolverlo es una comparación y no un parser.`
+        : cat.hoursRate >= 0.5
+          ? `En el ${pct(cat.hoursRate)} de sus puntos sí: ahí el horario viene en franjas parseadas. En el resto llega como texto y hay que interpretarlo.`
+          : `No directamente. El horario de ${c.name} llega en texto libre${cat.hoursSample ? ` —así lo publica: «${cat.hoursSample}»—` : ''}, así que interpretarlo queda de tu lado.`,
+  })
+
+
+/* Datos estructurados.
+ *
+ * Era un `WebPage` suelto con un `Service` colgando de `about`. `WebPage` es el
+ * tipo por DEFECTO: decir que una página es una página no aporta nada, y dejaba
+ * la página del courier como el nodo más pobre del sitio siendo la que más datos
+ * verificados tiene.
+ *
+ * Ahora es un @graph, como el de la portada, con cuatro cosas que antes no
+ * estaban:
+ *
+ *   - El nodo de página se tipa también como FAQPage, porque ahora hay preguntas
+ *     y respuestas de verdad a la vista. `mainEntity` son las Question: es lo que
+ *     FAQPage exige, y por eso el Service se enlaza con `about`.
+ *   - `BreadcrumbList`. La ruta / > couriers > {courier} ya existía en la URL y en
+ *     el breadcrumb visible, pero no estaba declarada en ningún lado.
+ *   - El `Service` pasa a ser un nodo con `@id` propio y `provider` apuntando al
+ *     `@id` de la Organization de la portada, en vez de repetir una Organization
+ *     anónima por página. Seis páginas describiendo «una organización llamada API
+ *     Tracking Perú» son seis entidades sueltas; seis apuntando al mismo `@id`
+ *     son una sola entidad con seis menciones, que es lo que se puede corroborar.
+ *   - `isPartOf` referencia el `@id` del WebSite por el mismo motivo.
+ *
+ * Todo sale de la misma fuente que el texto visible: el schema no puede decir algo
+ * que la página desmienta.
+ */
+const url = `https://tracking-peru.com/couriers/${c.id}`
 const jsonLd = {
   '@context': 'https://schema.org',
-  '@type': 'WebPage',
-  name: title,
-  description,
-  // Cuándo se sincronizó SU catálogo. Es la única fecha que esta página puede
-  // afirmar de verdad —sale de `meta.sources[].synced_at`— y sin ella no había
-  // ninguna señal de frescura: ni acá, ni en el sitemap, ni a la vista.
-  ...(cat?.syncedAt ? { dateModified: cat.syncedAt } : {}),
-  isPartOf: { '@type': 'WebSite', name: 'API Tracking Perú' },
-  about: {
-    '@type': 'Service',
-    name: `Rastreo de envíos de ${c.name}`,
-    serviceType: 'API de rastreo de envíos',
-    provider: { '@type': 'Organization', name: 'API Tracking Perú' },
-    areaServed: { '@type': 'Country', name: 'Perú' },
-  },
+  '@graph': [
+    {
+      '@type': ['WebPage', 'FAQPage'],
+      '@id': `${url}#page`,
+      url,
+      name: title,
+      description,
+      inLanguage: 'es-PE',
+      // Cuándo se sincronizó SU catálogo. Es la única fecha que esta página puede
+      // afirmar de verdad —sale de `meta.sources[].synced_at`— y sin ella no había
+      // ninguna señal de frescura: ni acá, ni en el sitemap, ni a la vista.
+      ...(cat?.syncedAt ? { dateModified: cat.syncedAt } : {}),
+      isPartOf: { '@id': 'https://tracking-peru.com/#website' },
+      breadcrumb: { '@id': `${url}#breadcrumb` },
+      about: { '@id': `${url}#service` },
+      mainEntity: faqs.map((f) => ({
+        '@type': 'Question',
+        name: f.q,
+        acceptedAnswer: { '@type': 'Answer', text: f.a },
+      })),
+    },
+    {
+      '@type': 'BreadcrumbList',
+      '@id': `${url}#breadcrumb`,
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Inicio', item: 'https://tracking-peru.com/' },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Couriers',
+          item: 'https://tracking-peru.com/couriers',
+        },
+        { '@type': 'ListItem', position: 3, name: c.name },
+      ],
+    },
+    {
+      '@type': 'Service',
+      '@id': `${url}#service`,
+      name: `API de rastreo de ${c.name}`,
+      serviceType: 'API REST de rastreo de envíos',
+      description: `Rastreo de envíos de ${c.name}${creates ? ' y creación de guías' : ''} desde un contrato REST unificado, con estado canónico y webhooks firmados.`,
+      provider: { '@id': 'https://tracking-peru.com/#organization' },
+      areaServed: { '@type': 'Country', name: 'Perú' },
+      ...(cat && cat.total > 0
+        ? {
+            // El catálogo de agencias, como área de servicio cuantificada. Sale de
+            // la misma medición que la tabla de cobertura de más abajo.
+            serviceOutput: {
+              '@type': 'Thing',
+              name: `Catálogo de ${cat.total} agencias de ${c.name}`,
+            },
+          }
+        : {}),
+    },
+  ],
 }
 ---
 
@@ -635,6 +765,33 @@ const jsonLd = {
                 </li>
               ))}
             </ul>
+          </div>
+        )
+      }
+
+      {/* Las preguntas. Van a la vista y no sólo en el JSON-LD: marcar como
+          FAQPage algo que el visitante no puede leer es lo que las guías de datos
+          estructurados prohíben de frente. Y el formato pregunta-respuesta es el
+          que mejor se extrae — se cita entero, sin necesitar el resto de la
+          página. */}
+      {
+        faqs.length > 0 && (
+          <div class="mt-10">
+            <h2 class="font-display text-xl font-semibold tracking-tight text-zinc-50">
+              Preguntas frecuentes sobre {c.name}
+            </h2>
+            <dl class="mt-4 divide-y divide-line/60 border-y border-line/60">
+              {faqs.map((f) => (
+                <div class="py-4">
+                  <dt>
+                    <h3 class="text-pretty font-display text-base font-semibold text-zinc-100">
+                      {f.q}
+                    </h3>
+                  </dt>
+                  <dd class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">{f.a}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
         )
       }
