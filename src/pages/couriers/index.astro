@@ -2,7 +2,7 @@
 import Base from '../../layouts/Base.astro'
 import Nav from '../../components/Nav.astro'
 import Footer from '../../components/Footer.astro'
-import { PUBLISHED_CARRIERS, LEVELS, METRICS } from '../../data/api.ts'
+import { PUBLISHED_CARRIERS, METRICS, CATALOGS } from '../../data/api.ts'
 
 /* El índice de couriers.
  *
@@ -20,18 +20,98 @@ import { PUBLISHED_CARRIERS, LEVELS, METRICS } from '../../data/api.ts'
  * quien busca «api couriers perú» —en plural, sin nombre propio— le responde
  * algo mejor que la portada, que habla del producto y no del catálogo.
  *
- * ── Qué NO hace ──
+ * ── Qué NO hace, y dónde está el límite ──
  *
- * No repite lo que ya dice cada página. Acá va lo comparable de un vistazo
- * —qué rastrea, con cuánta evidencia, cuántas agencias publica— y el detalle
- * queda donde estaba. Un índice que resume de más compite con sus propias
- * páginas por la misma búsqueda.
+ * No repite lo que ya dice cada página: un índice que resume de más compite con
+ * sus propias páginas por la misma búsqueda.
+ *
+ * Pero COMPARAR no es resumir. «Cuál me conviene» es otra pregunta que «cómo
+ * integro Olva», y ninguna página de courier puede responderla: para decir «es el
+ * único con ubigeo» hay que mirar a los cinco a la vez. Eso es lo que va acá —la
+ * tabla lado a lado y los superlativos calculados— y por eso no canibaliza nada:
+ * es contenido que sólo esta URL puede tener.
+ *
+ * También es el único terreno donde este sitio compite con ventaja. Contra un
+ * dominio dedicado a un solo courier, una página nuestra sobre ese courier pelea
+ * de local en cancha ajena; los cinco bajo un contrato, no.
  */
 
 const title = 'Couriers de Perú con API de rastreo — API Tracking Perú'
 const description = `Los ${PUBLISHED_CARRIERS.length} couriers peruanos que integramos, con el estado real de cada uno: si rastrea, con cuánta evidencia y cuántas agencias publica.`
 
 const conRastreo = PUBLISHED_CARRIERS.filter((c) => c.tracking.status === 'ok').length
+
+/* Los superlativos se CALCULAN sobre `CATALOGS`, que se mide contra /v1/agencies
+   en cada build. Nadie escribe «el más grande»: se compara. El día que otro
+   courier publique ubigeo o supere en puntos, la fila cambia sola. */
+const cat = (id: string) => CATALOGS[id] ?? null
+const conCatalogo = PUBLISHED_CARRIERS.filter((c) => cat(c.id))
+const mayorPor = (f: (s: NonNullable<ReturnType<typeof cat>>) => number) =>
+  conCatalogo.reduce((a, b) => (f(cat(b.id)!) > f(cat(a.id)!) ? b : a))
+
+const masPuntos = mayorPor((s) => s.total)
+const masCapilar = mayorPor((s) => s.provinces)
+const conUbigeo = conCatalogo.find((c) => cat(c.id)!.ubigeoRate >= 0.99)
+const conHorario = conCatalogo.find((c) => cat(c.id)!.hoursRate >= 0.999)
+const conAereo = conCatalogo.find((c) => cat(c.id)!.services.includes('air'))
+const conTresServicios = conCatalogo.find((c) =>
+  ['dropoff', 'pickup', 'home_delivery'].every((x) => cat(c.id)!.services.includes(x)),
+)
+const conKeyPropia = PUBLISHED_CARRIERS.find(
+  (c) => c.shipping.status === 'ok' && c.shipping.auth === 'platform',
+)
+
+/* Cada criterio con su ganador y el número que lo sostiene. Es la pregunta que
+   trae a alguien a un índice —«cuál uso»— y la única página que puede contestarla. */
+const criterios: { necesidad: string; ganador: string; porque: string }[] = [
+  conUbigeo && {
+    necesidad: 'Cruzar direcciones contra tablas del INEI',
+    ganador: conUbigeo.name,
+    porque: `El único con ubigeo de distrito en sus ${cat(conUbigeo.id)!.total} puntos.`,
+  },
+  {
+    necesidad: 'La red más grande',
+    ganador: masPuntos.name,
+    porque: `${cat(masPuntos.id)!.total} puntos publicados.`,
+  },
+  {
+    necesidad: 'Llegar fuera de las capitales',
+    ganador: masCapilar.name,
+    porque: `Baja a ${cat(masCapilar.id)!.provinces} provincias, la red más capilar.`,
+  },
+  conTresServicios && {
+    necesidad: 'Armar un selector de punto de recojo',
+    ganador: conTresServicios.name,
+    porque: `Marca los tres servicios por punto${conHorario?.id === conTresServicios.id ? ', y el horario viene parseado' : ''}.`,
+  },
+  conKeyPropia && {
+    necesidad: 'Crear guías sin pedirle credenciales a tu cliente',
+    ganador: conKeyPropia.name,
+    porque: 'Se genera con tu API key y nada más.',
+  },
+  conAereo && {
+    necesidad: 'Envío aéreo a selva y sierra',
+    ganador: conAereo.name,
+    porque: 'El único que marca qué puntos lo aceptan.',
+  },
+].filter(Boolean) as { necesidad: string; ganador: string; porque: string }[]
+
+/* El titular de cada tarjeta. Antes era LEVELS[c.level].detail, idéntico en los
+   cuatro `live`: cuatro tarjetas diciendo lo mismo. Ahora cada una dice lo que ese
+   courier tiene y ningún otro. */
+function titular(id: string): string {
+  const s = cat(id)
+  if (!s) return 'No publica catálogo de agencias.'
+  if (s.ubigeoRate >= 0.99) return `El único con ubigeo INEI de distrito en sus ${s.total} puntos.`
+  if (id === masPuntos.id) return `El catálogo más grande del país: ${s.total} puntos.`
+  if (conTresServicios?.id === id)
+    return `El catálogo con más metadatos: horario parseado y los tres servicios por punto.`
+  if (s.departments === 0)
+    return `${s.total} puntos, pero sin departamento ni distrito estructurado.`
+  if (s.kinds.length > 1)
+    return `${s.total} puntos en ${s.departments} departamentos, y el único que marca sus hubs.`
+  return `${s.total} puntos en ${s.departments} departamentos.`
+}
 
 /* Datos estructurados: una lista de elementos. Le dice al buscador que esto es
    un índice de otras páginas y no prosa suelta, que es lo que habilita que
@@ -42,6 +122,15 @@ const jsonLd = {
   name: title,
   description,
   isPartOf: { '@type': 'WebSite', name: 'API Tracking Perú', url: 'https://tracking-peru.com' },
+  // La ruta / > couriers > {courier} existe en la URL y en el breadcrumb visible,
+  // pero no estaba declarada: Google puede mostrarla en vez de la URL cruda.
+  breadcrumb: {
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Inicio', item: 'https://tracking-peru.com/' },
+      { '@type': 'ListItem', position: 2, name: 'Couriers', item: 'https://tracking-peru.com/couriers' },
+    ],
+  },
   mainEntity: {
     '@type': 'ItemList',
     numberOfItems: PUBLISHED_CARRIERS.length,
@@ -79,7 +168,111 @@ const jsonLd = {
         y webhooks firmados.
       </p>
 
-      <ul class="mt-10 grid gap-4">
+
+      {/* La comparativa. Es lo único que esta página puede decir y ninguna de las
+          cinco hijas puede: para afirmar «el único con ubigeo» hay que ver a los
+          cinco juntos. Todo sale de CATALOGS, medido contra /v1/agencies en build.
+          <table> de verdad, no una grilla de divs: se lee, se copia y se cita. */}
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Los cinco couriers, lado a lado
+      </h2>
+      <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">
+        Lo que publica el catálogo de cada uno, medido sobre sus puntos. No es lo mismo cubrir
+        un departamento que bajar a sus provincias, ni publicar una dirección que publicar su
+        ubigeo.
+      </p>
+
+      <div class="mt-5 overflow-x-auto">
+        <table class="w-full min-w-[46rem] border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-line text-left">
+              <th scope="col" class="py-2 pr-4 font-medium text-zinc-400">Courier</th>
+              <th scope="col" class="py-2 pr-4 text-right font-medium text-zinc-400">Agencias</th>
+              <th scope="col" class="py-2 pr-4 text-right font-medium text-zinc-400">Provincias</th>
+              <th scope="col" class="py-2 pr-4 font-medium text-zinc-400">Ubigeo INEI</th>
+              <th scope="col" class="py-2 pr-4 font-medium text-zinc-400">Horario</th>
+              <th scope="col" class="py-2 pr-4 font-medium text-zinc-400">Crear guías</th>
+              <th scope="col" class="py-2 font-medium text-zinc-400">Evidencia</th>
+            </tr>
+          </thead>
+          <tbody>
+            {PUBLISHED_CARRIERS.map((c) => {
+              const s = cat(c.id)
+              return (
+                <tr class="border-b border-line/60">
+                  <th scope="row" class="py-2.5 pr-4 text-left font-normal">
+                    <a href={`/couriers/${c.id}`} class="text-zinc-200 underline-offset-4 hover:underline">
+                      {c.name}
+                    </a>
+                  </th>
+                  <td class="py-2.5 pr-4 text-right font-mono tabular-nums text-zinc-300">
+                    {s ? s.total : '—'}
+                  </td>
+                  <td class="py-2.5 pr-4 text-right font-mono tabular-nums text-zinc-300">
+                    {s && s.provinces ? s.provinces : '—'}
+                  </td>
+                  <td class="py-2.5 pr-4 text-zinc-400">
+                    {s && s.ubigeoRate >= 0.99 ? 'en todos los puntos' : 'no'}
+                  </td>
+                  <td class="py-2.5 pr-4 text-zinc-400">
+                    {s && s.hoursRate >= 0.9 ? 'parseado' : 'texto libre'}
+                  </td>
+                  <td class="py-2.5 pr-4 text-zinc-400">
+                    {c.shipping.status === 'ok'
+                      ? c.shipping.auth === 'platform'
+                        ? 'con tu key'
+                        : 'con cuenta del cliente'
+                      : 'todavía no'}
+                  </td>
+                  <td class="py-2.5 font-mono text-xs text-zinc-400">{c.level}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Los criterios. «Cuál uso» es la pregunta que trae a alguien a un índice, y
+          hasta ahora la página no la contestaba: listaba cinco enlaces. Cada fila
+          sale de comparar los cinco catálogos, así que el ganador puede cambiar sin
+          que nadie edite nada. */}
+      <h2 class="mt-14 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Cuál te conviene, según lo que necesites
+      </h2>
+      <dl class="mt-5 divide-y divide-line/60 border-y border-line/60">
+        {criterios.map((k) => (
+          <div class="grid gap-1 py-3.5 sm:grid-cols-[1fr_auto] sm:items-baseline sm:gap-6">
+            <dt class="text-pretty text-sm leading-relaxed text-zinc-300">
+              {k.necesidad}
+              <span class="block text-zinc-500">{k.porque}</span>
+            </dt>
+            <dd class="font-display text-sm font-semibold text-[var(--color-live)] sm:text-right">
+              {k.ganador}
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      {/* El contrato común. Es el argumento frente a un dominio dedicado a un solo
+          courier: ellos resuelven uno, acá los cinco hablan igual. Va después de la
+          comparativa a propósito — primero el dato, después la conclusión. */}
+      <h2 class="mt-14 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Qué comparten los cinco
+      </h2>
+      <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">
+        Los catálogos son distintos, pero el contrato no. Los cinco couriers devuelven el mismo
+        vocabulario de estados —once valores canónicos, con el literal original del courier
+        adjunto en <code class="font-mono text-zinc-300">status_raw</code>— así que no escribes
+        cinco mapeos ni un <code class="font-mono text-zinc-300">switch</code> por courier.
+        Los cinco aceptan suscripción de webhooks firmados, y los cinco entran con la misma
+        API key: ninguno queda reservado para un plan más caro.
+      </p>
+
+      <h2 class="mt-14 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Cada courier en detalle
+      </h2>
+
+      <ul class="mt-5 grid gap-4">
         {
           PUBLISHED_CARRIERS.map((c) => (
             <li>
@@ -115,7 +308,7 @@ const jsonLd = {
                 </p>
 
                 <p class="mt-2.5 text-pretty text-sm leading-relaxed text-zinc-500">
-                  {LEVELS[c.level].detail}
+                  {titular(c.id)}
                 </p>
               </a>
             </li>

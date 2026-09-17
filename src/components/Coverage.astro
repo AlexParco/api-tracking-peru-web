@@ -242,6 +242,19 @@ const cols = 'md:grid-cols-[minmax(0,1.5fr)_repeat(3,minmax(0,1fr))_minmax(0,1.3
         ))
       }
     </ul>
+
+    {/* Salida al índice comparativo. La portada enlazaba a los cinco couriers de a
+        uno y se saltaba a `/couriers`, que es justamente la página que responde
+        «cuál me conviene» —la tabla lado a lado y los superlativos— y que no
+        recibía un solo enlace desde acá ni desde /docs, las dos con más peso. */}
+    <p class="mt-8 text-sm">
+      <a
+        href="/couriers"
+        class="text-zinc-400 underline-offset-4 transition-colors hover:text-zinc-100 hover:underline"
+      >
+        Compara los {PUBLISHED_CARRIERS.length} couriers lado a lado →
+      </a>
+    </p>
   </div>
 
   <script is:inline>

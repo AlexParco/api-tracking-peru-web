@@ -7,14 +7,26 @@ import Logo from './Logo.astro'
 const atHome = Astro.url.pathname === '/'
 const toHome = (anchor: string) => (atHome ? anchor : `/${anchor}`)
 
-const sections = [
+const path = Astro.url.pathname
+
+/* La barra mezcla anclas de la portada con rutas propias. `/couriers` es ruta, no
+   ancla: es el índice comparativo de los cinco couriers, y hasta ahora no lo
+   enlazaba nada más que sus propias páginas hijas —o sea, la única forma de
+   llegar era ya estar adentro—. Una página que agrupa a cinco indexables tiene
+   que colgar del nav, no del pie de sus hijas. */
+const items: { label: string; anchor?: string; route?: string }[] = [
   { anchor: '#api', label: 'Integración' },
   { anchor: '#coverage', label: 'Cobertura' },
+  { route: '/couriers', label: 'Couriers' },
   { anchor: '#journey', label: 'Estados' },
   { anchor: '#pricing', label: 'Precios' },
 ]
 
-const path = Astro.url.pathname
+const sections = items.map((s) => ({
+  label: s.label,
+  href: s.route ?? toHome(s.anchor!),
+  current: s.route ? path === s.route || path.startsWith(`${s.route}/`) : false,
+}))
 const inDocs = path.startsWith('/docs')
 const inAccount = ['/login', '/dashboard'].some((p) => path.startsWith(p))
 ---
@@ -47,8 +59,12 @@ const inAccount = ['/login', '/dashboard'].some((p) => path.startsWith(p))
       {
         sections.map((s) => (
           <a
-            href={toHome(s.anchor)}
-            class="eyebrow flex items-center border-r border-line px-5 text-zinc-500 transition-colors hover:bg-[var(--hover-soft)] hover:text-zinc-50"
+            href={s.href}
+            aria-current={s.current ? 'page' : undefined}
+            class:list={[
+              'eyebrow flex items-center border-r border-line px-5 transition-colors hover:bg-[var(--hover-soft)] hover:text-zinc-50',
+              s.current ? 'text-brand' : 'text-zinc-500',
+            ]}
           >
             {s.label}
           </a>
@@ -108,8 +124,12 @@ const inAccount = ['/login', '/dashboard'].some((p) => path.startsWith(p))
             sections.map((s, i) => (
               <li>
                 <a
-                  href={toHome(s.anchor)}
-                  class="flex items-center gap-4 px-5 py-3.5 text-zinc-300 transition-colors hover:bg-[var(--hover-soft)] hover:text-zinc-50"
+                  href={s.href}
+                  aria-current={s.current ? 'page' : undefined}
+                  class:list={[
+                    'flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-[var(--hover-soft)] hover:text-zinc-50',
+                    s.current ? 'text-brand' : 'text-zinc-300',
+                  ]}
                 >
                   <span class="eyebrow w-5 text-zinc-600">{String(i + 1).padStart(2, '0')}</span>
                   {s.label}
