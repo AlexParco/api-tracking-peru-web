@@ -88,20 +88,32 @@ export interface Retencion {
 export const RETENCION: Retencion[] = [
   {
     concepto: 'Cuenta y API key',
-    plazo: null,
+    plazo: 'mientras la cuenta exista',
     detalle:
-      'El correo y el nombre con los que se creó la cuenta, mientras la cuenta exista. Al darla de baja se eliminan junto con sus keys.',
+      'El correo y el nombre con los que se creó la cuenta. Revocar una key corta su acceso de inmediato, pero el registro de la key y la fecha en que se revocó se conservan: es el dato que se mira si hay que reconstruir un incidente. No hay borrado automático de cuentas; se hace a pedido, escribiendo al correo de contacto.',
   },
   {
     concepto: 'Envíos creados y su rastreo',
     plazo: null,
     detalle:
-      'Los datos que el cliente envía para generar una guía y los eventos que devuelve el courier. Se conservan mientras el envío siga en curso y un tiempo después para poder responder reclamos.',
+      'Los datos que envías para generar una guía y los eventos que devuelve el courier. Se conservan mientras el envío siga en curso y un tiempo después para poder responder reclamos. Todavía no hay un borrado automático que fije un plazo, y por eso no declaramos uno.',
   },
   {
-    concepto: 'Registros técnicos',
-    plazo: null,
+    concepto: 'Uso del API',
+    plazo: 'mientras la cuenta exista',
     detalle:
-      'Fecha, hora, IP y endpoint de cada llamada, para medir cuota, detectar abuso y diagnosticar fallas.',
+      'Un contador por día, key y endpoint, con la clase de respuesta. Es un agregado para medir cuota: no guarda el detalle de cada llamada ni el contenido de lo que consultaste.',
+  },
+  {
+    concepto: 'Errores recientes',
+    plazo: 'sólo los últimos, los más viejos se borran solos',
+    detalle:
+      'Para que puedas diagnosticar desde tu panel: identificador de la petición, fecha, método, endpoint, código de estado y mensaje de error. La tabla está acotada y va descartando los más antiguos a medida que entran nuevos.',
+  },
+  {
+    concepto: 'Direcciones IP',
+    plazo: 'no se almacenan',
+    detalle:
+      'La IP se usa en memoria y por unos segundos para detectar ráfagas de intentos de autenticación fallidos, y se descarta sola. No queda registrada en ninguna tabla ni asociada a tu cuenta.',
   },
 ]

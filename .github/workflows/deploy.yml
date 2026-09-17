@@ -21,6 +21,15 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Compila el sitio: si Astro no buildea, el deploy no corre.
       - run: pnpm build
+      # Los enlaces internos y las anclas: `astro check` mira tipos, no destinos.
+      - run: pnpm check:links
+      # El fallback del catálogo, contra el API real. NO bloquea el deploy: que el
+      # API esté caído o haya cambiado un número no es motivo para no publicar, y
+      # el build ya usa datos frescos cuando el API responde. Lo que evita es que
+      # la foto de respaldo envejezca en silencio durante meses y se descubra
+      # justo el día que el API falle, que es cuando se la necesita.
+      - run: node scripts/sync-catalog.mjs --check
+        continue-on-error: true
 
   deploy:
     needs: build
