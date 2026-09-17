@@ -356,6 +356,175 @@ await Promise.all(
   }),
 )
 
+/**
+ * Lo que el catálogo de cada carrier publica DE VERDAD, medido sobre sus puntos.
+ *
+ * Esto existe porque las cinco páginas por courier eran casi la misma página: con
+ * `tracking.note`, `agencies.note` y poco más, entre 34 y 87 palabras de cada una
+ * eran suyas y el resto plantilla. Un buscador que ve cinco URLs así consolida y
+ * se queda con una.
+ *
+ * La diferencia real entre estos couriers no estaba escrita en ningún lado, pero
+ * sí estaba en el API: uno trae ubigeo INEI en todos sus puntos y los otros cuatro
+ * en ninguno, uno no publica ni el departamento, dos parsean el horario y tres lo
+ * dejan en texto. Eso se MIDE, no se redacta, así que no puede envejecer ni decir
+ * algo que el API desmienta: es el mismo trato que `agencies.total`.
+ */
+export interface CatalogStats {
+  /** Puntos publicados. */
+  total: number
+  /** Departamentos distintos que nombra. 0 = no publica la división política. */
+  departments: number
+  /** Provincias distintas que nombra. Segunda dimensión: 25 departamentos con 30
+      provincias es una red de capitales; con 120, una red capilar. */
+  provinces: number
+  /** Los de mayor concentración, de mayor a menor. */
+  top: { name: string; count: number }[]
+  /** Un horario real suyo, tal como lo publica. Sólo cuando NO viene parseado: es
+      lo que quien integra va a tener que parsear, y cada carrier lo escribe
+      distinto, así que citarlo de otro sería mentir. */
+  hoursSample: string | null
+  /** Proporción 0..1 con ubigeo INEI a nivel distrito. */
+  ubigeoRate: number
+  /** Proporción con coordenadas. */
+  geoRate: number
+  /** Proporción con horario en franjas parseadas, no en texto libre. */
+  hoursRate: number
+  /** Servicios que marca por punto. Vacío = no publica ninguno. */
+  services: string[]
+  /** Tipos de punto que distingue. Solo `unknown` = no los distingue. */
+  kinds: { name: string; count: number }[]
+  /** Última sincronización de SU catálogo, según `meta.sources[]`. */
+  syncedAt: string | null
+}
+
+/** Para un carrier que empiece a publicar catálogo y todavía no tenga foto. */
+const EMPTY_CATALOG: CatalogStats = {
+  total: 0, departments: 0, provinces: 0, top: [], hoursSample: null, ubigeoRate: 0, geoRate: 0, hoursRate: 0,
+  services: [], kinds: [], syncedAt: null,
+}
+
+/*
+ * Fallback, con el mismo criterio que AGENCIES_SYNCED_FALLBACK: si el API no
+ * responde durante el build, la página se sirve con la última foto conocida en vez
+ * de perder la sección entera. No está escrito a mano —sale de una corrida real— y
+ * se regenera con:
+ *
+ *   node scripts/sync-catalog.mjs
+ */
+const CATALOG_FALLBACK: Record<string, CatalogStats> = {
+  marvisur: {
+    total: 193, departments: 25, provinces: 94, ubigeoRate: 0, geoRate: 1, hoursRate: 0,
+    hoursSample: "LUN - SAB: 8:00 AM - 6:00 PM",
+    services: ['dropoff', 'pickup'],
+    kinds: [{ name: 'office', count: 191 }, { name: 'hub', count: 2 }],
+    top: [{ name: 'LIMA', count: 66 }, { name: 'PIURA', count: 15 }, { name: 'CUSCO', count: 11 }, { name: 'AREQUIPA', count: 10 }, { name: 'CAJAMARCA', count: 10 }],
+    syncedAt: '2026-09-17',
+  },
+  olva: {
+    total: 428, departments: 25, provinces: 154, ubigeoRate: 1, geoRate: 0.963, hoursRate: 0.963,
+    hoursSample: null,
+    services: [],
+    kinds: [{ name: 'agent', count: 270 }, { name: 'office', count: 158 }],
+    top: [{ name: 'LIMA', count: 128 }, { name: 'AREQUIPA', count: 38 }, { name: 'LA LIBERTAD', count: 29 }, { name: 'SAN MARTIN', count: 26 }, { name: 'CAJAMARCA', count: 25 }],
+    syncedAt: '2026-09-17',
+  },
+  urbano: {
+    total: 265, departments: 24, provinces: 53, ubigeoRate: 0, geoRate: 1, hoursRate: 1,
+    hoursSample: null,
+    services: ['dropoff', 'pickup', 'home_delivery'],
+    kinds: [{ name: 'unknown', count: 265 }],
+    top: [{ name: 'LIMA', count: 133 }, { name: 'AREQUIPA', count: 21 }, { name: 'PIURA', count: 16 }, { name: 'LAMBAYEQUE', count: 13 }, { name: 'LA LIBERTAD', count: 11 }],
+    syncedAt: '2026-09-17',
+  },
+  cruzdelsur: {
+    total: 171, departments: 0, provinces: 0, ubigeoRate: 0, geoRate: 0.561, hoursRate: 0,
+    hoursSample: "De Lunes a Sábado de 08:00am - 20:00pm",
+    services: [],
+    kinds: [{ name: 'unknown', count: 171 }],
+    top: [],
+    syncedAt: '2026-09-17',
+  },
+  shalom: {
+    total: 553, departments: 25, provinces: 116, ubigeoRate: 0, geoRate: 0.964, hoursRate: 0,
+    hoursSample: "LUNES A VIERNES - 8:00 AM A 8:00 PM",
+    services: ['air', 'home_delivery'],
+    kinds: [{ name: 'unknown', count: 553 }],
+    top: [{ name: 'LIMA', count: 193 }, { name: 'AREQUIPA', count: 34 }, { name: 'LA LIBERTAD', count: 32 }, { name: 'PIURA', count: 31 }, { name: 'CUSCO', count: 27 }],
+    syncedAt: '2026-09-17',
+  },
+}
+
+
+// Recorre el catálogo de un carrier y lo resume. `per_page` topea en 500, así que
+// pagina. Como agenciesTotal: devuelve el fallback ante cualquier problema y NUNCA
+// tira — un build no se rompe porque el API tuvo un hipo.
+async function catalogStats(id: string, fallback: CatalogStats): Promise<CatalogStats> {
+  const base = import.meta.env.PUBLIC_API_URL ?? 'https://api.tracking-peru.com'
+  try {
+    const puntos: any[] = []
+    let page = 1
+    let syncedAt: string | null = null
+    let ubigeoRate: number | null = null
+    for (;;) {
+      const res = await fetch(`${base}/v1/agencies?carrier=${id}&per_page=500&page=${page}`, {
+        signal: AbortSignal.timeout(15000),
+      })
+      if (!res.ok) return fallback
+      const data = await res.json()
+      const lote = data?.agencies
+      if (!Array.isArray(lote) || !lote.length) break
+      puntos.push(...lote)
+      if (page === 1) {
+        const src = data?.meta?.sources?.[0]
+        syncedAt = typeof src?.synced_at === 'string' ? src.synced_at.slice(0, 10) : null
+        // El API ya calcula esta tasa; preferirla a recontarla nosotros.
+        ubigeoRate = typeof src?.ubigeo_district_rate === 'number' ? src.ubigeo_district_rate : null
+      }
+      const total_pages = data?.pagination?.total_pages ?? 1
+      if (page >= total_pages) break
+      page++
+    }
+    if (!puntos.length) return fallback
+
+    const cuenta = (xs: string[]) =>
+      [...xs.reduce((m, x) => m.set(x, (m.get(x) ?? 0) + 1), new Map<string, number>())]
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+
+    const deps = cuenta(puntos.map((p) => p?.location?.department).filter(Boolean))
+    const provs = new Set(puntos.map((p) => p?.location?.province).filter(Boolean))
+    const prop = (n: number) => Math.round((n / puntos.length) * 1000) / 1000
+    const muestra = puntos.find((p) => !p?.hours?.structured && p?.hours?.text?.[0])?.hours.text[0]
+
+    return {
+      total: puntos.length,
+      departments: deps.length,
+      provinces: provs.size,
+      top: deps.slice(0, 5),
+      hoursSample: typeof muestra === 'string' ? muestra : null,
+      ubigeoRate: ubigeoRate ?? prop(puntos.filter((p) => p?.ubigeo_level === 'district').length),
+      geoRate: prop(puntos.filter((p) => p?.geo).length),
+      hoursRate: prop(puntos.filter((p) => p?.hours?.structured).length),
+      services: cuenta(puntos.flatMap((p) => Object.keys(p?.services ?? {}))).map((s) => s.name),
+      kinds: cuenta(puntos.map((p) => p?.kind ?? 'unknown')),
+      syncedAt,
+    }
+  } catch {
+    return fallback
+  }
+}
+
+/** El catálogo de cada carrier, resumido en build. Los que no publican, no están. */
+export const CATALOGS: Record<string, CatalogStats> = Object.fromEntries(
+  await Promise.all(
+    CARRIERS.filter((c) => c.agencies.status === 'ok').map(
+      async (c) =>
+        [c.id, await catalogStats(c.id, CATALOG_FALLBACK[c.id] ?? EMPTY_CATALOG)] as const,
+    ),
+  ),
+)
+
 /** Números medidos en una corrida real del servicio, no estimados. */
 export const METRICS = {
   carriersSurveyed: PUBLISHED_CARRIERS.length,

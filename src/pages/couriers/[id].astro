@@ -3,7 +3,7 @@ import Base from '../../layouts/Base.astro'
 import Nav from '../../components/Nav.astro'
 import Footer from '../../components/Footer.astro'
 import CodeBlock from '../../components/CodeBlock.astro'
-import { PUBLISHED_CARRIERS, LEVELS, METRICS, type Carrier } from '../../data/api.ts'
+import { PUBLISHED_CARRIERS, LEVELS, METRICS, CATALOGS, type Carrier } from '../../data/api.ts'
 import { FREE } from '../../data/plans.ts'
 
 /* Una página por courier.
@@ -72,6 +72,160 @@ const deliveryLabel: Record<'agency' | 'home', string> = {
   home: 'entrega a domicilio',
 }
 
+/* ── Lo que hace que esta página no sea las otras cuatro ──
+ *
+ * Con `tracking.note` y `agencies.note` sólo había entre 34 y 87 palabras propias
+ * por página: el resto era plantilla, y cinco URLs así se consolidan en una.
+ *
+ * Lo que falta no es redacción, es DATO. Y el dato existe: el catálogo de cada
+ * courier publica cosas distintas, y `CATALOGS` lo mide contra /v1/agencies en
+ * cada build. Uno trae ubigeo INEI en todos sus puntos y los otros cuatro en
+ * ninguno; uno no publica ni el departamento; dos parsean el horario y tres lo
+ * dejan en texto.
+ *
+ * Por eso los dos bloques de abajo se CALCULAN en vez de escribirse. Tres razones,
+ * y las tres importan igual:
+ *   - no pueden envejecer, porque salen de la misma medición que el resto;
+ *   - no pueden afirmar algo que el API desmienta, que es la regla de api.ts;
+ *   - no pueden terminar iguales entre couriers, que es de lo que veníamos.
+ *
+ * Cada frase nombra a su courier a propósito: un extractor de pasajes —o un
+ * modelo citando— se lleva la frase suelta, sin el título de la página.
+ */
+const cat = CATALOGS[c.id] ?? null
+const otrosCat = PUBLISHED_CARRIERS.filter((o) => o.id !== c.id)
+  .map((o) => CATALOGS[o.id])
+  .filter(Boolean)
+
+const pct = (x: number) => `${Math.round(x * 100)} %`
+const tipo = (n: string) => cat?.kinds.find((k) => k.name === n)?.count ?? 0
+
+/* Comparativos: hechos, no adjetivos. Si mañana otro courier publica ubigeo, la
+   frase «es el único» desaparece sola. */
+const masGrande = !!cat && otrosCat.every((o) => cat.total > o.total)
+const unicoUbigeo = !!cat && cat.ubigeoRate >= 0.99 && otrosCat.every((o) => o.ubigeoRate < 0.5)
+const paisCompleto = !!cat && cat.departments >= 25
+const tresServicios =
+  !!cat && ['dropoff', 'pickup', 'home_delivery'].every((s) => cat.services.includes(s))
+const unicoAereo =
+  !!cat && cat.services.includes('air') && otrosCat.every((o) => !o.services.includes('air'))
+const distingueTipos = !!cat && cat.kinds.length > 1
+
+const fuertes: string[] = []
+if (cat) {
+  if (unicoUbigeo)
+    fuertes.push(
+      `${c.name} es el único de los cinco que trae ubigeo INEI de distrito en todos sus puntos. Si vas a cruzar direcciones contra tablas oficiales, o a calcular cobertura por distrito, es el único que te lo da resuelto.`,
+    )
+  if (masGrande)
+    fuertes.push(
+      `Es el catálogo más grande de los cinco: ${c.name} publica ${cat.total} puntos, ${cat.total - Math.max(...otrosCat.map((o) => o.total))} más que el siguiente.`,
+    )
+  if (paisCompleto)
+    fuertes.push(
+      `${c.name} nombra puntos en los 25 departamentos del país, Callao incluido${cat.provinces ? `, y baja hasta ${cat.provinces} provincias` : ''}.`,
+    )
+  /* Provincias por punto: mide si la red es capilar o de capitales. Con la misma
+     cantidad de departamentos, 154 provincias y 53 son dos productos distintos. */
+  if (cat.provinces >= 90 && otrosCat.every((o) => cat.provinces > o.provinces))
+    fuertes.push(
+      `Es la red más capilar de las cinco: los puntos de ${c.name} se reparten en ${cat.provinces} provincias, no se concentran en las capitales.`,
+    )
+  if (tresServicios)
+    fuertes.push(
+      `${c.name} es el único que marca los tres servicios por punto —dropoff, pickup y entrega a domicilio—, así que es con el que mejor se arma un selector de punto de recojo.`,
+    )
+  if (unicoAereo)
+    fuertes.push(
+      `${c.name} es el único que marca qué puntos aceptan envío aéreo, que en Perú es la diferencia entre horas y días hacia selva y sierra.`,
+    )
+  if (cat.hoursRate >= 0.999)
+    fuertes.push(
+      `El horario de los ${cat.total} puntos de ${c.name} viene en franjas parseadas, no en texto libre: decidir si una agencia está abierta no te obliga a escribir un parser.`,
+    )
+  else if (cat.hoursRate >= 0.9)
+    fuertes.push(
+      `El ${pct(cat.hoursRate)} de los puntos de ${c.name} trae el horario en franjas parseadas, no en texto libre.`,
+    )
+  if (cat.geoRate >= 0.999)
+    fuertes.push(
+      `Los ${cat.total} puntos de ${c.name} traen coordenadas, así que resolver «el más cercano» no te obliga a geocodificar nada.`,
+    )
+  if (distingueTipos)
+    fuertes.push(
+      `${c.name} distingue el tipo de punto: ${tipo('agent') || tipo('hub')} de sus ${cat.total} son ${tipo('agent') ? 'agentes de terceros' : 'hubs'} y ${tipo('office')} son oficinas propias. No es lo mismo lo que puedes esperar de unos y de otros.`,
+    )
+}
+if (c.detection === 'strong')
+  fuertes.push(
+    `El número de guía de ${c.name} es inconfundible, así que puedes consultarlo sin mandar el parámetro carrier.`,
+  )
+if (c.level === 'live')
+  fuertes.push(
+    `El rastreo de ${c.name} está verificado en vivo: el mapeo sale de respuestas reales capturadas contra su servicio, con acierto y con fallo.`,
+  )
+/* Los webhooks NO entran acá aunque estén: los cinco couriers son suscribibles,
+   así que no son una razón para elegir éste. Un «fuerte» que comparten todos es
+   relleno con forma de argumento, y encima repetiría texto entre las cinco
+   páginas, que es de lo que veníamos. Viven en su propia tarjeta, más arriba. */
+
+const limites: string[] = []
+if (cat) {
+  if (cat.departments === 0)
+    limites.push(
+      `${c.name} no publica departamento, provincia ni distrito: sus ${cat.total} puntos llegan con la dirección en una sola cadena sin estructurar. Si tu producto filtra puntos por ubicación, este catálogo no sirve tal cual.`,
+    )
+  else if (cat.departments < 25)
+    limites.push(
+      `${c.name} llega a ${cat.departments} de los 25 departamentos: no es cobertura nacional completa.`,
+    )
+  if (cat.provinces > 0 && cat.provinces < 60)
+    limites.push(
+      `La red de ${c.name} es de capitales, no capilar: sus ${cat.total} puntos cubren ${cat.provinces} provincias, menos de la mitad de las ${otrosCat.reduce((m, o) => Math.max(m, o.provinces), 0)} del catálogo más extendido.`,
+    )
+  if (cat.ubigeoRate < 0.5 && cat.departments > 0)
+    limites.push(
+      `El catálogo de ${c.name} no trae ubigeo INEI: nombra sus ${cat.departments} departamentos y ${cat.provinces} provincias en texto, pero cruzarlos contra tablas oficiales queda de tu lado.`,
+    )
+  if (cat.geoRate < 0.9)
+    limites.push(
+      `Sólo el ${pct(cat.geoRate)} de los puntos de ${c.name} trae coordenadas, así que una búsqueda por cercanía deja fuera al resto.`,
+    )
+  if (cat.hoursRate < 0.5)
+    limites.push(
+      `El horario de ${c.name} viene en texto libre${cat.hoursSample ? ` —así lo publica: «${cat.hoursSample}»—` : ''}, no en franjas parseadas: interpretarlo queda de tu lado.`,
+    )
+  if (!cat.services.length)
+    limites.push(
+      `${c.name} no publica qué hace cada punto, así que no puedes filtrar por recojo ni por entrega a domicilio.`,
+    )
+  if (!distingueTipos)
+    limites.push(
+      `${c.name} no distingue el tipo de punto: oficina propia, agente o hub llegan todos como unknown.`,
+    )
+}
+if (c.level === 'contract_only')
+  limites.push(
+    `El rastreo de ${c.name} está verificado sólo contra el contrato: nunca obtuvimos de él una respuesta con datos reales. Es el único de los cinco en esa situación, y lo decimos acá antes de que lo descubras integrando.`,
+  )
+if (c.detection === 'none')
+  limites.push(
+    `No hay forma de reconocer un número de guía de ${c.name} por su formato: el parámetro carrier es obligatorio.`,
+  )
+else if (c.detection === 'weak')
+  limites.push(
+    `El formato de guía de ${c.name} se parece al de otros couriers. Conviene mandar el carrier explícito para no arriesgar una detección equivocada.`,
+  )
+if (c.requiresCode)
+  limites.push(
+    `Rastrear un envío de ${c.name} exige el código de orden además del número de guía, y ese código lo tiene el comprador, no tu sistema: hay que preverlo en tu propia interfaz.`,
+  )
+if (!creates) limites.push(`Todavía no se pueden crear guías de ${c.name}. ${c.shipping.note}`)
+else if (c.shipping.delivery.length === 1 && c.shipping.delivery[0] === 'agency')
+  limites.push(
+    `Las guías de ${c.name} que crea el API son sólo de agencia a agencia: no cubren entrega a domicilio.`,
+  )
+
 /* El ejemplo usa el id real del carrier y un marcador para el número, porque el
    formato de guía de cada courier lo publica `GET /v1/carriers` y no lo tenemos
    acá. Inventarlo sería peor que omitirlo: alguien lo copia, le rebota y culpa
@@ -123,6 +277,10 @@ const jsonLd = {
   '@type': 'WebPage',
   name: title,
   description,
+  // Cuándo se sincronizó SU catálogo. Es la única fecha que esta página puede
+  // afirmar de verdad —sale de `meta.sources[].synced_at`— y sin ella no había
+  // ninguna señal de frescura: ni acá, ni en el sitemap, ni a la vista.
+  ...(cat?.syncedAt ? { dateModified: cat.syncedAt } : {}),
   isPartOf: { '@type': 'WebSite', name: 'API Tracking Perú' },
   about: {
     '@type': 'Service',
@@ -196,7 +354,7 @@ const jsonLd = {
         tracks && (
           <div class="mt-10">
             <h2 class="font-display text-xl font-semibold tracking-tight text-zinc-50">
-              Cómo se consulta
+              Cómo se consulta una guía de {c.name}
             </h2>
             <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">
               {detectionNote[c.detection]}
@@ -282,7 +440,114 @@ const jsonLd = {
         }
       </div>
 
-      <div class="mt-10 grid gap-4 sm:grid-cols-2">
+      {/* Cobertura. Todo lo de acá sale de /v1/agencies medido en build, no de una
+          lista paralela: es lo que de verdad distingue a un catálogo de otro.
+          La tabla es una <table> de verdad y no una grilla de divs a propósito —
+          una tabla se puede leer, citar y copiar; una grilla de divs no. */}
+      {
+        cat && cat.total > 0 && (
+          <div class="mt-10">
+            <h2 class="font-display text-xl font-semibold tracking-tight text-zinc-50">
+              Cobertura de {c.name}: {cat.total} agencias
+            </h2>
+
+            <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">
+              {cat.departments > 0
+                ? `El catálogo de ${c.name} nombra ${cat.total} puntos repartidos en ${cat.departments} departamento${cat.departments === 1 ? '' : 's'}${cat.departments >= 25 ? ', o sea el país entero' : ''}. Estos son los de mayor concentración:`
+                : `${c.name} publica ${cat.total} puntos, pero no dice en qué departamento está cada uno: la dirección llega como una sola cadena sin estructurar.`}
+            </p>
+
+            {cat.top.length > 0 && (
+              <table class="mt-4 w-full border-collapse text-sm">
+                <thead>
+                  <tr class="border-b border-line text-left">
+                    <th scope="col" class="py-2 pr-4 font-medium text-zinc-400">Departamento</th>
+                    <th scope="col" class="py-2 text-right font-medium text-zinc-400">Puntos</th>
+                    <th scope="col" class="py-2 pl-4 text-right font-medium text-zinc-400">
+                      Del total
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cat.top.map((d) => (
+                    <tr class="border-b border-line/60">
+                      <td class="py-2 pr-4 text-zinc-300">{d.name}</td>
+                      <td class="py-2 text-right font-mono tabular-nums text-zinc-300">
+                        {d.count}
+                      </td>
+                      <td class="py-2 pl-4 text-right font-mono tabular-nums text-zinc-500">
+                        {pct(d.count / cat.total)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            <h3 class="mt-8 font-display text-base font-semibold tracking-tight text-zinc-200">
+              Qué publica cada punto de {c.name}
+            </h3>
+            <dl class="mt-3 divide-y divide-line/60 border-y border-line/60 text-sm">
+              {(
+                [
+                  [
+                    'Ubigeo INEI',
+                    cat.ubigeoRate >= 0.99
+                      ? 'en todos los puntos, a nivel distrito'
+                      : cat.ubigeoRate > 0
+                        ? `en el ${pct(cat.ubigeoRate)} de los puntos`
+                        : 'no lo publica',
+                  ],
+                  [
+                    'Coordenadas',
+                    cat.geoRate >= 0.999
+                      ? 'en todos los puntos'
+                      : `en el ${pct(cat.geoRate)} de los puntos`,
+                  ],
+                  [
+                    'Horario',
+                    cat.hoursRate >= 0.999
+                      ? 'en franjas parseadas'
+                      : cat.hoursRate >= 0.5
+                        ? `en franjas parseadas en el ${pct(cat.hoursRate)}`
+                        : 'en texto libre, sin parsear',
+                  ],
+                  [
+                    'Servicios por punto',
+                    cat.services.length ? cat.services.join(', ') : 'no los publica',
+                  ],
+                  [
+                    'Tipo de punto',
+                    cat.kinds.length > 1
+                      ? cat.kinds.map((k) => `${k.name} (${k.count})`).join(', ')
+                      : 'no lo distingue',
+                  ],
+                ] as const
+              ).map(([k, v]) => (
+                <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-2.5">
+                  <dt class="text-zinc-500">{k}</dt>
+                  <dd class="text-right text-zinc-300">{v}</dd>
+                </div>
+              ))}
+            </dl>
+
+            {cat.syncedAt && (
+              <p class="mt-3 text-pretty text-xs leading-relaxed text-zinc-600">
+                Catálogo de {c.name} sincronizado el {cat.syncedAt}. Estas cifras se miden contra{' '}
+                <code class="font-mono text-zinc-400">GET /v1/agencies</code> en cada despliegue, así
+                que no envejecen acá sin envejecer también en el API.
+              </p>
+            )}
+          </div>
+        )
+      }
+
+      <div class="mt-10">
+        <h2 class="font-display text-xl font-semibold tracking-tight text-zinc-50">
+          Evidencia y webhooks de {c.name}
+        </h2>
+
+      <div class="mt-4 grid gap-4 sm:grid-cols-2">
         <div class="rounded-xl border border-line p-5">
           <p class="text-xs text-zinc-600">Nivel de evidencia</p>
           <p class="mt-1 font-mono text-sm text-zinc-200">{c.level}</p>
@@ -304,6 +569,51 @@ const jsonLd = {
           </p>
         </div>
       </div>
+      </div>
+
+      {/* Fuertes y límites. Las dos listas salen de `fuertes` y `limites`, que se
+          calculan arriba a partir de lo medido. Nada se redacta a mano, así que
+          ningún courier puede terminar diciendo lo mismo que otro — y el día que
+          uno mejore su catálogo, su frase cambia sola.
+
+          Los límites van DESPUÉS y completos, no escondidos: es la misma decisión
+          que toma la portada al publicar el nivel de evidencia de cada uno. Quien
+          está evaluando viene justamente a esto, y enterarse integrando es peor. */}
+      {
+        fuertes.length > 0 && (
+          <div class="mt-10">
+            <h2 class="font-display text-xl font-semibold tracking-tight text-zinc-50">
+              Cuándo elegir {c.name}
+            </h2>
+            <ul class="mt-3 space-y-2.5">
+              {fuertes.map((f) => (
+                <li class="flex gap-3 text-pretty text-sm leading-relaxed text-zinc-400">
+                  <span class="mt-2 size-1.5 shrink-0 rounded-full bg-[var(--color-live)]" aria-hidden="true" />
+                  <span>{f}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+
+      {
+        limites.length > 0 && (
+          <div class="mt-10">
+            <h2 class="font-display text-xl font-semibold tracking-tight text-zinc-50">
+              Limitaciones conocidas de {c.name}
+            </h2>
+            <ul class="mt-3 space-y-2.5">
+              {limites.map((l) => (
+                <li class="flex gap-3 text-pretty text-sm leading-relaxed text-zinc-400">
+                  <span class="mt-2 size-1.5 shrink-0 rounded-full bg-[var(--color-partial)]" aria-hidden="true" />
+                  <span>{l}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
 
       <div class="mt-12 rounded-2xl border border-brand/30 bg-brand/[0.04] p-6">
         <p class="font-display text-lg font-semibold text-zinc-50">
