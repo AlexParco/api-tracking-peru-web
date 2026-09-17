@@ -37,7 +37,9 @@ import { PUBLISHED_CARRIERS, METRICS, CATALOGS } from '../../data/api.ts'
  */
 
 const title = 'Couriers de Perú con API de rastreo — API Tracking Perú'
-const description = `Los ${PUBLISHED_CARRIERS.length} couriers peruanos que integramos, con el estado real de cada uno: si rastrea, con cuánta evidencia y cuántas agencias publica.`
+/* La descripción describía un listado; la página ahora es una comparativa, y la
+   búsqueda que le corresponde es «cuál uso», no «cuáles hay». */
+const description = `Compara los ${PUBLISHED_CARRIERS.length} couriers peruanos con API de rastreo: agencias, cobertura por provincia, ubigeo INEI y cuáles permiten crear guías.`
 
 const conRastreo = PUBLISHED_CARRIERS.filter((c) => c.tracking.status === 'ok').length
 

@@ -58,11 +58,30 @@ const jsonLd = {
     },
   ],
 }
+/* La descripción medía 171 caracteres y Google corta cerca de 155: se perdía
+ * justo el final —«y N agencias con ubigeo»—, que es el dato citable y lo único
+ * que la distingue de cualquier otra landing de logística.
+ *
+ * Así que el dato va adelante, y el largo se comprueba en vez de confiarse: el
+ * conteo de agencias sale del API en cada build y puede cambiar de dígitos.
+ * Se usa la primera variante que entre.
+ */
+const descripciones = [
+  `Rastrea y genera guías de Olva, Shalom, Marvisur, Urbano y Cruz del Sur con un solo API REST: ${METRICS.agenciesSynced} agencias con ubigeo, estado canónico y webhooks firmados.`,
+  // Nombrar a los cinco couriers vale más que la mención de los webhooks: son las
+  // marcas que la gente escribe en el buscador. La variante de arriba se pasa por
+  // un carácter, así que esta sacrifica la cola en lugar de los nombres.
+  `Rastrea y genera guías de Olva, Shalom, Marvisur, Urbano y Cruz del Sur con un solo API REST: ${METRICS.agenciesSynced} agencias con ubigeo y estado canónico.`,
+  `Rastrea y genera guías de los ${PUBLISHED_CARRIERS.length} couriers peruanos con un solo API REST: ${METRICS.agenciesSynced} agencias con ubigeo, estado canónico y webhooks firmados.`,
+  `Un API REST para los ${PUBLISHED_CARRIERS.length} couriers peruanos: ${METRICS.agenciesSynced} agencias con ubigeo, estado canónico y webhooks firmados.`,
+]
+const description = descripciones.find((d) => d.length <= 155) ?? descripciones.at(-1)!
+
 ---
 
 <Base
   title="API Tracking Perú — Crea y rastrea envíos de couriers peruanos"
-  description={`Genera guías, cotiza, rastrea envíos y recibe webhooks de Olva, Shalom, Marvisur, Urbano y Cruz del Sur desde un solo API REST. Estado canónico y ${METRICS.agenciesSynced} agencias con ubigeo.`}
+  description={description}
 
   jsonLd={jsonLd}
 >

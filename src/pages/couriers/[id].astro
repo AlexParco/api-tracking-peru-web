@@ -259,13 +259,30 @@ const cabeza = tracks
   ? `Rastrea envíos de ${c.name} desde un API REST, con estado canónico y webhooks firmados.`
   : `Estado real de la integración con ${c.name}: qué funciona hoy, qué falta y por qué.`
 
-// Dos colas, de larga a corta. Se usa la primera que entre en el corte de ~160
-// caracteres; con una sola, un nombre largo la descartaba entera y la
-// descripción quedaba en 96 — desaprovechando más espacio del que sobraba.
-const colas = tracks
-  ? ['Estado real de la integración, nivel de evidencia y cómo empezar.', 'Nivel de evidencia y cómo empezar.']
-  : ['Catálogo de agencias, rastreo y nivel de evidencia publicado.', 'Agencias, rastreo y evidencia.']
-const cola = colas.find((x) => cabeza.length + 1 + x.length <= 160) ?? ''
+/* La cola llevaba el dato diferenciador de este courier, no una frase de relleno.
+ *
+ * Cuatro de las cinco descripciones eran carácter por carácter la misma con el
+ * nombre cambiado («Estado real de la integración, nivel de evidencia y cómo
+ * empezar»), que es exactamente la señal que hace que un buscador trate a cinco
+ * URLs como la misma. Ahora sale de lo medido, igual que el cuerpo de la página.
+ *
+ * Se prueban de la más específica a la más genérica y se usa la primera que entre
+ * en el corte: con una sola, un nombre largo la descartaba entera y la
+ * descripción quedaba en 96 caracteres, desaprovechando más de lo que sobraba.
+ */
+const colas = [
+  cat && cat.ubigeoRate >= 0.99 && `Ubigeo INEI en sus ${cat.total} agencias.`,
+  cat && cat.departments === 0 && `${cat.total} agencias, sin departamento estructurado.`,
+  cat && cat.provinces >= 90 && `${cat.total} agencias en ${cat.provinces} provincias.`,
+  cat && cat.hoursRate >= 0.999 && `${cat.total} agencias con horario parseado.`,
+  cat && cat.departments > 0 && `${cat.total} agencias en ${cat.departments} departamentos.`,
+  cat && `${cat.total} agencias sincronizadas.`,
+  'Nivel de evidencia y cómo empezar.',
+].filter((x): x is string => typeof x === 'string')
+
+/* 155, no 160: es donde Google corta en la práctica, y una descripción cortada
+   pierde justo el final, que es donde va el dato que la hace distinta. */
+const cola = colas.find((x) => cabeza.length + 1 + x.length <= 155) ?? ''
 const description = cola ? `${cabeza} ${cola}` : cabeza
 
 /* Datos estructurados. Le dicen al buscador que esto es una página sobre un
@@ -317,11 +334,18 @@ const jsonLd = {
 
       {/* El estado real primero. Es lo que vino a saber quien llegó buscando
           este courier, y esconderlo bajo un pitch sería el tipo de página que
-          esta no quiere ser. */}
-      <div class="mt-10 grid gap-4 sm:grid-cols-2">
+          esta no quiere ser.
+
+          Las dos tarjetas eran divs sin encabezado: se veían como secciones pero
+          no lo eran, así que ni el índice del navegador ni un extractor de pasajes
+          podían alcanzarlas. Ahora cuelgan de un H2 y cada una tiene su H3. */}
+      <h2 class="mt-10 font-display text-xl font-semibold tracking-tight text-zinc-50">
+        Qué funciona hoy con {c.name}
+      </h2>
+      <div class="mt-4 grid gap-4 sm:grid-cols-2">
         <div class="rounded-2xl border border-line bg-ink-soft p-5">
-          <p class="flex items-baseline justify-between gap-3">
-            <span class="text-sm font-medium text-zinc-200">Rastreo de envíos</span>
+          <div class="flex items-baseline justify-between gap-3">
+            <h3 class="font-sans text-sm font-medium text-zinc-200">Rastreo de envíos</h3>
             <span
               class:list={[
                 'font-mono text-xs',
@@ -330,13 +354,13 @@ const jsonLd = {
             >
               {tracks ? 'operativo' : 'en curso'}
             </span>
-          </p>
+          </div>
           <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-500">{c.tracking.note}</p>
         </div>
 
         <div class="rounded-2xl border border-line bg-ink-soft p-5">
-          <p class="flex items-baseline justify-between gap-3">
-            <span class="text-sm font-medium text-zinc-200">Catálogo de agencias</span>
+          <div class="flex items-baseline justify-between gap-3">
+            <h3 class="font-sans text-sm font-medium text-zinc-200">Catálogo de agencias</h3>
             <span
               class:list={[
                 'font-mono text-xs',
@@ -345,7 +369,7 @@ const jsonLd = {
             >
               {hasCatalog ? `${c.agencies.total} puntos` : 'no publica'}
             </span>
-          </p>
+          </div>
           <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-500">{c.agencies.note}</p>
         </div>
       </div>
@@ -549,14 +573,14 @@ const jsonLd = {
 
       <div class="mt-4 grid gap-4 sm:grid-cols-2">
         <div class="rounded-xl border border-line p-5">
-          <p class="text-xs text-zinc-600">Nivel de evidencia</p>
+          <h3 class="text-xs font-normal text-zinc-600">Nivel de evidencia</h3>
           <p class="mt-1 font-mono text-sm text-zinc-200">{c.level}</p>
           <p class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-500">
             {LEVELS[c.level].detail}
           </p>
         </div>
         <div class="rounded-xl border border-line p-5">
-          <p class="text-xs text-zinc-600">Webhooks</p>
+          <h3 class="text-xs font-normal text-zinc-600">Webhooks</h3>
           <p class="mt-1 font-mono text-sm text-zinc-200">
             {c.subscribable ? 'suscribible' : 'todavía no'}
           </p>
