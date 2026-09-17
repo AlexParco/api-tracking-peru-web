@@ -20,7 +20,7 @@ import PanelCard from '../../components/panel/PanelCard.astro'
 ---
 
 <PanelLayout title="Errores" heading="Mis errores" description="Lo que te respondió el API cuando algo salió mal, agrupado por tipo y con el ID de request para soporte.">
-  <a slot="actions" href="/docs#errores" class="btn btn-secondary px-4 py-2.5 text-sm font-medium">Catálogo de errores</a>
+  <a slot="actions" href="/docs#errors" class="btn btn-secondary px-4 py-2.5 text-sm font-medium">Catálogo de errores</a>
 
   <p data-estado="cargando" class="border border-line bg-ink px-5 py-8 text-center text-zinc-400">Cargando tus errores…</p>
 
@@ -70,7 +70,7 @@ import PanelCard from '../../components/panel/PanelCard.astro'
     <div class="grid gap-5 md:grid-cols-2">
       <p class="text-pretty text-sm leading-relaxed text-zinc-400">
         Cada código tiene su explicación en el catálogo de la documentación, con el status HTTP y cuándo aparece.
-        <a href="/docs#errores" class="text-zinc-50 underline underline-offset-4">Ver el catálogo →</a>
+        <a href="/docs#errors" class="text-zinc-50 underline underline-offset-4">Ver el catálogo →</a>
       </p>
       <p class="text-pretty text-sm leading-relaxed text-zinc-400">
         Si sigue sin cerrar, escríbenos a <a href="mailto:hola@tracking-peru.com" class="text-zinc-50 underline underline-offset-4">hola@tracking-peru.com</a>

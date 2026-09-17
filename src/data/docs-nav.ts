@@ -24,25 +24,25 @@ export interface DocsEntry {
 const EMPEZAR: DocsEntry[] = [
   {
     group: 'Empezar',
-    id: 'empezar',
+    id: 'introduction',
     title: 'Introducción',
     detail: 'Qué es el API, qué cubre y cómo está armada esta referencia.',
   },
   {
     group: 'Empezar',
-    id: 'autenticacion',
+    id: 'authentication',
     title: 'Autenticación',
     detail: 'La cabecera X-API-Key, y por qué la key va del lado del servidor.',
   },
   {
     group: 'Empezar',
-    id: 'primer-llamado',
+    id: 'first-call',
     title: 'Tu primer llamado',
     detail: 'GET /v1/carriers es el endpoint de descubrimiento: empieza por ahí.',
   },
   {
     group: 'Empezar',
-    id: 'convenciones',
+    id: 'conventions',
     title: 'Convenciones',
     detail:
       'Inglés snake_case, zona horaria explícita, status_raw siempre adjunto, unknown como valor posible y qué PII viaja.',
@@ -52,13 +52,13 @@ const EMPEZAR: DocsEntry[] = [
 const CONCEPTOS: DocsEntry[] = [
   {
     group: 'Conceptos',
-    id: 'estados',
+    id: 'statuses',
     title: 'Estados canónicos',
     detail: 'Los once valores de status, en el orden en que un envío los atraviesa.',
   },
   {
     group: 'Conceptos',
-    id: 'desvios',
+    id: 'exceptions',
     title: 'Los que se salen del camino',
     detail: 'delayed, returning, returned y exception: cuándo aparece cada uno.',
   },
@@ -74,31 +74,31 @@ const CONCEPTOS: DocsEntry[] = [
 const WEBHOOKS: DocsEntry[] = [
   {
     group: 'Webhooks',
-    id: 'webhooks-como',
+    id: 'webhooks-how',
     title: 'Cómo funciona',
     detail: 'Te avisamos por cambio de estado en vez de que preguntes.',
   },
   {
     group: 'Webhooks',
-    id: 'webhooks-eventos',
+    id: 'webhooks-events',
     title: 'Tipos de evento',
     detail: 'tracking.updated, tracking.delivered, tracking.expired y webhook.ping.',
   },
   {
     group: 'Webhooks',
-    id: 'webhooks-firma',
+    id: 'webhooks-signature',
     title: 'Verificar la firma',
     detail: 'HMAC-SHA256 sobre el cuerpo crudo, con la cabecera X-Webhook-Signature.',
   },
   {
     group: 'Webhooks',
-    id: 'webhooks-entrega',
+    id: 'webhooks-delivery',
     title: 'Una entrega',
     detail: 'Cabeceras y cuerpo de un POST real a tu endpoint.',
   },
   {
     group: 'Webhooks',
-    id: 'webhooks-reglas',
+    id: 'webhooks-rules',
     title: 'Antes de escribir el receptor',
     detail:
       'Verify-before-enable, reintentos, deduplicación por event id, solo HTTPS y guarda anti-SSRF.',
@@ -108,13 +108,13 @@ const WEBHOOKS: DocsEntry[] = [
 const REFERENCIA: DocsEntry[] = [
   {
     group: 'Referencia',
-    id: 'errores',
+    id: 'errors',
     title: 'Errores',
     detail: 'key_expired, quota_exceeded, not_found y qué respuestas gastan cuota y cuáles no.',
   },
   {
     group: 'Referencia',
-    id: 'limites',
+    id: 'limits',
     title: 'Lo que falta aquí',
     detail:
       'El catálogo de errores, los límites de uso, los query params completos y la URL de producción.',

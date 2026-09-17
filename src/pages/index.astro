@@ -25,7 +25,7 @@ const jsonLd = {
   '@graph': [
     {
       '@type': 'Organization',
-      '@id': 'https://tracking-peru.com/#organizacion',
+      '@id': 'https://tracking-peru.com/#organization',
       name: 'API Tracking Perú',
       url: 'https://tracking-peru.com',
       logo: 'https://tracking-peru.com/apple-touch-icon.png',
@@ -34,17 +34,17 @@ const jsonLd = {
     },
     {
       '@type': 'WebSite',
-      '@id': 'https://tracking-peru.com/#sitio',
+      '@id': 'https://tracking-peru.com/#website',
       url: 'https://tracking-peru.com',
       name: 'API Tracking Perú',
       inLanguage: 'es-PE',
-      publisher: { '@id': 'https://tracking-peru.com/#organizacion' },
+      publisher: { '@id': 'https://tracking-peru.com/#organization' },
     },
     {
       '@type': 'Service',
       name: 'API de rastreo y agencias de couriers peruanos',
       serviceType: 'API REST de rastreo de envíos',
-      provider: { '@id': 'https://tracking-peru.com/#organizacion' },
+      provider: { '@id': 'https://tracking-peru.com/#organization' },
       areaServed: { '@type': 'Country', name: 'Perú' },
       description: `Rastreo de envíos y catálogo de agencias de ${PUBLISHED_CARRIERS.length} couriers de Perú detrás de un solo contrato REST, con ${METRICS.agenciesSynced} agencias sincronizadas.`,
       offers: PLANS.filter((p) => p.monthly !== null).map((p) => ({
@@ -53,7 +53,7 @@ const jsonLd = {
         price: p.monthly,
         priceCurrency: 'PEN',
         category: p.monthly === 0 ? 'free' : 'subscription',
-        url: 'https://tracking-peru.com/#precios',
+        url: 'https://tracking-peru.com/#pricing',
       })),
     },
   ],
@@ -67,7 +67,7 @@ const jsonLd = {
   jsonLd={jsonLd}
 >
   <Nav />
-  <main id="contenido" class="mx-auto max-w-7xl overflow-x-clip border-x border-line bg-ink">
+  <main id="content" class="mx-auto max-w-7xl overflow-x-clip border-x border-line bg-ink">
     {/* El orden de la portada, reordenado el 2026-09-08.
         Antes era Hero → Coverage → Agencies → Integration → Journey → Pricing.
         O sea: la segunda cosa que veía un visitante era la EVIDENCIA («qué

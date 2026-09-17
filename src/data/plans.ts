@@ -291,7 +291,7 @@ export const FREE = PLANS.find((p) => p.free)!
  */
 export const planLink = (p: Plan) =>
   p.free
-    ? '#empezar'
+    ? '#get-started'
     : `mailto:hola@tracking-peru.com?subject=${encodeURIComponent(`Contratar el plan ${p.name}`)}`
 
-export const freeLink = '#empezar'
+export const freeLink = '#get-started'

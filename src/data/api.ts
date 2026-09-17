@@ -528,7 +528,7 @@ export const ENDPOINTS: Endpoint[] = [
     response: { title: '200 OK · application/json', code: TRACKING_EXAMPLE },
   },
   {
-    id: 'tracking-ruta',
+    id: 'tracking-route',
     method: 'GET',
     path: '/v1/tracking/{carrier}/{number}',
     summary: 'La misma consulta con el carrier en la ruta.',
@@ -621,7 +621,7 @@ export const ENDPOINTS: Endpoint[] = [
     response: { title: '200 OK · ?ubigeo=150101', code: COVERAGE_EXAMPLE },
   },
   {
-    id: 'agencia-detalle',
+    id: 'agency-detail',
     method: 'GET',
     path: '/v1/agencies/{carrier}/{id}',
     summary: 'Detalle de una agencia.',

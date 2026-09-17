@@ -52,21 +52,21 @@ const listNames = (cs: typeof PUBLISHED_CARRIERS) =>
  * discrepancia es un build rojo y no un enlace muerto en producción.
  */
 const RENDERED_IDS = [
-  'empezar',
-  'autenticacion',
-  'primer-llamado',
-  'convenciones',
+  'introduction',
+  'authentication',
+  'first-call',
+  'conventions',
   ...ENDPOINTS.map((e) => `ep-${e.id}`),
-  'estados',
-  'desvios',
+  'statuses',
+  'exceptions',
   'carriers',
-  'webhooks-como',
-  'webhooks-eventos',
-  'webhooks-firma',
-  'webhooks-entrega',
-  'webhooks-reglas',
-  'errores',
-  'limites',
+  'webhooks-how',
+  'webhooks-events',
+  'webhooks-signature',
+  'webhooks-delivery',
+  'webhooks-rules',
+  'errors',
+  'limits',
 ]
 
 {
@@ -131,10 +131,10 @@ const GAPS = [
 
   {/* `pt-14` por la barra fija y `lg:pl-60` por la sidebar: las dos están fuera
       del flujo, así que el contenido tiene que reservarles el lugar a mano. */}
-  <main id="contenido" class="pt-14 lg:pl-60">
+  <main id="content" class="pt-14 lg:pl-60">
     <div class="mx-auto max-w-3xl px-6 py-14 lg:px-10">
       {/* ── Empezar ── */}
-      <section id="empezar" data-docs-section class="scroll-mt-20">
+      <section id="introduction" data-docs-section class="scroll-mt-20">
         <p class="font-mono text-xs text-brand">Referencia</p>
         <h1 class="mt-3 text-balance font-display text-4xl font-semibold tracking-tight text-zinc-50">
           Documentación del API
@@ -153,7 +153,7 @@ const GAPS = [
       </section>
 
       {/* ── Autenticación ── */}
-      <section id="autenticacion" data-docs-section class="mt-16 scroll-mt-20">
+      <section id="authentication" data-docs-section class="mt-16 scroll-mt-20">
         <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
           Autenticación
         </h2>
@@ -161,7 +161,7 @@ const GAPS = [
           Toda llamada lleva tu key en la cabecera{' '}
           <code class="font-mono text-zinc-300">X-API-Key</code>.{' '}
           Cada key va con un plan{' '}
-          —<a href="/#precios" class="text-brand/80 underline-offset-2 hover:underline">Gratuito,
+          —<a href="/#pricing" class="text-brand/80 underline-offset-2 hover:underline">Gratuito,
           Básico, Plus o Premium</a>—. La del Gratuito se emite sola desde la web; las de
           pago se contratan por correo.
         </p>
@@ -232,7 +232,7 @@ const GAPS = [
       </section>
 
       {/* ── Primer llamado ── */}
-      <section id="primer-llamado" data-docs-section class="mt-16 scroll-mt-20">
+      <section id="first-call" data-docs-section class="mt-16 scroll-mt-20">
         <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
           Tu primer llamado
         </h2>
@@ -246,7 +246,7 @@ const GAPS = [
       </section>
 
       {/* ── Convenciones ── */}
-      <section id="convenciones" data-docs-section class="mt-16 scroll-mt-20">
+      <section id="conventions" data-docs-section class="mt-16 scroll-mt-20">
         <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
           Convenciones
         </h2>
@@ -358,14 +358,14 @@ const GAPS = [
       }
 
       {/* ── Estados canónicos ── */}
-      <section id="estados" data-docs-section class="mt-20 scroll-mt-20 border-t border-line pt-10">
+      <section id="statuses" data-docs-section class="mt-20 scroll-mt-20 border-t border-line pt-10">
         <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
           Estados canónicos
         </h2>
         <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
           Un vocabulario, no cinco. Este es el camino que recorre un envío que llega bien,
           en orden. Los cuatro estados que se salen de él están{' '}
-          <a href="#desvios" class="text-brand/80 underline-offset-2 hover:underline">
+          <a href="#exceptions" class="text-brand/80 underline-offset-2 hover:underline">
             justo abajo
           </a>.
         </p>
@@ -410,7 +410,7 @@ const GAPS = [
       </section>
 
       {/* ── Desvíos ── */}
-      <section id="desvios" data-docs-section class="mt-16 scroll-mt-20">
+      <section id="exceptions" data-docs-section class="mt-16 scroll-mt-20">
         <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
           Los que se salen del camino
         </h2>
@@ -499,7 +499,7 @@ const GAPS = [
 
       {/* ── Webhooks ── */}
       <section
-        id="webhooks-como"
+        id="webhooks-how"
         data-docs-section
         class="mt-20 scroll-mt-20 border-t border-line pt-10"
       >
@@ -513,7 +513,7 @@ const GAPS = [
         </p>
       </section>
 
-      <section id="webhooks-eventos" data-docs-section class="mt-14 scroll-mt-20">
+      <section id="webhooks-events" data-docs-section class="mt-14 scroll-mt-20">
         <h3 class="font-display text-lg font-semibold tracking-tight text-zinc-100">
           Tipos de evento
         </h3>
@@ -529,7 +529,7 @@ const GAPS = [
         </dl>
       </section>
 
-      <section id="webhooks-firma" data-docs-section class="mt-14 scroll-mt-20">
+      <section id="webhooks-signature" data-docs-section class="mt-14 scroll-mt-20">
         <h3 class="font-display text-lg font-semibold tracking-tight text-zinc-100">
           Verificar la firma
         </h3>
@@ -544,7 +544,7 @@ const GAPS = [
         </div>
       </section>
 
-      <section id="webhooks-entrega" data-docs-section class="mt-14 scroll-mt-20">
+      <section id="webhooks-delivery" data-docs-section class="mt-14 scroll-mt-20">
         <h3 class="font-display text-lg font-semibold tracking-tight text-zinc-100">
           Una entrega
         </h3>
@@ -553,7 +553,7 @@ const GAPS = [
         </div>
       </section>
 
-      <section id="webhooks-reglas" data-docs-section class="mt-14 scroll-mt-20">
+      <section id="webhooks-rules" data-docs-section class="mt-14 scroll-mt-20">
         <h3 class="font-display text-lg font-semibold tracking-tight text-zinc-100">
           Antes de escribir el receptor
         </h3>
@@ -573,7 +573,7 @@ const GAPS = [
       </section>
 
       {/* ── Errores ── */}
-      <section id="errores" data-docs-section class="mt-20 scroll-mt-20 border-t border-line pt-10">
+      <section id="errors" data-docs-section class="mt-20 scroll-mt-20 border-t border-line pt-10">
         <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">Errores</h2>
         <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
           Todos tienen la misma forma: un <code class="font-mono text-zinc-300">code</code>{' '}
@@ -639,7 +639,7 @@ const GAPS = [
           que no dice dónde termina obliga a descubrirlo con un request fallido
           en producción; el resto del sitio se vende publicando cuánto sabe, y
           sería raro que la página técnica fuera la única que disimula. */}
-      <section id="limites" data-docs-section class="mt-20 scroll-mt-20 border-t border-line pt-10">
+      <section id="limits" data-docs-section class="mt-20 scroll-mt-20 border-t border-line pt-10">
         <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
           Lo que esta página todavía no dice
         </h2>
@@ -659,7 +659,7 @@ const GAPS = [
 
         <p class="mt-8 text-pretty text-sm leading-relaxed text-zinc-500">
           Los errores{' '}
-          <a href="#errores" class="text-brand/80 underline-offset-2 hover:underline">
+          <a href="#errors" class="text-brand/80 underline-offset-2 hover:underline">
             sí están documentados
           </a>{' '}
           — salieron de esta lista cuando dejaron de faltar. Y mientras tanto,{' '}

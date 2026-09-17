@@ -17,7 +17,7 @@ import PanelCard from '../../components/panel/PanelCard.astro'
 ---
 
 <PanelLayout title="Plan y consumo" heading="Plan y consumo" description="Tu plan actual y cuántas consultas llevas este mes contra el tope.">
-  <a slot="actions" href="/#precios" class="btn btn-secondary px-4 py-2.5 text-sm font-medium">Ver los planes</a>
+  <a slot="actions" href="/#pricing" class="btn btn-secondary px-4 py-2.5 text-sm font-medium">Ver los planes</a>
 
   <div class="grid gap-6 xl:grid-cols-5">
     <PanelCard title="Plan actual" class="xl:col-span-2">
@@ -27,7 +27,7 @@ import PanelCard from '../../components/panel/PanelCard.astro'
         cupo y cómo te respondemos cuando algo se rompe.
       </p>
       <div class="mt-6 flex flex-wrap items-center gap-3 border-t border-line pt-5">
-        <a href="/#precios" class="btn btn-primary px-4 py-2.5 text-sm font-medium">Comparar planes</a>
+        <a href="/#pricing" class="btn btn-primary px-4 py-2.5 text-sm font-medium">Comparar planes</a>
         <a href="mailto:hola@tracking-peru.com?subject=Cambiar%20de%20plan" class="text-sm text-zinc-400 underline-offset-4 hover:text-zinc-50 hover:underline">
           Escríbenos para cambiar
         </a>
@@ -83,7 +83,7 @@ import PanelCard from '../../components/panel/PanelCard.astro'
       <code class="font-mono text-zinc-200">X-Quota-Limit</code>,
       <code class="font-mono text-zinc-200">X-Quota-Remaining</code> y
       <code class="font-mono text-zinc-200">X-Quota-Reset</code> — los mismos números de esta pantalla.
-      <a href="/docs#limites" class="text-zinc-50 underline underline-offset-4">Ver límites en la documentación →</a>
+      <a href="/docs#limits" class="text-zinc-50 underline underline-offset-4">Ver límites en la documentación →</a>
     </p>
   </PanelCard>
 </PanelLayout>

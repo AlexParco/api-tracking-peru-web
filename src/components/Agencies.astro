@@ -40,7 +40,7 @@ const indexOf = (a: (typeof MOCK_AGENCIES)[number]) =>
 const cardClass = 'flex min-w-0 flex-col border-b border-r border-line p-5'
 ---
 
-<section id="agencias" class="scroll-mt-14 border-t border-line pt-20 md:pt-28">
+<section id="agencies" class="scroll-mt-14 border-t border-line pt-20 md:pt-28">
   <SectionHead n="04" kicker="Agencias" title="Busca una agencia">
     El mismo <code class="font-mono text-sm text-zinc-200">GET /v1/agencies</code> que
     usarías tú, contra los catálogos de los couriers que publican uno. Cada resultado
@@ -194,7 +194,7 @@ const cardClass = 'flex min-w-0 flex-col border-b border-r border-line p-5'
 <script is:inline define:vars={{ API, EN_PORTADA, cardClass }}>
   ;(() => {
     // `agencias` con A: es el id del `<section>`, parte de la URL pública.
-    const seccion = document.getElementById('agencias')
+    const seccion = document.getElementById('agencies')
     if (!seccion) return
 
     const q = seccion.querySelector('[data-query]')
