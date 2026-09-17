@@ -31,7 +31,7 @@ const columns = [
       { href: '/login', label: 'Entrar' },
       /* La política sólo se enlaza cuando está completa: un enlace del pie a un
          borrador lo pone delante de todo el que baje hasta el final. */
-      ...(COMPLETA ? [{ href: '/privacy', label: 'Privacidad' }] : []),
+      ...(COMPLETA ? [{ href: '/privacy', label: 'Privacidad' }, { href: '/terms', label: 'Términos' }] : []),
       { href: 'mailto:hola@tracking-peru.com', label: 'hola@tracking-peru.com' },
     ],
   },

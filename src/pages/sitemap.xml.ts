@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro'
 import { PUBLISHED_CARRIERS, CATALOGS } from '../data/api.ts'
-import { COMPLETA } from '../data/legal.ts'
+import { COMPLETA, VIGENCIA } from '../data/legal.ts'
 
 /* El sitemap, escrito a mano en vez de con `@astrojs/sitemap`.
  *
@@ -48,10 +48,12 @@ export const GET: APIRoute = ({ site }) => {
   const urls: { path: string; lastmod?: string }[] = [
     { path: '/', lastmod: ultimo },
     { path: '/docs' },
-    /* La política de privacidad entra sólo cuando está completa. Mientras le falte
-       la identidad fiscal se sirve como borrador con `noindex`, y listarla acá
-       sería pedirle a Google que indexe justo lo que le estamos prohibiendo. */
-    ...(COMPLETA ? [{ path: '/privacy' }] : []),
+    /* Los dos documentos legales entran sólo cuando hay un responsable
+       identificable. Mientras falte se sirven como borrador con `noindex`, y
+       listarlos acá sería pedirle a Google que indexe justo lo que le estamos
+       prohibiendo. Su `lastmod` es la fecha de vigencia: un documento legal
+       cambia cuando alguien lo cambia, no cuando se recompila el sitio. */
+    ...(COMPLETA ? [{ path: '/privacy', lastmod: VIGENCIA }, { path: '/terms', lastmod: VIGENCIA }] : []),
     { path: '/couriers', lastmod: ultimo },
     ...PUBLISHED_CARRIERS.map((c) => ({
       path: `/couriers/${c.id}`,

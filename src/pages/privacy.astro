@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro'
 import Nav from '../components/Nav.astro'
 import Footer from '../components/Footer.astro'
 import { PUBLISHED_CARRIERS } from '../data/api.ts'
-import { RESPONSABLE, COMPLETA, CONTACTO, RETENCION } from '../data/legal.ts'
+import { RESPONSABLE, COMPLETA, CONTACTO, RETENCION, VIGENCIA } from '../data/legal.ts'
 
 /* La política de privacidad.
  *
@@ -48,6 +48,7 @@ const jsonLd = {
   '@type': 'WebPage',
   name: title,
   description,
+  dateModified: VIGENCIA,
   isPartOf: { '@type': 'WebSite', name: 'API Tracking Perú' },
 }
 ---
@@ -85,8 +86,13 @@ const jsonLd = {
       <p class="mt-6 text-pretty text-lg leading-relaxed text-zinc-400">
         Este documento explica qué datos personales trata API Tracking Perú, en qué condición los
         trata, con quién los comparte y cómo ejercer los derechos que reconoce la Ley 29733 de
-        Protección de Datos Personales y su reglamento.
+        Protección de Datos Personales y su reglamento. Se lee junto con los{' '}
+        <a href="/terms" class="text-zinc-200 underline-offset-4 hover:underline">
+          términos del servicio
+        </a>
+        .
       </p>
+      <p class="mt-3 font-mono text-xs text-zinc-600">En vigor desde el {VIGENCIA}.</p>
 
       <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
         Quién responde por estos datos

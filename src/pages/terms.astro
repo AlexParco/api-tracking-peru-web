@@ -1,0 +1,300 @@
+---
+import Base from '../layouts/Base.astro'
+import Nav from '../components/Nav.astro'
+import Footer from '../components/Footer.astro'
+import { PUBLISHED_CARRIERS, LEVELS, METRICS } from '../data/api.ts'
+import { PLANS, FREE } from '../data/plans.ts'
+import { RESPONSABLE, COMPLETA, CONTACTO, VIGENCIA } from '../data/legal.ts'
+
+/* Términos del servicio.
+ *
+ * ── Por qué existe ──
+ *
+ * Es el otro bloqueador de compra, junto con la política de privacidad: un área
+ * de compras pide los dos antes de firmar, y sin ellos la conversación no avanza
+ * aunque el producto encaje.
+ *
+ * ── El tono ──
+ *
+ * Los términos de un API suelen escribirse para blindar al proveedor. Éstos se
+ * escriben para que alguien pueda decidir: qué depende de nosotros, qué depende
+ * de cinco couriers que no controlamos, y dónde eso se nota. Es la misma decisión
+ * que ya toma la portada al publicar el nivel de evidencia de cada carrier en vez
+ * de esconderlo — un documento que promete todo no se puede cumplir, y el primer
+ * incidente lo desmiente.
+ *
+ * ── Qué se afirma, y de dónde sale ──
+ *
+ * Los planes, las cuotas y los límites salen de `plans.ts`; los couriers y sus
+ * niveles de evidencia, de `api.ts`; el mecanismo de pago, de lo que ya dice la
+ * sección de precios. Nada se redacta de memoria.
+ *
+ * Igual que /privacy: sin un responsable identificable la página se sirve como
+ * borrador, con `noindex` y fuera del sitemap.
+ */
+
+const title = 'Términos del servicio — API Tracking Perú'
+const description =
+  'Condiciones de uso del API de rastreo y creación de guías de couriers peruanos: cuenta, planes y cuotas, qué depende de cada courier y qué no prometemos.'
+
+const pagos = PLANS.filter((p) => p.monthly !== null && p.monthly > 0)
+const conRastreo = PUBLISHED_CARRIERS.filter((c) => c.tracking.status === 'ok').length
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: title,
+  description,
+  dateModified: VIGENCIA,
+  isPartOf: { '@type': 'WebSite', name: 'API Tracking Perú' },
+}
+---
+
+<Base title={title} description={description} jsonLd={jsonLd} noindex={!COMPLETA}>
+  <Nav />
+
+  <main id="content" class="mx-auto max-w-7xl border-x border-line bg-ink">
+    <div class="mx-auto max-w-3xl px-6 py-16">
+      <p class="font-mono text-xs text-zinc-600">
+        <a href="/" class="transition-colors hover:text-zinc-300">Inicio</a>
+        <span class="mx-1.5 text-zinc-700">/</span>
+        <span class="text-zinc-400">terms</span>
+      </p>
+
+      <h1 class="mt-4 text-balance font-display text-4xl font-semibold tracking-tight text-zinc-50">
+        Términos del servicio
+      </h1>
+
+      {
+        !COMPLETA && (
+          <div class="mt-8 rounded-2xl border border-[var(--color-partial)]/40 bg-[var(--color-partial)]/[0.06] p-5">
+            <p class="font-display text-base font-semibold text-[var(--color-partial)]">
+              Borrador — no publicado todavía
+            </p>
+            <p class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-400">
+              Falta el nombre de quien presta el servicio en{' '}
+              <code class="font-mono text-zinc-300">src/data/legal.ts</code>.
+            </p>
+          </div>
+        )
+      }
+
+      <p class="mt-6 text-pretty text-lg leading-relaxed text-zinc-400">
+        Estas condiciones rigen el uso de API Tracking Perú. Al pedir una key y usar el API las
+        aceptas. Si integras en nombre de una empresa, declaras que puedes obligarla.
+      </p>
+      <p class="mt-3 font-mono text-xs text-zinc-600">En vigor desde el {VIGENCIA}.</p>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Quién presta el servicio
+      </h2>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        {COMPLETA ? RESPONSABLE.nombre : 'Pendiente de completar'}
+        {!RESPONSABLE.ruc &&
+          ', persona natural. No hay una empresa constituida detrás del servicio, y conviene que lo sepas antes de integrar: si tu área de compras necesita facturar a una empresa, escríbenos antes de empezar'}
+        . El contacto para todo lo de acá es{' '}
+        <a href={`mailto:${CONTACTO}`} class="text-zinc-200 underline-offset-4 hover:underline">
+          {CONTACTO}
+        </a>
+        .
+      </p>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Qué es el servicio
+      </h2>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Un API REST que unifica, detrás de un solo contrato, el rastreo de envíos, el catálogo de
+        agencias y —en los couriers donde está disponible— la creación de guías de{' '}
+        {PUBLISHED_CARRIERS.length} couriers peruanos. Hoy {conRastreo} rastrean envíos y hay{' '}
+        {METRICS.agenciesSynced} agencias sincronizadas.
+      </p>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        No somos un courier ni un intermediario de transporte: no recogemos, no trasladamos y no
+        entregamos paquetes. Quien hace el envío es el courier que elegiste, y la relación de
+        transporte es entre tú y él.
+      </p>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Tu cuenta y tu API key
+      </h2>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        La key es una credencial: quien la tiene puede usar tu cuota y crear envíos a tu nombre.
+        Guárdala del lado del servidor, nunca en el navegador ni en un repositorio público, y no la
+        compartas. Puedes rotarla cuando quieras desde tu panel, y conviene hacerlo ante cualquier
+        sospecha. El uso que se haga con tu key se considera tuyo hasta que la rotes o nos avises.
+      </p>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        El acceso al panel es por enlace de un solo uso al correo de la cuenta. Mantén ese correo
+        bajo tu control: quien lo tenga puede entrar.
+      </p>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Planes, cuotas y límites
+      </h2>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Cada plan define un tope de consultas, un ritmo máximo por minuto, cuántos envíos puedes
+        tener vigilados a la vez y cuántas guías puedes crear al mes.
+      </p>
+      <div class="mt-5 overflow-x-auto">
+        <table class="w-full min-w-[34rem] border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-line text-left">
+              <th scope="col" class="py-2 pr-4 font-medium text-zinc-400">Plan</th>
+              <th scope="col" class="py-2 pr-4 text-right font-medium text-zinc-400">Al mes</th>
+              <th scope="col" class="py-2 pr-4 font-medium text-zinc-400">Consultas</th>
+              <th scope="col" class="py-2 pr-4 text-right font-medium text-zinc-400">Por minuto</th>
+              <th scope="col" class="py-2 text-right font-medium text-zinc-400">Guías</th>
+            </tr>
+          </thead>
+          <tbody>
+            {PLANS.map((p) => (
+              <tr class="border-b border-line/60">
+                <th scope="row" class="py-2.5 pr-4 text-left font-normal text-zinc-200">
+                  {p.name}
+                </th>
+                <td class="py-2.5 pr-4 text-right font-mono tabular-nums text-zinc-300">
+                  {p.monthly === 0 ? 'S/ 0' : p.monthly !== null ? `S/ ${p.monthly}` : '—'}
+                </td>
+                <td class="py-2.5 pr-4 text-zinc-400">{p.queries}</td>
+                <td class="py-2.5 pr-4 text-right font-mono tabular-nums text-zinc-400">
+                  {p.rpm ?? '—'}
+                </td>
+                <td class="py-2.5 text-right font-mono tabular-nums text-zinc-400">
+                  {p.ordersLabel ?? p.orders ?? '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 text-pretty text-sm leading-relaxed text-zinc-400">
+        Pasarse del tope no corta el servicio de golpe: las llamadas que exceden la cuota responden{' '}
+        <code class="font-mono text-zinc-300">quota_exceeded</code> y las que exceden el ritmo,{' '}
+        <code class="font-mono text-zinc-300">rate_limited</code>. La referencia dice qué respuestas
+        gastan cuota y cuáles no.
+      </p>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        El plan {FREE.name} no vence ni pide tarjeta. Los couriers que se vayan completando entran a
+        tu key sin costo adicional, en cualquier plan.
+      </p>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Cómo se paga
+      </h2>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Los {pagos.length} planes pagos se coordinan por correo: nos escribes con el plan que
+        quieres y acordamos ahí la forma de pago y el comprobante que corresponda. No hay checkout
+        automático, no guardamos tarjetas y no hay renovación automática que se cobre sola.
+      </p>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Los precios están en soles. Si un plan sube de precio, el tuyo se respeta hasta el final del
+        periodo que ya pagaste y te avisamos antes de renovar.
+      </p>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Qué depende de los couriers, y qué no prometemos
+      </h2>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Esta es la parte que conviene leer antes de integrar, y la razón por la que el sitio publica
+        el nivel de evidencia de cada courier en vez de esconderlo.
+      </p>
+      <ul class="mt-4 space-y-2.5">
+        {[
+          `Lo que devolvemos sale de los sistemas de cada courier. Si uno cambia su formato, se cae o deja de publicar un dato, eso llega hasta el API y no lo podemos suplir.`,
+          `Cada courier publica cosas distintas. GET /v1/carriers dice, por carrier, qué campos entrega y con cuánta evidencia está verificado el mapeo: ${Object.keys(LEVELS).join(', ')}. Ese valor es público a propósito.`,
+          `El vocabulario de estados de un courier puede no estar mapeado al 100 %. Cuando llega uno que no reconocemos, se entrega como unknown con el literal original en status_raw, nunca aproximado al parecido más cercano.`,
+          `El catálogo de agencias es una copia sincronizada, no una consulta en vivo al courier. Puede ir por detrás de la realidad de la calle.`,
+          `Crear una guía no garantiza que el envío se entregue, ni en qué plazo. Eso depende del courier y del acuerdo que tengas con él.`,
+          `No hay compromiso de disponibilidad ni tiempo de respuesta garantizado. Si algún día hay un SLA, será un acuerdo escrito aparte y no esta página.`,
+        ].map((t) => (
+          <li class="flex gap-3 text-pretty text-sm leading-relaxed text-zinc-400">
+            <span
+              class="mt-2 size-1.5 shrink-0 rounded-full bg-[var(--color-partial)]"
+              aria-hidden="true"
+            />
+            <span>{t}</span>
+          </li>
+        ))}
+      </ul>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Uso aceptable
+      </h2>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Puedes usar el API para lo que necesites en tu operación o en el producto que construyas.
+        Lo que no: intentar saltarte los límites de cuota con varias cuentas, revender o
+        redistribuir el catálogo de agencias como si fuera tuyo, usar el rastreo para consultar
+        envíos que no son tuyos ni de tus clientes, o cualquier cosa que ponga en riesgo el
+        servicio para los demás.
+      </p>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Los couriers también tienen sus propias condiciones. Usar este API no te exime de ellas.
+      </p>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Los datos personales que nos mandas
+      </h2>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Al crear una guía nos envías datos de un tercero —el destinatario— y sobre esos datos el
+        titular del banco de datos eres tú, no nosotros: los tratamos por encargo tuyo y sólo para
+        cumplirlo. Eso significa que a ti te toca tener una base legítima para tratarlos e informar
+        a esa persona, y a nosotros asistirte si te reclama.
+      </p>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        El detalle completo —qué se trata, con quién se comparte, cuánto se conserva y cómo se
+        ejercen los derechos— está en la{' '}
+        <a href="/privacy" class="text-zinc-200 underline-offset-4 hover:underline">
+          política de privacidad
+        </a>
+        , que es parte de estos términos.
+      </p>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Responsabilidad
+      </h2>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        El servicio se presta tal como está. No respondemos por pérdidas indirectas, lucro cesante
+        ni por daños derivados de decisiones que tomes a partir de información que un courier
+        entregó de forma incompleta o equivocada. En lo que sí respondemos, el límite es lo que nos
+        hayas pagado en los últimos tres meses.
+      </p>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Nada de esto limita la responsabilidad que la ley peruana no permite limitar.
+      </p>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Suspensión y baja
+      </h2>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Puedes dejar de usar el servicio cuando quieras y pedir la baja de tu cuenta por correo.
+        Podemos suspender una key que esté afectando al servicio o incumpliendo el uso aceptable;
+        salvo que haya un riesgo inmediato, avisamos antes y explicamos el motivo.
+      </p>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Cambios y ley aplicable
+      </h2>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Si estos términos cambian, se actualiza esta página con una nueva fecha de vigencia y se
+        avisa por correo a las cuentas activas antes de que el cambio rija. Seguir usando el API
+        después de esa fecha cuenta como aceptación.
+      </p>
+      <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
+        Se aplican las leyes del Perú, y cualquier controversia se ve ante los tribunales
+        competentes del Perú.
+      </p>
+
+      <div class="mt-12 rounded-2xl border border-line bg-ink-soft p-6">
+        <p class="text-pretty text-sm leading-relaxed text-zinc-400">
+          ¿Algo de esto te traba una evaluación de proveedor? Escribe a{' '}
+          <a href={`mailto:${CONTACTO}`} class="text-zinc-200 underline-offset-4 hover:underline">
+            {CONTACTO}
+          </a>{' '}
+          y lo conversamos de frente, incluido un acuerdo aparte si tu área legal lo necesita.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <Footer />
+</Base>

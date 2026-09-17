@@ -57,6 +57,16 @@ export const COMPLETA = typeof RESPONSABLE.nombre === 'string' && RESPONSABLE.no
 export const CONTACTO = 'hola@tracking-peru.com'
 
 /**
+ * Desde cuándo rige la versión publicada de los documentos legales.
+ *
+ * A mano, y a propósito: acá la fecha del build sería una mentira útil. Un
+ * documento legal cambia cuando alguien decide cambiarlo, no cuando se recompila
+ * el sitio, y quien lo revisa necesita saber qué versión aceptó. Se toca sólo al
+ * modificar el texto de /privacy o /terms.
+ */
+export const VIGENCIA = '2026-09-17'
+
+/**
  * Cuánto se conserva cada cosa.
  *
  * La ley no fija un plazo único: pide que sea el necesario para la finalidad y
