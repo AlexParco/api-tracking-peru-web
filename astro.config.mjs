@@ -23,7 +23,11 @@ export default defineConfig({
     // El directorio de assets se llama `_astro` por defecto, y ese nombre viaja
     // en la URL de cada hoja de estilo y cada script de todas las páginas. Con
     // qué herramienta se construyó el sitio no es información del sitio.
-    assets: 'estaticos',
+    //
+    // OJO: este nombre está ACOPLADO a `location /static/` en nginx.conf, que
+    // es lo que le pone cache de un año a los assets. Cambiarlo acá sin cambiarlo
+    // allá no rompe nada —por eso se pasa por alto—, sólo deja de cachear.
+    assets: 'static',
   },
 
   // SIN precarga, y por dos motivos que apuntan igual.
