@@ -1,0 +1,242 @@
+---
+import Base from '../layouts/Base.astro'
+import Nav from '../components/Nav.astro'
+import Footer from '../components/Footer.astro'
+import { PUBLISHED_CARRIERS, CATALOGS } from '../data/api.ts'
+import { CONTACTO } from '../data/legal.ts'
+
+/* Estado del servicio.
+ *
+ * ── Por qué en vivo y no horneado en el build ──
+ *
+ * Una página de estado construida en el despliegue miente por diseño: diría
+ * «operativo» con la foto de hace tres días, que es justo cuando alguien la
+ * consulta porque algo no le anda. Peor que no tenerla.
+ *
+ * Así que el estado se pide al API en el navegador, contra `/readyz`, que es
+ * público y publica el sondeo real de cada courier con su latencia y el momento
+ * de la medición. El CORS del API ya permite este origen, así que no hace falta
+ * nada del lado del servidor.
+ *
+ * ── Qué se sirve antes del JavaScript ──
+ *
+ * La estructura y la frescura del catálogo, que sí es dato de build legítimo: el
+ * catálogo se sincroniza cada tanto, no en tiempo real, así que su fecha no
+ * envejece entre despliegues de forma engañosa. El bloque en vivo arranca
+ * diciendo que está consultando, y si la consulta falla lo dice — no se queda en
+ * un «operativo» que nadie comprobó.
+ *
+ * Un buscador sin JavaScript ve la página con su estructura, sus couriers y las
+ * fechas de sincronización. No ve el semáforo, y está bien: un semáforo indexado
+ * es un semáforo desactualizado.
+ */
+
+const title = 'Estado del servicio — API Tracking Perú'
+const description =
+  'Estado en vivo del API de rastreo de couriers peruanos: si responde, qué courier está sondeado y cuándo se sincronizó cada catálogo de agencias.'
+
+const API = 'https://api.tracking-peru.com'
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: title,
+  description,
+  inLanguage: 'es-PE',
+  isPartOf: { '@id': 'https://tracking-peru.com/#website' },
+  publisher: { '@id': 'https://tracking-peru.com/#organization' },
+}
+---
+
+<Base title={title} description={description} jsonLd={jsonLd}>
+  <Nav />
+
+  <main id="content" class="mx-auto max-w-7xl border-x border-line bg-ink">
+    <div class="mx-auto max-w-3xl px-6 py-16">
+      <p class="font-mono text-xs text-zinc-600">
+        <a href="/" class="transition-colors hover:text-zinc-300">Inicio</a>
+        <span class="mx-1.5 text-zinc-700">/</span>
+        <span class="text-zinc-400">status</span>
+      </p>
+
+      <h1 class="mt-4 text-balance font-display text-4xl font-semibold tracking-tight text-zinc-50">
+        Estado del servicio
+      </h1>
+
+      <p class="mt-5 text-pretty text-lg leading-relaxed text-zinc-400">
+        Esto se consulta contra el API cuando abres la página, no se guarda de un despliegue
+        anterior. Sale de <code class="font-mono text-zinc-300">{API}/readyz</code>, que es
+        público: puedes pedirlo tú mismo y comparar.
+      </p>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        El API ahora mismo
+      </h2>
+
+      <div
+        id="estado-api"
+        class="mt-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 rounded-2xl border border-line bg-ink-soft p-5"
+      >
+        <p class="font-display text-lg font-semibold text-zinc-300" data-estado-titulo>
+          Consultando…
+        </p>
+        <p class="font-mono text-xs text-zinc-600" data-estado-detalle></p>
+      </div>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Cada courier
+      </h2>
+      <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">
+        El sondeo dice si el sistema del courier respondió la última vez que se le preguntó, y en
+        cuánto. Un courier sin sondear no es un courier caído: es uno al que todavía no se le
+        preguntó en este ciclo.
+      </p>
+
+      <div class="mt-5 overflow-x-auto">
+        <table class="w-full min-w-[34rem] border-collapse text-left text-sm">
+          <caption class="sr-only">
+            Estado del sondeo y frescura del catálogo de cada courier integrado.
+          </caption>
+          <thead>
+            <tr class="border-b border-line text-zinc-400">
+              <th scope="col" class="py-2 pr-4 font-medium">Courier</th>
+              <th scope="col" class="py-2 pr-4 font-medium">Sondeo</th>
+              <th scope="col" class="py-2 pr-4 text-right font-medium">Latencia</th>
+              <th scope="col" class="py-2 font-medium">Catálogo sincronizado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              PUBLISHED_CARRIERS.map((c) => (
+                <tr class="border-b border-line/60" data-carrier={c.id}>
+                  <th scope="row" class="py-2.5 pr-4 font-normal text-zinc-200">
+                    <a
+                      href={`/couriers/${c.id}`}
+                      class="underline-offset-4 hover:text-zinc-50 hover:underline"
+                    >
+                      {c.name}
+                    </a>
+                  </th>
+                  <td class="py-2.5 pr-4 text-zinc-500" data-sondeo>
+                    consultando…
+                  </td>
+                  <td
+                    class="py-2.5 pr-4 text-right font-mono tabular-nums text-zinc-500"
+                    data-latencia
+                  >
+                    —
+                  </td>
+                  {/* La fecha del catálogo SÍ es dato de build: se sincroniza cada
+                      tanto, no en tiempo real, así que no envejece de forma
+                      engañosa entre despliegues. */}
+                  <td class="py-2.5 font-mono tabular-nums text-zinc-400">
+                    {CATALOGS[c.id]?.syncedAt ?? '—'}
+                  </td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="mt-12 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+        Qué significa cada cosa
+      </h2>
+      <dl class="mt-4 divide-y divide-line/60 border-y border-line/60 text-sm">
+        {
+          (
+            [
+              [
+                'El API responde',
+                'El servicio está en pie y atiende peticiones. Es independiente de cómo esté cada courier: puedes seguir consultando agencias aunque un courier no conteste.',
+              ],
+              [
+                'Sondeo ok',
+                'La última vez que se le preguntó, el sistema de ese courier contestó. La latencia es la de esa medición.',
+              ],
+              [
+                'Sondeo sin dato',
+                'Todavía no se le preguntó en este ciclo, o el sondeo de ese courier no está configurado. No significa que esté caído.',
+              ],
+              [
+                'Catálogo sincronizado',
+                'Cuándo se copió por última vez su listado de agencias. El catálogo es una copia, no una consulta en vivo al courier.',
+              ],
+            ] as const
+          ).map(([k, v]) => (
+            <div class="py-3.5">
+              <dt class="font-medium text-zinc-200">{k}</dt>
+              <dd class="mt-1 text-pretty leading-relaxed text-zinc-500">{v}</dd>
+            </div>
+          ))
+        }
+      </dl>
+
+      <div class="mt-12 rounded-2xl border border-line bg-ink-soft p-6">
+        <p class="text-pretty text-sm leading-relaxed text-zinc-400">
+          Esta página no es un compromiso de disponibilidad: no hay SLA, y así está dicho en los{' '}
+          <a href="/terms" class="text-zinc-200 underline-offset-4 hover:underline">
+            términos
+          </a>
+          . Si algo no anda y acá se ve verde, escribe a{' '}
+          <a href={`mailto:${CONTACTO}`} class="text-zinc-200 underline-offset-4 hover:underline">
+            {CONTACTO}
+          </a>{' '}
+          — significa que el sondeo no está viendo lo que tú ves, y eso también hay que arreglarlo.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <Footer />
+
+  <script is:inline define:vars={{ API }}>
+    ;(async () => {
+      const caja = document.getElementById('estado-api')
+      const titulo = caja.querySelector('[data-estado-titulo]')
+      const detalle = caja.querySelector('[data-estado-detalle]')
+
+      const pinta = (el, texto, clase) => {
+        el.textContent = texto
+        el.className = el.className.replace(/text-\[var\(--color-[a-z]+\)\]|text-zinc-\d00/g, '')
+        el.classList.add(clase)
+      }
+
+      try {
+        const r = await fetch(`${API}/readyz`, { headers: { Accept: 'application/json' } })
+        const d = await r.json()
+
+        // `status: ok` con 200 es lo único que cuenta como «responde». Un 503 con
+        // cuerpo también se parsea, y ahí el titular tiene que decir que NO.
+        const arriba = r.ok && d.status === 'ok'
+        pinta(
+          titulo,
+          arriba ? 'El API responde' : 'El API no está respondiendo con normalidad',
+          arriba ? 'text-[var(--color-live)]' : 'text-[var(--color-partial)]',
+        )
+        detalle.textContent = `consultado ${new Date().toLocaleTimeString('es-PE', { timeZone: 'America/Lima' })}`
+
+        for (const [id, c] of Object.entries(d.carriers ?? {})) {
+          const fila = document.querySelector(`[data-carrier="${id}"]`)
+          if (!fila) continue
+          const sondeo = fila.querySelector('[data-sondeo]')
+          const lat = fila.querySelector('[data-latencia]')
+          if (c.status === 'ok') {
+            pinta(sondeo, 'ok', 'text-[var(--color-live)]')
+            lat.textContent = c.latency_ms ? `${c.latency_ms} ms` : '—'
+          } else if (c.enabled === false) {
+            pinta(sondeo, 'apagado', 'text-zinc-500')
+          } else {
+            pinta(sondeo, 'sin dato', 'text-zinc-500')
+          }
+        }
+      } catch {
+        // Falla la consulta, no la página: decir que no se pudo comprobar es
+        // información; dejar «Consultando…» para siempre, no.
+        pinta(titulo, 'No pudimos comprobar el estado', 'text-[var(--color-partial)]')
+        detalle.textContent = 'consúltalo directo en /readyz'
+        for (const s of document.querySelectorAll('[data-sondeo]')) s.textContent = 'sin comprobar'
+      }
+    })()
+  </script>
+</Base>

@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro'
 import { PUBLISHED_CARRIERS, CATALOGS } from '../data/api.ts'
 import { COMPLETA, VIGENCIA } from '../data/legal.ts'
+import { ULTIMO_CAMBIO } from '../data/changelog.ts'
 
 /* El sitemap, escrito a mano en vez de con `@astrojs/sitemap`.
  *
@@ -54,6 +55,11 @@ export const GET: APIRoute = ({ site }) => {
        prohibiendo. Su `lastmod` es la fecha de vigencia: un documento legal
        cambia cuando alguien lo cambia, no cuando se recompila el sitio. */
     ...(COMPLETA ? [{ path: '/privacy', lastmod: VIGENCIA }, { path: '/terms', lastmod: VIGENCIA }] : []),
+    /* El changelog lleva la fecha de su último cambio, que es la única honesta:
+       la página cambia cuando cambia el API, no cuando se recompila el sitio.
+       `/status` NO entra: su valor es el momento en que se abre, y una copia en el
+       índice de un buscador es justo lo contrario de eso. */
+    { path: '/changelog', lastmod: ULTIMO_CAMBIO },
     { path: '/couriers', lastmod: ultimo },
     ...PUBLISHED_CARRIERS.map((c) => ({
       path: `/couriers/${c.id}`,

@@ -1,0 +1,131 @@
+---
+import Base from '../layouts/Base.astro'
+import Nav from '../components/Nav.astro'
+import Footer from '../components/Footer.astro'
+import { CHANGELOG, TIPOS, ULTIMO_CAMBIO } from '../data/changelog.ts'
+import { CONTACTO } from '../data/legal.ts'
+
+/* El registro de cambios.
+ *
+ * ── Por qué existe ──
+ *
+ * Quien evalúa un API pregunta dos cosas que ninguna otra página del sitio
+ * contestaba: si esto se mantiene, y si un cambio le va a romper la integración
+ * sin avisar. Un changelog contesta las dos de una, y además es de lo poco que da
+ * contenido nuevo de forma recurrente sin inventar nada.
+ *
+ * ── Qué hace distinto ──
+ *
+ * Dice qué cambió PARA QUIEN INTEGRA, no qué se commiteó. «Ahora los webhooks
+ * avisan cuando la suscripción se cierra sola» le sirve a alguien; «se agregó el
+ * evento tracking.failed» describe el commit.
+ *
+ * Y marca el tipo, porque no todos los cambios se leen igual: un `nuevo` se puede
+ * ignorar, un `cambio` puede tocarte el código.
+ */
+
+const title = 'Registro de cambios del API — API Tracking Perú'
+const description =
+  'Qué cambió en el API de rastreo de couriers peruanos y cuándo: nuevos eventos de webhook, mapeos de estado por courier, cupos y planes.'
+
+const totalCambios = CHANGELOG.reduce((n, e) => n + e.cambios.length, 0)
+
+const fmt = (iso: string) =>
+  new Date(`${iso}T12:00:00Z`).toLocaleDateString('es-PE', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'America/Lima',
+  })
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: title,
+  description,
+  inLanguage: 'es-PE',
+  dateModified: ULTIMO_CAMBIO,
+  isPartOf: { '@id': 'https://tracking-peru.com/#website' },
+  publisher: { '@id': 'https://tracking-peru.com/#organization' },
+}
+---
+
+<Base title={title} description={description} jsonLd={jsonLd}>
+  <Nav />
+
+  <main id="content" class="mx-auto max-w-7xl border-x border-line bg-ink">
+    <div class="mx-auto max-w-3xl px-6 py-16">
+      <p class="font-mono text-xs text-zinc-600">
+        <a href="/" class="transition-colors hover:text-zinc-300">Inicio</a>
+        <span class="mx-1.5 text-zinc-700">/</span>
+        <span class="text-zinc-400">changelog</span>
+      </p>
+
+      <h1 class="mt-4 text-balance font-display text-4xl font-semibold tracking-tight text-zinc-50">
+        Registro de cambios del API
+      </h1>
+
+      <p class="mt-5 text-pretty text-lg leading-relaxed text-zinc-400">
+        {totalCambios} cambios desde que el API existe, del más reciente al primero. Acá va lo que
+        le cambia algo a quien integra: eventos nuevos, estados que pasan a reconocerse, cupos y
+        planes. Lo que no toca tu código —despliegues, arreglos internos— no entra.
+      </p>
+
+      <p class="mt-4 text-pretty text-sm leading-relaxed text-zinc-500">
+        Si un cambio puede romper una integración, se avisa por correo a las cuentas activas antes
+        de que rija. Si ves algo acá que te afectó y no te avisamos, escribe a{' '}
+        <a href={`mailto:${CONTACTO}`} class="text-zinc-300 underline-offset-4 hover:underline">
+          {CONTACTO}
+        </a>
+        .
+      </p>
+
+      <div class="mt-12 space-y-10">
+        {
+          CHANGELOG.map((entrada) => (
+            <section>
+              <h2 class="font-mono text-sm text-zinc-500">
+                <time datetime={entrada.fecha}>{fmt(entrada.fecha)}</time>
+              </h2>
+              <ul class="mt-4 divide-y divide-line/60 border-y border-line/60">
+                {entrada.cambios.map((c) => (
+                  <li class="py-4">
+                    <p class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <span
+                        class:list={['eyebrow shrink-0 font-semibold', TIPOS[c.tipo].clase]}
+                        aria-label={`Tipo de cambio: ${TIPOS[c.tipo].label}`}
+                      >
+                        {TIPOS[c.tipo].label}
+                      </span>
+                      <span class="text-pretty text-sm font-medium leading-relaxed text-zinc-100">
+                        {c.que}
+                      </span>
+                    </p>
+                    {c.detalle && (
+                      <p class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-500">
+                        {c.detalle}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
+        }
+      </div>
+
+      <div class="mt-12 rounded-2xl border border-line bg-ink-soft p-6">
+        <p class="text-pretty text-sm leading-relaxed text-zinc-400">
+          El estado de cada courier ahora mismo —si responde y hace cuánto se sincronizó su
+          catálogo— está en{' '}
+          <a href="/status" class="text-zinc-200 underline-offset-4 hover:underline">
+            /status
+          </a>
+          , en vivo.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <Footer />
+</Base>
