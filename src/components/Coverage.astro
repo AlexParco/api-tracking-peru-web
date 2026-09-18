@@ -44,9 +44,37 @@ const levelText: Record<Level, string> = {
   none: 'text-zinc-500',
 }
 
-/* La misma plantilla de columnas para la cabecera y cada fila: así alinean sin
-   ser una `<table>`, que no puede llevar un botón por fila. */
-const cols = 'md:grid-cols-[minmax(0,1.5fr)_repeat(3,minmax(0,1fr))_minmax(0,1.35fr)_3.5rem]'
+/* Las tres capacidades de un courier, en el orden de las columnas. Es función y no
+   una constante dentro del map porque ahora la usan dos sitios: la fila de la tabla
+   y el diálogo, que dejaron de ser el mismo bucle. */
+const rowsFor = (c: (typeof PUBLISHED_CARRIERS)[number]): [string, Status, string][] => [
+  ['Crear', c.shipping.status, c.shipping.note],
+  ['Rastrear', c.tracking.status, c.tracking.note],
+  [
+    'Agencias',
+    c.agencies.status,
+    (c.agencies.total !== null ? `${c.agencies.total} · ` : '') + c.agencies.note,
+  ],
+]
+
+/* ── Por qué esto es una <table> de verdad y antes no ──
+ *
+ * Antes era una grilla de divs, con este motivo escrito acá: «una <table> no puede
+ * llevar un botón por fila». Es cierto que no se puede envolver un <tr> en un
+ * <button>, pero no hacía falta: el botón va DENTRO de la primera celda, y el clic
+ * en cualquier parte de la fila se delega en él. Teclado y lector de pantalla usan
+ * el botón, que es un control real; el ratón conserva la fila entera.
+ *
+ * El otro motivo era el móvil, y ése sí pesaba: la grilla reordena las celdas en
+ * una tarjeta y una tabla las mandaría a scroll horizontal, que en Perú es tráfico
+ * que se pierde. Se resuelve por CSS y no por marcado: `grid md:table-row` en la
+ * fila y `col-span-3 md:table-cell` en las celdas dan exactamente el mismo
+ * apilado de antes, mientras el HTML sigue siendo una tabla.
+ *
+ * Importa porque los datos de cobertura son el contenido más citable de la
+ * portada, y una grilla de divs se extrae como una lista de palabras sueltas: se
+ * pierde qué valor pertenece a qué courier y a qué columna.
+ */
 ---
 
 <section id="coverage" class="scroll-mt-14 border-t border-line pt-20 md:pt-28">
@@ -65,170 +93,181 @@ const cols = 'md:grid-cols-[minmax(0,1.5fr)_repeat(3,minmax(0,1fr))_minmax(0,1.3
   </SectionHead>
 
   <div class="mt-16 border-t border-line">
-    <div
-      class:list={['eyebrow hidden border-b border-line text-zinc-600 md:grid', cols]}
-      aria-hidden="true"
-    >
-      <span class="px-5 py-3 sm:px-8 lg:px-12">Courier</span>
-      <span class="border-l border-line px-4 py-3">Crear</span>
-      <span class="border-l border-line px-4 py-3">Rastrear</span>
-      <span class="border-l border-line px-4 py-3">Agencias</span>
-      <span class="border-l border-line px-4 py-3">Evidencia</span>
-      <span class="border-l border-line"></span>
-    </div>
+    <table class="w-full border-collapse text-left">
+      <caption class="sr-only">
+        Qué hace hoy cada uno de los {total} couriers peruanos integrados: crear guías, rastrear
+        envíos, publicar su catálogo de agencias, y con cuánta evidencia está verificado cada uno.
+      </caption>
 
-    <ul>
-      {
-        PUBLISHED_CARRIERS.map((c, i) => {
-          const rows: [string, Status, string][] = [
-            ['Crear', c.shipping.status, c.shipping.note],
-            ['Rastrear', c.tracking.status, c.tracking.note],
-            [
-              'Agencias',
-              c.agencies.status,
-              (c.agencies.total !== null ? `${c.agencies.total} · ` : '') + c.agencies.note,
-            ],
-          ]
-          return (
-            <li data-reveal="fade" style={`--step: ${i}`}>
-              <button
-                type="button"
-                data-open-carrier={c.id}
-                aria-haspopup="dialog"
-                class:list={[
-                  'group/row grid w-full grid-cols-3 border-b border-line text-left transition-colors hover:bg-[var(--hover-softer)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/60',
-                  cols,
-                ]}
+      <thead class="hidden md:table-header-group">
+        <tr class="eyebrow border-b border-line text-zinc-600">
+          <th scope="col" class="px-5 py-3 font-normal sm:px-8 lg:px-12">Courier</th>
+          <th scope="col" class="border-l border-line px-4 py-3 font-normal">Crear</th>
+          <th scope="col" class="border-l border-line px-4 py-3 font-normal">Rastrear</th>
+          <th scope="col" class="border-l border-line px-4 py-3 font-normal">Agencias</th>
+          <th scope="col" class="border-l border-line px-4 py-3 font-normal">Evidencia</th>
+          <th scope="col" class="border-l border-line">
+            <span class="sr-only">Ver detalle</span>
+          </th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {
+          PUBLISHED_CARRIERS.map((c, i) => (
+            <tr
+              data-open-carrier={c.id}
+              data-reveal="fade"
+              style={`--step: ${i}`}
+              class="group/row grid cursor-pointer grid-cols-3 border-b border-line transition-colors hover:bg-[var(--hover-softer)] md:table-row"
+            >
+              <th
+                scope="row"
+                class="col-span-3 px-5 pb-3 pt-5 text-left font-normal sm:px-8 md:table-cell md:py-5 lg:px-12"
               >
-                <span class="col-span-3 flex min-w-0 items-baseline justify-between gap-3 px-5 pb-3 pt-5 sm:px-8 md:col-span-1 md:block md:py-5 lg:px-12">
+                {/* El control real. El clic en la fila se delega acá, así que el
+                    ratón conserva la fila entera y el teclado tiene un botón. */}
+                <button
+                  type="button"
+                  aria-haspopup="dialog"
+                  class="flex w-full min-w-0 items-baseline justify-between gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60 md:block"
+                >
                   <span class="block truncate font-display text-lg font-semibold tracking-tight text-zinc-50">
                     {c.name}
                   </span>
                   <span class="block font-mono text-xs text-zinc-500 md:mt-0.5">{c.id}</span>
-                </span>
+                </button>
+              </th>
 
-                {rows.map(([label, status], j) => (
-                  <span
-                    class:list={[
-                      'flex min-h-16 flex-col justify-center gap-1 border-t border-line px-4 py-3 md:border-l md:border-t-0',
-                      j > 0 && 'border-l',
-                      j === 0 && 'pl-5 sm:pl-8 md:pl-4',
-                      status === 'no' && 'hatch',
-                    ]}
-                  >
-                    <span class="eyebrow text-zinc-600 md:sr-only">{label}</span>
-                    <span class="flex items-center gap-2 text-sm text-zinc-300">
-                      <span
-                        class:list={[icon[status].className, icon[status].pulses && 'glyph-pulse']}
-                        aria-hidden="true"
-                      >
-                        {icon[status].symbol}
-                      </span>
-                      {label === 'Agencias' && status === 'ok' && c.agencies.total !== null ? (
-                        <span class="font-mono tabular-nums">{c.agencies.total}</span>
-                      ) : (
-                        <span class:list={[status === 'no' && 'text-zinc-500']}>
-                          {status === 'ok' ? 'sí' : status === 'no' ? 'no' : 'en curso'}
-                        </span>
-                      )}
-                      <span class="sr-only">: {icon[status].label}</span>
+              {rowsFor(c).map(([label, status], j) => (
+                <td
+                  class:list={[
+                    'flex min-h-16 flex-col justify-center gap-1 border-t border-line px-4 py-3 md:table-cell md:border-l md:border-t-0',
+                    j > 0 && 'border-l',
+                    j === 0 && 'pl-5 sm:pl-8 md:pl-4',
+                    status === 'no' && 'hatch',
+                  ]}
+                >
+                  <span class="eyebrow text-zinc-600 md:sr-only">{label}</span>
+                  <span class="flex items-center gap-2 text-sm text-zinc-300">
+                    <span
+                      class:list={[icon[status].className, icon[status].pulses && 'glyph-pulse']}
+                      aria-hidden="true"
+                    >
+                      {icon[status].symbol}
                     </span>
+                    {label === 'Agencias' && status === 'ok' && c.agencies.total !== null ? (
+                      <span class="font-mono tabular-nums">{c.agencies.total}</span>
+                    ) : (
+                      <span class:list={[status === 'no' && 'text-zinc-500']}>
+                        {status === 'ok' ? 'sí' : status === 'no' ? 'no' : 'en curso'}
+                      </span>
+                    )}
+                    <span class="sr-only">: {icon[status].label}</span>
+                  </span>
+                </td>
+              ))}
+
+              <td class="col-span-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 border-t border-line px-5 py-3 sm:px-8 md:table-cell md:border-l md:border-t-0 md:px-4">
+                {(
+                  [
+                    ['rastreo', c.level],
+                    ['crear', c.shipping.level],
+                  ] as const
+                ).map(([que, nivel]) => (
+                  <span class="flex items-center gap-2 font-mono text-xs">
+                    <span class:list={['size-2.5 shrink-0', levelSwatch[nivel]]} aria-hidden="true" />
+                    <span class="w-14 text-zinc-500">{que}</span>
+                    <span class:list={['font-semibold', levelText[nivel]]}>{nivel}</span>
                   </span>
                 ))}
+              </td>
 
-                <span class="col-span-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 border-t border-line px-5 py-3 sm:px-8 md:col-span-1 md:flex-col md:items-start md:justify-center md:border-l md:border-t-0 md:px-4">
-                  {(
-                    [
-                      ['rastreo', c.level],
-                      ['crear', c.shipping.level],
-                    ] as const
-                  ).map(([que, nivel]) => (
-                    <span class="flex items-center gap-2 font-mono text-xs">
-                      <span class:list={['size-2.5 shrink-0', levelSwatch[nivel]]} aria-hidden="true" />
-                      <span class="w-14 text-zinc-500">{que}</span>
-                      <span class:list={['font-semibold', levelText[nivel]]}>{nivel}</span>
-                    </span>
-                  ))}
-                </span>
-
-                <span
-                  class="hidden place-items-center border-l border-line font-mono text-zinc-500 transition-colors group-hover/row:bg-[#a3e635] group-hover/row:text-[#08090b] md:grid"
-                  aria-hidden="true"
-                >
-                  →
-                </span>
-              </button>
-
-              <dialog
-                data-carrier-dialog={c.id}
-                aria-labelledby={`dlg-${c.id}-title`}
-                class="detalle w-[min(34rem,calc(100vw-2rem))] border border-zinc-50 bg-ink p-0 text-zinc-300 shadow-[10px_10px_0_0_rgb(0_0_0/0.35)] backdrop:bg-black/60 backdrop:backdrop-blur-sm"
+              <td
+                class="hidden border-l border-line text-center font-mono text-zinc-500 transition-colors group-hover/row:bg-[#a3e635] group-hover/row:text-[#08090b] md:table-cell"
+                aria-hidden="true"
               >
-                <div class="flex shrink-0 items-stretch justify-between border-b border-line">
-                  <div class="min-w-0 px-5 py-4">
-                    <p class="eyebrow text-zinc-600">Courier · {c.id}</p>
-                    <h3 id={`dlg-${c.id}-title`} class="mt-1 font-display text-2xl font-semibold tracking-tight text-zinc-50">
-                      {c.name}
-                    </h3>
+                →
+              </td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+
+    {/* Los diálogos, FUERA de la tabla: un <dialog> dentro de un <tr> es marcado
+        inválido —un <tr> sólo admite celdas— y el navegador lo expulsaría de la
+        tabla al parsear, rompiendo la fila. Acá abajo funcionan igual: el
+        `showModal()` los saca del flujo de todos modos. */}
+    {
+      PUBLISHED_CARRIERS.map((c) => (
+            <dialog
+              data-carrier-dialog={c.id}
+              aria-labelledby={`dlg-${c.id}-title`}
+              class="detalle w-[min(34rem,calc(100vw-2rem))] border border-zinc-50 bg-ink p-0 text-zinc-300 shadow-[10px_10px_0_0_rgb(0_0_0/0.35)] backdrop:bg-black/60 backdrop:backdrop-blur-sm"
+            >
+              <div class="flex shrink-0 items-stretch justify-between border-b border-line">
+                <div class="min-w-0 px-5 py-4">
+                  <p class="eyebrow text-zinc-600">Courier · {c.id}</p>
+                  <h3 id={`dlg-${c.id}-title`} class="mt-1 font-display text-2xl font-semibold tracking-tight text-zinc-50">
+                    {c.name}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  data-close-dialog
+                  aria-label="Cerrar"
+                  class="eyebrow shrink-0 border-l border-line px-5 text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-ink"
+                >
+                  esc
+                </button>
+              </div>
+
+              <div class="min-h-0 flex-1 overflow-y-auto">
+                {rowsFor(c).map(([label, status, note]) => (
+                  <div class:list={['border-b border-line px-5 py-4', status === 'no' && 'hatch']}>
+                    <p class="flex items-center gap-2">
+                      <span class:list={[icon[status].className, icon[status].pulses && 'glyph-pulse']} aria-hidden="true">
+                        {icon[status].symbol}
+                      </span>
+                      <span class="text-sm font-medium text-zinc-100">{label}</span>
+                      <span class="eyebrow ml-auto text-zinc-500">{icon[status].label}</span>
+                    </p>
+                    <p class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-400">{note}</p>
                   </div>
-                  <button
-                    type="button"
-                    data-close-dialog
-                    aria-label="Cerrar"
-                    class="eyebrow shrink-0 border-l border-line px-5 text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-ink"
-                  >
-                    esc
-                  </button>
-                </div>
+                ))}
 
-                <div class="min-h-0 flex-1 overflow-y-auto">
-                  {rows.map(([label, status, note]) => (
-                    <div class:list={['border-b border-line px-5 py-4', status === 'no' && 'hatch']}>
-                      <p class="flex items-center gap-2">
-                        <span class:list={[icon[status].className, icon[status].pulses && 'glyph-pulse']} aria-hidden="true">
-                          {icon[status].symbol}
-                        </span>
-                        <span class="text-sm font-medium text-zinc-100">{label}</span>
-                        <span class="eyebrow ml-auto text-zinc-500">{icon[status].label}</span>
-                      </p>
-                      <p class="mt-1.5 text-pretty text-sm leading-relaxed text-zinc-400">{note}</p>
-                    </div>
-                  ))}
+                <dl class="grid sm:grid-cols-2">
+                  <div class="border-b border-line px-5 py-4 sm:border-r">
+                    <dt class="eyebrow text-zinc-600">Nivel de evidencia</dt>
+                    <dd class:list={['mt-1 font-mono text-sm font-semibold', levelText[c.level]]}>{c.level}</dd>
+                    <dd class="mt-1 text-pretty text-xs leading-relaxed text-zinc-500">{LEVELS[c.level].detail}</dd>
+                  </div>
+                  <div class="border-b border-line px-5 py-4">
+                    <dt class="eyebrow text-zinc-600">Detección del número</dt>
+                    <dd class="mt-1 font-mono text-sm font-semibold text-zinc-100">{c.detection}</dd>
+                    <dd class="mt-1 text-pretty text-xs leading-relaxed text-zinc-500">{detectionNote[c.detection]}</dd>
+                  </div>
+                  <div class="border-b border-line px-5 py-4 sm:col-span-2">
+                    <dt class="eyebrow text-zinc-600">Webhooks</dt>
+                    <dd class="mt-1 text-sm text-zinc-300">
+                      {c.subscribable
+                        ? 'Puedes suscribir un envío de este courier y te avisamos cuando cambie de estado.'
+                        : 'Todavía no se puede suscribir. El alta lo rechaza en el POST, con el motivo.'}
+                    </dd>
+                  </div>
+                </dl>
 
-                  <dl class="grid sm:grid-cols-2">
-                    <div class="border-b border-line px-5 py-4 sm:border-r">
-                      <dt class="eyebrow text-zinc-600">Nivel de evidencia</dt>
-                      <dd class:list={['mt-1 font-mono text-sm font-semibold', levelText[c.level]]}>{c.level}</dd>
-                      <dd class="mt-1 text-pretty text-xs leading-relaxed text-zinc-500">{LEVELS[c.level].detail}</dd>
-                    </div>
-                    <div class="border-b border-line px-5 py-4">
-                      <dt class="eyebrow text-zinc-600">Detección del número</dt>
-                      <dd class="mt-1 font-mono text-sm font-semibold text-zinc-100">{c.detection}</dd>
-                      <dd class="mt-1 text-pretty text-xs leading-relaxed text-zinc-500">{detectionNote[c.detection]}</dd>
-                    </div>
-                    <div class="border-b border-line px-5 py-4 sm:col-span-2">
-                      <dt class="eyebrow text-zinc-600">Webhooks</dt>
-                      <dd class="mt-1 text-sm text-zinc-300">
-                        {c.subscribable
-                          ? 'Puedes suscribir un envío de este courier y te avisamos cuando cambie de estado.'
-                          : 'Todavía no se puede suscribir. El alta lo rechaza en el POST, con el motivo.'}
-                      </dd>
-                    </div>
-                  </dl>
-
-                  <a
-                    href={`/couriers/${c.id}`}
-                    class="btn btn-primary m-5 block px-4 py-3 text-center text-sm font-medium"
-                  >
-                    Todo sobre la integración con {c.name} →
-                  </a>
-                </div>
-              </dialog>
-            </li>
-          )
-        })
-      }
-    </ul>
+                <a
+                  href={`/couriers/${c.id}`}
+                  class="btn btn-primary m-5 block px-4 py-3 text-center text-sm font-medium"
+                >
+                  Todo sobre la integración con {c.name} →
+                </a>
+              </div>
+            </dialog>
+      ))
+    }
 
     {/* La leyenda sale de `LEVELS`: el mismo vocabulario que publica el API. */}
     <ul class="flex flex-wrap gap-x-8 gap-y-3 px-5 py-6 sm:px-8 lg:px-12" aria-label="Niveles de evidencia">
@@ -259,10 +298,16 @@ const cols = 'md:grid-cols-[minmax(0,1.5fr)_repeat(3,minmax(0,1fr))_minmax(0,1.3
 
   <script is:inline>
     ;(() => {
-      for (const button of document.querySelectorAll('[data-open-carrier]')) {
-        const dialog = document.querySelector(`[data-carrier-dialog="${button.dataset.openCarrier}"]`)
+      // El listener va en la FILA, no en el botón: así el ratón conserva la fila
+      // entera y el teclado sigue teniendo un control real, porque el clic del
+      // botón burbujea hasta acá. Un solo listener, así que no dispara dos veces
+      // —y `showModal()` sobre un diálogo ya abierto lanza, de ahí la guarda.
+      for (const fila of document.querySelectorAll('[data-open-carrier]')) {
+        const dialog = document.querySelector(`[data-carrier-dialog="${fila.dataset.openCarrier}"]`)
         if (!dialog) continue
-        button.addEventListener('click', () => dialog.showModal())
+        fila.addEventListener('click', () => {
+          if (!dialog.open) dialog.showModal()
+        })
         dialog.querySelector('[data-close-dialog]')?.addEventListener('click', () => dialog.close())
         dialog.addEventListener('click', (e) => {
           if (e.target === dialog) dialog.close()
