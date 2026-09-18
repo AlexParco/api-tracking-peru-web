@@ -54,7 +54,7 @@ const listNames = (cs: typeof PUBLISHED_CARRIERS) =>
 
   <div class="grid border-t border-line lg:grid-cols-2" data-reveal>
     <div class="border-b border-line px-5 py-10 sm:px-8 lg:border-b-0 lg:border-r lg:px-12">
-      <h3 class="eyebrow text-zinc-500">De su palabra a la nuestra</h3>
+      <h3 class="eyebrow text-zinc-500">Del literal del courier al estado canónico</h3>
       <p class="mt-4 text-pretty text-sm leading-relaxed text-zinc-400">
         Validados contra respuestas reales: {tracking.length} de{' '}
         {PUBLISHED_CARRIERS.length} couriers ({listNames(tracking)}).
@@ -84,7 +84,7 @@ const listNames = (cs: typeof PUBLISHED_CARRIERS) =>
     </div>
 
     <div class="px-5 py-10 sm:px-8 lg:px-12">
-      <h3 class="eyebrow text-zinc-500">Y los que se salen del camino</h3>
+      <h3 class="eyebrow text-zinc-500">Y los estados que se salen del camino</h3>
       <dl class="mt-6 border-t border-line">
         {
           DETOURS.map((d) => (

@@ -921,7 +921,7 @@ export const WEBHOOK_DECISIONS: { title: string; detail: string }[] = [
   {
     title: 'Reintentos con id de evento estable',
     detail:
-      'Hasta 3 intentos por entrega (10 s de timeout, backoff de 500 ms). Si fallan, la marca de agua no avanza y el próximo poll reintenta el mismo cambio con el mismo id. Deduplicá por X-Webhook-Event-Id. Y la firma lleva un timestamp (t=<unix>) DENTRO de lo firmado: verificá que sea reciente para rechazar reenvíos viejos (anti-replay).',
+      'Hasta 3 intentos por entrega (10 s de timeout, backoff de 500 ms). Si fallan, la marca de agua no avanza y el próximo poll reintenta el mismo cambio con el mismo id. Deduplica por X-Webhook-Event-Id. Y la firma lleva un timestamp (t=<unix>) DENTRO de lo firmado: verifica que sea reciente para rechazar reenvíos viejos (anti-replay).',
   },
   {
     title: 'Cadencia atada al TTL del cache',

@@ -11,7 +11,7 @@
  */
 import SectionHead from './SectionHead.astro'
 import { MOCK_AGENCIES } from '../data/agencies-mock.ts'
-import { PUBLISHED_CARRIERS } from '../data/api.ts'
+import { PUBLISHED_CARRIERS, METRICS } from '../data/api.ts'
 
 /* Una demostración de que el buscador consulta en vivo, no un listado. */
 const EN_PORTADA = 6
@@ -41,7 +41,7 @@ const cardClass = 'flex min-w-0 flex-col border-b border-r border-line p-5'
 ---
 
 <section id="agencies" class="scroll-mt-14 border-t border-line pt-20 md:pt-28">
-  <SectionHead n="04" kicker="Agencias" title="Busca una agencia">
+  <SectionHead n="04" kicker="Agencias" title={`Busca una agencia entre las ${METRICS.agenciesSynced} sincronizadas`}>
     El mismo <code class="font-mono text-sm text-zinc-200">GET /v1/agencies</code> que
     usarías tú, contra los catálogos de los couriers que publican uno. Cada resultado
     dice de dónde salió su ubigeo — y cuándo no lo pudimos resolver.

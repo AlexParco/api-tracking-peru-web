@@ -169,7 +169,7 @@ const GAPS = [
       {/* ── Autenticación ── */}
       <section id="authentication" data-docs-section class="mt-16 scroll-mt-20">
         <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
-          Autenticación
+          Autenticación con X-API-Key
         </h2>
         <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
           Toda llamada lleva tu key en la cabecera{' '}
@@ -248,7 +248,7 @@ const GAPS = [
       {/* ── Primer llamado ── */}
       <section id="first-call" data-docs-section class="mt-16 scroll-mt-20">
         <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
-          Tu primer llamado
+          Tu primer llamado al API
         </h2>
         <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
           <code class="font-mono text-zinc-300">GET /v1/carriers</code> es el endpoint de
@@ -262,7 +262,7 @@ const GAPS = [
       {/* ── Convenciones ── */}
       <section id="conventions" data-docs-section class="mt-16 scroll-mt-20">
         <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
-          Convenciones
+          Convenciones del API
         </h2>
         <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
           Cinco reglas que valen para todas las respuestas. Ninguna es cosmética: cambian
@@ -332,8 +332,10 @@ const GAPS = [
 
       {/* ── Endpoints ── */}
       <div class="mt-20 border-t border-line pt-10">
+        {/* El conteo sale de ENDPOINTS: un número en un encabezado es de lo más
+            citable que tiene una referencia, y acá no puede quedar desfasado. */}
         <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
-          Endpoints
+          Los {ENDPOINTS.length} endpoints del API
         </h2>
         <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
           Los {ENDPOINTS.length} que expone el servicio, con una respuesta real de cada uno.
@@ -426,7 +428,7 @@ const GAPS = [
       {/* ── Desvíos ── */}
       <section id="exceptions" data-docs-section class="mt-16 scroll-mt-20">
         <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
-          Los que se salen del camino
+          Los estados que se salen del camino
         </h2>
         <dl class="mt-5 space-y-3">
           {
@@ -520,7 +522,7 @@ const GAPS = [
         <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">Webhooks</h2>
         <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
           Suscribes un envío y te avisamos cuando cambia de estado, en vez de que preguntes.
-          Ideal cuando seguís varios envíos a la vez: te avisamos cuando cambian, sin que
+          Ideal cuando sigues varios envíos a la vez: te avisamos cuando cambian, sin que
           estés consultando uno por uno. Hoy se puede suscribir un envío de {listNames(subscribable)};
           el alta de cualquier otro devuelve un error explícito en el POST, con el motivo — no te
           dejamos crear una suscripción que nunca iba a entregar nada.
@@ -529,7 +531,7 @@ const GAPS = [
 
       <section id="webhooks-events" data-docs-section class="mt-14 scroll-mt-20">
         <h3 class="font-display text-lg font-semibold tracking-tight text-zinc-100">
-          Tipos de evento
+          Tipos de evento de webhook
         </h3>
         <dl class="mt-4 space-y-3">
           {
@@ -548,7 +550,7 @@ const GAPS = [
           Verificar la firma
         </h3>
         <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">
-          Cada entrega va firmada con el secreto que te devolvemos una sola vez al registrar
+          Cada entrega de webhook va firmada con el secreto que te devolvemos una sola vez al registrar
           el endpoint. Compara usando una función de tiempo constante y sobre el{' '}
           <strong class="font-medium text-zinc-200">cuerpo crudo</strong>: si lo parseas y lo
           vuelves a serializar antes de firmar, la firma no va a coincidir.
@@ -560,7 +562,7 @@ const GAPS = [
 
       <section id="webhooks-delivery" data-docs-section class="mt-14 scroll-mt-20">
         <h3 class="font-display text-lg font-semibold tracking-tight text-zinc-100">
-          Una entrega
+          Una entrega real de webhook
         </h3>
         <div class="mt-4">
           <CodeBlock title="POST a tu endpoint" code={WEBHOOK_EXAMPLE} lang="http" tone="brand" />
@@ -569,10 +571,10 @@ const GAPS = [
 
       <section id="webhooks-rules" data-docs-section class="mt-14 scroll-mt-20">
         <h3 class="font-display text-lg font-semibold tracking-tight text-zinc-100">
-          Antes de escribir el receptor
+          Antes de escribir el receptor de webhooks
         </h3>
         <p class="mt-2 text-pretty text-sm leading-relaxed text-zinc-400">
-          Estas no son features: son decisiones que cambian tu código.
+          Recibir webhooks no es sólo exponer un endpoint. Estas no son features: son decisiones que cambian tu código.
         </p>
         <dl class="mt-5 space-y-5">
           {
@@ -590,7 +592,7 @@ const GAPS = [
       <section id="errors" data-docs-section class="mt-20 scroll-mt-20 border-t border-line pt-10">
         <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">Errores</h2>
         <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
-          Todos tienen la misma forma: un <code class="font-mono text-zinc-300">code</code>{' '}
+          Todos los errores del API tienen la misma forma: un <code class="font-mono text-zinc-300">code</code>{' '}
           estable, un <code class="font-mono text-zinc-300">message</code> en castellano y un{' '}
           <code class="font-mono text-zinc-300">request_id</code> para cuando nos escribas.
           Ramifica por el <code class="font-mono text-zinc-300">code</code>, nunca por el texto:
@@ -655,10 +657,10 @@ const GAPS = [
           sería raro que la página técnica fuera la única que disimula. */}
       <section id="limits" data-docs-section class="mt-20 scroll-mt-20 border-t border-line pt-10">
         <h2 class="font-display text-2xl font-semibold tracking-tight text-zinc-50">
-          Lo que esta página todavía no dice
+          Lo que esta referencia todavía no cubre
         </h2>
         <p class="mt-3 text-pretty text-sm leading-relaxed text-zinc-400">
-          Preferimos listar los huecos a que los encuentres con un request fallido.
+          Preferimos listar los huecos de esta referencia a que los encuentres con un request fallido.
         </p>
         <ul class="mt-6 space-y-4">
           {

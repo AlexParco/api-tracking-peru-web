@@ -3,6 +3,12 @@ import { ENDPOINTS } from './api.ts'
 /**
  * La estructura de /docs, en un solo lugar.
  *
+ * OJO: `title` es la etiqueta de la SIDEBAR y del buscador, y ahí se lee dentro de
+ * su grupo («Webhooks › Una entrega»), así que conviene corta. El encabezado que
+ * escribe la página puede ser más largo y nombrar la entidad, porque se extrae
+ * suelto y sin el grupo delante. No son la misma frase ni tienen por qué serlo: lo
+ * que sí se verifica en build es que los `id` coincidan, que es lo que rompe.
+ *
  * La sidebar y el buscador leen de aquí. No son dos listas: es una, porque una
  * sidebar que ofrece un endpoint que el buscador no encuentra —o al revés— es
  * un bug que nadie reporta y todos sufren.
@@ -59,7 +65,7 @@ const CONCEPTOS: DocsEntry[] = [
   {
     group: 'Conceptos',
     id: 'exceptions',
-    title: 'Los que se salen del camino',
+    title: 'Los estados que se salen del camino',
     detail: 'delayed, returning, returned y exception: cuándo aparece cada uno.',
   },
   {
@@ -81,7 +87,7 @@ const WEBHOOKS: DocsEntry[] = [
   {
     group: 'Webhooks',
     id: 'webhooks-events',
-    title: 'Tipos de evento',
+    title: 'Tipos de evento de webhook',
     detail: 'tracking.updated, tracking.delivered, tracking.expired y webhook.ping.',
   },
   {
@@ -115,7 +121,7 @@ const REFERENCIA: DocsEntry[] = [
   {
     group: 'Referencia',
     id: 'limits',
-    title: 'Lo que falta aquí',
+    title: 'Lo que esta referencia no cubre',
     detail:
       'El catálogo de errores, los límites de uso, los query params completos y la URL de producción.',
   },

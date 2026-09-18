@@ -38,8 +38,8 @@ const rowCount = filas.length + 3
 ---
 
 <section id="pricing" class="scroll-mt-14 border-t border-line pt-20 md:pt-28">
-  <SectionHead n="06" kicker="Precios" title="Una key, un plan, sin sorpresas">
-    Los {cuantos(PLANS.length)} llegan a los mismos endpoints y a los mismos carriers. Lo que
+  <SectionHead n="06" kicker="Precios" title={`Una key, un plan desde S/ ${PLANS[0].monthly}, sin sorpresas`}>
+    Los {cuantos(PLANS.length)} planes llegan a los mismos endpoints y a los mismos carriers. Lo que
     cambia es{' '}
     {ORDERS.enabled ? 'cuántas órdenes creas al mes' : 'cuántos envíos puedes tener vigilados a la vez'}{' '}
     —ese es el medidor— y cómo te respondemos cuando algo se rompe.
@@ -74,7 +74,8 @@ const rowCount = filas.length + 3
           >
             <div class="px-5 py-8 sm:px-8 lg:px-8">
               <div class="flex items-center justify-between gap-3">
-                <h3 id={`plan-${p.id}`} class="eyebrow font-semibold text-zinc-50">{p.name}</h3>
+                {/* «Plan» delante: extraído solo, «Gratuito» no dice de qué. */}
+                <h3 id={`plan-${p.id}`} class="eyebrow font-semibold text-zinc-50">Plan {p.name}</h3>
                 <span class="eyebrow text-zinc-700" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
               </div>
               <p class="mt-6 flex items-baseline gap-1.5">
